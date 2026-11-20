@@ -635,6 +635,13 @@ def build_parser():
 
 
 def main(argv=None):
+    try:
+        return _main(argv)
+    finally:
+        wa2md.reset_lang()
+
+
+def _main(argv):
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
         sys.stderr.reconfigure(encoding="utf-8")

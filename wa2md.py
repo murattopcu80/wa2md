@@ -31,7 +31,7 @@ from urllib.parse import quote
 # WA2MD_LANG environment variable, then English. The OUTPUT labels inside the Markdown (Sohbet-N, Kişi N, [telefon], ...)
 # are NOT part of this table: the anonymizer's own patterns embed them (see the language-pack design issue).
 LANGS = ("en", "tr")
-_LANG = ["en"]
+_LANG = [None]      # set explicitly by init_lang() for the duration of one main() call; None = follow WA2MD_LANG / English
 
 
 def _norm_lang(value):
@@ -56,8 +56,13 @@ def init_lang(argv=None, env=None):
     return _LANG[0]
 
 
+def reset_lang():
+    """End of a main() call: library-style calls (import_bundles, write_chat, ...) follow WA2MD_LANG again."""
+    _LANG[0] = None
+
+
 def current_lang():
-    return _LANG[0]
+    return _LANG[0] or _norm_lang(os.environ.get("WA2MD_LANG")) or "en"
 
 
 def add_lang_arg(p):
@@ -68,13 +73,13 @@ def add_lang_arg(p):
 
 def t(key, **kw):
     """Message text in the selected language; {placeholders} are filled from kw."""
-    text = MSG[key][_LANG[0]]
+    text = MSG[key][current_lang()]
     return text.format(**kw) if kw else text
 
 
 def t_stat(cat):
     """Display name of an internal statistics category (the internal keys stay Turkish)."""
-    return STAT_LABEL.get(cat, cat) if _LANG[0] == "en" else cat
+    return STAT_LABEL.get(cat, cat) if current_lang() == "en" else cat
 
 
 STAT_LABEL = {"gönderen": "sender", "sistem satırı": "system line", "ek ad": "extra name", "sözlük": "dictionary",
@@ -136,6 +141,10 @@ MSG = {
                 "tr": "[{shown}] {real} mesaj, {copied} medya kopyalandı, {missing} medya eksik -> {path}"},
     "attach_warn": {"en": "   WARNING: attachments: {c} copied, manual check needed ({cd}); {s} not copied ({sd}) -> {path}",
                     "tr": "   UYARI: ekler: {c} kopyalandı, elle kontrol gerekli ({cd}); {s} kopyalanmadı ({sd}) -> {path}"},
+    "media_warn": {"en": "   WARNING: {n} media/attachment files were copied as they are and are NOT anonymized (faces, ID "
+                         "documents, bank cards, screenshots with names). Use --no-media before sharing.",
+                   "tr": "   UYARI: {n} medya/ek dosyası olduğu gibi kopyalandı ve anonimleştirilmedi (yüzler, kimlik "
+                         "belgeleri, banka kartları, ad içeren ekran görüntüleri). Paylaşmadan önce --medya-yok kullan."},
     "masked": {"en": "   masked: {counts}", "tr": "   maskelenen: {counts}"},
     "no_dict_warn": {"en": "   WARNING: name dictionary MISSING (--no-dictionary): names that the dictionary or "
                            "honorifics would find were not masked, the suspect-remaining count is incomplete",
@@ -3195,6 +3204,8 @@ def write_chat(chat, msgs, export, out_dir, anonim=False, chat_no=1, label=None,
         print(t("attach_warn", c=sum(c.values()), cd=fmt(c), s=sum(sk.values()), sd=fmt(sk),
                 path=os.path.join(folder, "ekler.md")))
     if anon:
+        if copied:
+            print(t("media_warn", n=copied))
         print(t("masked", counts=_count_line(anon.stats) or "-"))
         if missing_name_lists():
             print(t("no_dict_warn"))
@@ -3256,6 +3267,13 @@ def build_parser():
 
 
 def main(argv=None):
+    try:
+        return _main(argv)
+    finally:
+        reset_lang()
+
+
+def _main(argv):
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
         sys.stderr.reconfigure(encoding="utf-8")

@@ -56,7 +56,7 @@ class Isolated(unittest.TestCase):
                 os.environ.pop(k, None)
             else:
                 os.environ[k] = v
-        wa2md.init_lang([], {})
+        wa2md.reset_lang()
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def call(self, main, *argv):
@@ -225,6 +225,18 @@ class MessageLanguage(Isolated):
         _, out, _ = self.wa2md_run("--help")
         self.assertIn("Converts WhatsApp chat exports", out)
 
+    def test_library_calls_follow_the_environment_and_main_leaves_no_state(self):
+        """No order dependence between tests or callers: after main() the language follows WA2MD_LANG again."""
+        self.wa2md_run("--lang", "tr", "--help")
+        self.assertEqual(wa2md.current_lang(), "en")
+        os.environ["WA2MD_LANG"] = "tr"
+        self.assertEqual(wa2md.current_lang(), "tr")
+        self.assertIn("Girdi bulunamadı", wa2md.t("input_missing", path="x"))
+        self.wa2md_run("--lang", "en", "--help")
+        self.assertEqual(wa2md.current_lang(), "tr")   # the explicit --lang of that call did not leak
+        del os.environ["WA2MD_LANG"]
+        self.assertEqual(wa2md.t("input_missing", path="x"), "Input not found: x")
+
     def test_console_messages_english_by_default_and_turkish_on_request(self):
         out_en = os.path.join(self.tmp, "en")
         out_tr = os.path.join(self.tmp, "tr")
@@ -322,6 +334,53 @@ class MessageLanguage(Isolated):
         p = subprocess.run([sys.executable, "-I", os.path.join(ROOT, "wa2md.py"), "--help"], env=env,
                            capture_output=True, text=True, encoding="utf-8")
         self.assertIn("Converts WhatsApp chat exports", p.stdout)
+
+
+class MediaWarning(Isolated):
+    """Copying media stays the default in anonymous mode; one console line says so (count and advice only)."""
+
+    EN = re.compile(r"^   WARNING: (\d+) media/attachment files were copied as they are and are NOT anonymized "
+                    r"\(faces, ID documents, bank cards, screenshots with names\)\. Use --no-media before sharing\.$", re.M)
+    TR = re.compile(r"^   UYARI: (\d+) medya/ek dosyası olduğu gibi kopyalandı ve anonimleştirilmedi \(yüzler, kimlik "
+                    r"belgeleri, banka kartları, ad içeren ekran görüntüleri\)\. Paylaşmadan önce --medya-yok kullan\.$",
+                    re.M)
+
+    def copied(self, out):
+        return int(re.search(r"(\d+) media copied", out).group(1))
+
+    def test_english_line_once_with_the_copied_count(self):
+        code, o, _ = self.wa2md_run(TR, "--out", os.path.join(self.tmp, "o"))
+        self.assertEqual(code, 0)
+        hits = self.EN.findall(o)
+        self.assertEqual(hits, [str(self.copied(o))])
+        self.assertGreater(int(hits[0]), 0)
+
+    def test_turkish_line_with_lang_tr(self):
+        code, o, _ = self.wa2md_run(TR, "--out", os.path.join(self.tmp, "o"), "--lang", "tr")
+        self.assertEqual(code, 0)
+        n = int(re.search(r"(\d+) medya kopyalandı", o).group(1))
+        self.assertEqual(self.TR.findall(o), [str(n)])
+
+    def test_not_printed_without_copied_media_or_when_not_anonymizing(self):
+        for extra in (["--no-media"], ["--medya-yok"], ["--no-anonymize"], ["--no-anonim"]):
+            with self.subTest(extra=extra):
+                _, o, _ = self.wa2md_run(TR, "--out", os.path.join(self.tmp, "o" + extra[0]), *extra)
+                self.assertNotIn("were copied as they are", o)
+
+    def test_line_carries_no_chat_content(self):
+        _, o, _ = self.wa2md_run(TR, "--out", os.path.join(self.tmp, "o"))
+        line = next(l for l in o.splitlines() if "were copied as they are" in l)
+        for real in ("Naime", "Orhan", "IMG-2026", "foto"):
+            self.assertNotIn(real, line)
+        self.assertRegex(line, self.EN)
+
+    def test_stderr_is_not_used(self):
+        _, _, e = self.wa2md_run(TR, "--out", os.path.join(self.tmp, "o"))
+        self.assertNotIn("were copied as they are", e)
+
+    def test_help_tells_the_same_story(self):
+        _, out, _ = self.wa2md_run("--help")
+        self.assertIn("recommended for output you will share", " ".join(out.split()))
 
 
 class MessageTable(unittest.TestCase):
