@@ -2,6 +2,8 @@
 
 # wa2md
 
+[![CI](../../actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml) ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg) ![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)
+
 > **Resmî olmayan araç.** wa2md bağımsız bir açık kaynak projedir. WhatsApp ya da Meta ile bağlantılı, onlar tarafından onaylanmış veya desteklenmiş değildir. "WhatsApp" adı burada yalnızca aracın okuduğu sohbet biçimini ve web sayfasını belirtmek için kullanılır.
 
 > **Paylaşmadan önce ÇIKTININ TAMAMINI oku.** Buradaki anonimleştirme sezgiseldir: doğrudan tanımlayıcıları kaldırır ve bazılarını kaçırır ("Bu aracın otomatik bulamadıkları" bölümüne bak). İnceleme dosyası yardımcıdır, garanti değildir. **Fotoğraflar, videolar ve ses kayıtları olduğu gibi kopyalanır ve anonimleştirilmez** (yüzler, kimlik belgeleri, banka kartları, ad içeren ekran görüntüleri): paylaşmadan önce `--medya-yok` kullan.
@@ -229,5 +231,18 @@ python -m unittest discover -s tests -v
 Kod MIT lisansı altındadır (bkz. `LICENSE`). Bu lisans yalnız koda uygulanır; `adlar/` altındaki veri dosyaları ayrıdır (aşağıya bak).
 
 ## Veri kaynakları ve atıf
+
+`adlar/` klasöründeki sözlükler araçla birlikte gelen düz metin dosyalarıdır ve çevrimdışı okunur (çalışma anında hiçbir şey indirilmez):
+
+| Dosya | İçerik | Kaynak ve nasıl derlendi | Alınma |
+|---|---|---|---|
+| `tr-adlar.txt` | Türkçe kişi adları | Wikidata Query Service: Türkiye vatandaşlarının en az iki kez geçen adları ve Türkçe ad ögeleri; iki ad elle çıkarıldı | 2026-11-14 |
+| `tr-soyadlar.txt` | Türkçe soyadları | Wikidata Query Service: Türkiye vatandaşlarının en az iki kez geçen soyadları ve Türkçe soyadı ögeleri | 2026-11-14 |
+| `tr-yerler.txt` | Türkiye il ve ilçeleri | Wikidata Query Service: il ve ilçe ögeleri, birincil etiket, temizlenmiş (ekler ve parantezler atıldı) | 2026-11-15 |
+| `sozcuk-adlar.txt` | sözcük anlamı da olan adlar (yalnız bağlamla maskelenir) | Wikidata sözcükbirimleri ve yer adları (CC0 1.0) ile bu proje için elle derlenen bölüm (MIT, kodla aynı) | 2026-11-14 / 2026-11-15 |
+
+Lisans: Wikidata'nın yapısal verisi CC0 1.0'dır (kamu malı, https://www.wikidata.org/wiki/Wikidata:Licensing); `sozcuk-adlar.txt` içindeki elle derlenen bölüm bu deponun lisansı altındadır. Sorgular, süzgeçler, sayılar ve elle çıkarmalar her dosyanın başındaki yorum satırlarında yazılıdır; listeler yeniden üretilebilir. Listeler elinden geleni yapar: özel veri içermezler, ama eksiksiz ya da hatasız değildirler ("Sınırlar ve sorumlu kullanım" bölümüne bak).
+
+**Bu depodaki tüm test verileri ve örnek dosyalar uydurmadır** (uydurma adlar, ayrılmış `0500 000 xx xx` ailesinden numaralar, `example.*` ve `.test` adresleri); gerçek bir sohbet ya da gerçek bir kişi kullanılmamıştır.
 
 `adlar/` klasöründeki ad, soyad, sözcük-ad ve yer listeleri Wikidata'dan (https://www.wikidata.org) Wikidata Query Service ile derlenmiştir. Wikidata'nın yapısal verisi CC0 1.0 (kamu malı) kapsamındadır: https://www.wikidata.org/wiki/Wikidata:Licensing. Alınma tarihleri ve kullanılan sorgular her dosyanın başında yazılıdır (`tr-adlar.txt` ve `tr-soyadlar.txt`: 2026-11-14; `tr-yerler.txt` ve `sozcuk-adlar.txt`: 2026-11-15).
