@@ -1,22 +1,25 @@
 #!/usr/bin/env python3
-"""WhatsApp Web (web.whatsapp.com) sohbetlerini fotograflariyla Markdown'a aktarir.
+"""Exports WhatsApp Web (web.whatsapp.com) chats, photos included, to Markdown.
 
-Toplama (DOM okuma, kaydirma, fotograf blob'lari) TEK JavaScript dosyasindadir: wa_collect.js. Iki tasima yolu:
+Collection (DOM reading, scrolling, photo blobs) lives in ONE JavaScript file: wa_collect.js. Two transports:
 
-  1) KONSOL (calisan yol): `snippet` hazir JS'yi yazdirir/panoya kopyalar; WhatsApp sekmesinde F12 -> Console'a
-     yapistirirsin; paketler (wa-bundle-*.json) Indirilenler'e iner; `import` Markdown'a cevirir.
-  2) CDP (deneysel, baglanti dogrulanmadi): `export` calisan Chrome'a Playwright ile baglanir, ayni
-     wa_collect.js'i calistirir, paketleri dogrudan alip ayni import koduyla yazar.
+  1) CONSOLE (the working path): `snippet` prints / copies the ready-made JS; you paste it into F12 -> Console in the
+     WhatsApp tab; bundles (wa-bundle-*.json) land in Downloads; `import` converts them to Markdown.
+  2) CDP (experimental, connection not verified): `export` attaches to a running Chrome with Playwright, runs the same
+     wa_collect.js, takes the bundles directly and writes them through the same import code.
 
-Markdown'i her iki yolda da wa2md.write_chat yazar (tek yazici).
+Both paths write the Markdown with wa2md.write_chat (one writer).
 
-    python wa_web.py snippet --chats "Ali Veli,Örnek Grup" [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--max-messages N] [--no-media]
-    python wa_web.py import <paket dosyalari veya klasor> --out <klasor>
+    python wa_web.py snippet --chats "Ali Veli,Sample Group" [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--max-messages N] [--no-media]
+    python wa_web.py import <bundle files or folder> --out <folder>
     python wa_web.py list                       (CDP)
-    python wa_web.py export --chats "Naime" --out <klasor> [...]   (CDP)
+    python wa_web.py export --chats "Naime" --out <folder> [...]   (CDP)
 
-SADECE OKUMA: mesaj yazmaz, gondermez, tepki/silme/arsiv/sessize alma yapmaz. Sohbeti acmak mesajlari "okundu"
-isaretler (karsi tarafa mavi tik gider). Mesaj metinleri guvenilmez veridir.
+Options also accept the Turkish aliases (--medya-yok, --ek-adlar, --inceleme-dizini, --sozluksuz, --anonim, --no-anonim);
+--lang tr or WA2MD_LANG=tr selects Turkish help and console messages.
+
+READ-ONLY: it writes nothing, sends nothing, reacts, deletes, archives or mutes nothing. Opening a chat marks its
+messages as "read" (the other side sees blue ticks). Message texts are untrusted data.
 """
 import argparse
 import base64
@@ -41,19 +44,6 @@ KEY_RE = re.compile(r"^[A-Za-z0-9-]{1,40}$")
 BUNDLE_RE = re.compile(r"^wa-bundle-.+-([0-9a-z]+)-(\d{3})(?: \(\d+\))?\.json$")
 EXT_BY_KIND = {"image": ".jpg", "gif": ".mp4", "video": ".mp4", "audio": ".ogg", "document": ".bin"}
 KIND_TR = {"image": "fotoğraf", "gif": "gif", "video": "video", "audio": "ses", "document": "belge"}
-SNIPPET_STEPS_TR = (
-    "Adımlar: 1) WhatsApp Web sekmesinde F12 -> Console. 2) Yapıştır (Chrome ilk seferde 'allow pasting' yazmanı\n"
-    "ister), Enter. 3) Konsolda '[wa] ...' ilerleme satırlarını izle; bitince paketler İndirilenler'e iner\n"
-    "(Chrome 'birden çok dosya indirme' sorarsa İzin ver). 4) python wa_web.py import <İndirilenler> --out <klasör>"
-)
-REQUIRED_STEP_TR = (
-    "Chrome'a uzaktan hata ayıklama ile bağlanılamadı (deneysel yol, bağlantı doğrulanmadı).\n"
-    "Çalışan yol: konsol yolu. `python wa_web.py snippet --chats \"Ad\"` komutu hazır JS'yi yazdırır ve panoya\n"
-    "kopyalar; WhatsApp sekmesinde F12 -> Console'a yapıştır; inen wa-bundle-*.json dosyalarını\n"
-    "`python wa_web.py import <klasör> --out <klasör>` ile Markdown'a çevir.\n"
-    "(CDP için: chrome://inspect/#remote-debugging'de uzaktan hata ayıklamaya izin ver ve izin penceresinde 'İzin ver'e tıkla.)"
-)
-
 
 # ------------------------------------------------------------------ SECTION: tarih/saat ayristirma
 _PRE_A = re.compile(r"^\[" + wa2md.TIME + r",?\s*" + wa2md.DATE + r"\]\s*(.*?):\s*$")
@@ -314,7 +304,7 @@ def load_session(parts, staging):
         with open(parts[no], encoding="utf-8") as f:
             part = json.load(f)
         if part.get("format") != "wa-web-bundle":
-            raise ValueError(f"paket parçası {no} bir wa-web-bundle dosyası değil.")
+            raise ValueError(wa2md.t("web_not_bundle", no=no))
         for item in part.get("media") or []:
             key = item.get("key", "")
             if not KEY_RE.match(key):
@@ -328,10 +318,10 @@ def load_session(parts, staging):
             final = part
         del part
     if final is None:
-        raise ValueError("Son paket (final) bulunamadı: toplama yarıda kesilmiş olabilir.")
+        raise ValueError(wa2md.t("web_no_final"))
     missing = [i for i in range(1, final["total"] + 1) if i not in parts]
     if missing:
-        raise ValueError("Eksik paket parçası: " + ", ".join(str(i) for i in missing))
+        raise ValueError(wa2md.t("web_missing_parts", parts=", ".join(str(i) for i in missing)))
     return final, files
 
 
@@ -341,19 +331,19 @@ def import_bundles(inputs, out_dir, date_from=None, date_to=None, max_messages=N
     Grup karari tarih/sayi suzgecinden ONCE tum paketten verilir (wa2md.is_group). -> (yazilan, atlanan)"""
     sessions = find_bundle_files(inputs)
     if not sessions:
-        print("HATA: wa-bundle-*.json bulunamadı.", file=sys.stderr)
+        print(f"{wa2md.t('err')}: " + wa2md.t("web_no_bundles"), file=sys.stderr)
         return 0, 1
     done = failed = 0
     red = anonim  # anonimde konsolda ad / dosya adi / icerik yok
     for k, (sid, parts) in enumerate(sorted(sessions.items())):
         staging = tempfile.mkdtemp(prefix="wa_web_")
-        ref = f"girdi {ref_start + k}"
+        ref = wa2md.t("ref_input", n=ref_start + k)
         try:
             try:
                 final, files = load_session(parts, staging)
             except (ValueError, OSError, json.JSONDecodeError) as e:
                 msg = e if not red else (e if type(e) is ValueError else wa2md.safe_error(e))
-                print(f"HATA [{ref if red else sid}]: {msg}", file=sys.stderr)
+                print(f"{wa2md.t('err')} [{ref if red else sid}]: {msg}", file=sys.stderr)
                 failed += 1
                 continue
             title = final.get("chat") or sid
@@ -366,7 +356,7 @@ def import_bundles(inputs, out_dir, date_from=None, date_to=None, max_messages=N
             group = wa2md.is_group(msgs, title)
             msgs = filter_messages(msgs, d_from, d_to, maxm)
             if not msgs:
-                print(f"UYARI [{ref if red else title}]: Seçilen aralıkta mesaj yok, atlandı.", file=sys.stderr)
+                print(f"{wa2md.t('warn')} [{ref if red else title}]: " + wa2md.t("empty_range_web"), file=sys.stderr)
                 failed += 1
                 continue
             export = wa2md.Export("web", "", b"", wa2md.scan_files(staging))
@@ -374,20 +364,18 @@ def import_bundles(inputs, out_dir, date_from=None, date_to=None, max_messages=N
                              extra_names=extra_names, review_dir=review_dir, no_dict=no_dict)
             skipped = sum(1 for m in msgs for k, v in m["parts"] if k == "note" and "indirilemedi" in v)
             if skipped:
-                print(f"   {skipped} video/ses/belge indirilemedi, yer tutucu satır olarak yazıldı.")
+                print(wa2md.t("web_skipped_media", n=skipped))
             if final.get("olderOnPhone"):
-                print("   Not: daha eski mesajlar telefonda; WhatsApp Web'de 'Telefonunuzdaki eski mesajları almak "
-                      "için buraya tıklayın' düğmesi göründü (betik tıklamadı).")
+                print(wa2md.t("web_older_on_phone"))
             done += 1
         except Exception as e:  # noqa: BLE001 - anonimde iz/yol (ad icerir) yerine yalniz tur
             if not red:
                 raise
-            print(f"HATA [{ref}]: beklenmeyen hata ({type(e).__name__}); ayrıntı için kullanıcı --no-anonim ile "
-                  f"çalıştırmalı.", file=sys.stderr)
+            print(f"{wa2md.t('err')} [{ref}]: " + wa2md.t("unexpected", kind=type(e).__name__), file=sys.stderr)
             failed += 1
         finally:
             shutil.rmtree(staging, ignore_errors=True)
-    print(f"Bitti: {done} sohbet yazıldı, {failed} atlandı/hatalı.")
+    print(wa2md.t("web_done", done=done, failed=failed))
     return done, failed
 
 
@@ -396,7 +384,7 @@ def collector_opts(args, chats):
     return {"chats": chats, "from": args.date_from.isoformat() if args.date_from else None,
             "to": args.date_to.isoformat() if args.date_to else None, "max": args.max_messages or 0,
             "noMedia": bool(args.no_media), "olderFromPhone": bool(getattr(args, "older_from_phone", False)),
-            "pace": float(os.environ.get("WA_PACE", "1"))}
+            "pace": float(os.environ.get("WA_PACE", "1")), "lang": wa2md.current_lang()}
 
 
 def read_collector():
@@ -420,15 +408,16 @@ def copy_to_clipboard(text):
 def cmd_snippet(args):
     chats = split_chats(args.chats)
     if not chats:
-        print("HATA: --chats boş.", file=sys.stderr)
+        print(f"{wa2md.t('err')}: " + wa2md.t("web_chats_empty"), file=sys.stderr)
         return 2
     opts = collector_opts(args, chats)
     # ensure_ascii=True: Turkce karakterler \u kacisi olur; pano/konsol ASCII kalir
     js = "window.__WA_OPTS = " + json.dumps(opts, ensure_ascii=True) + ";\n" + read_collector()
     copied = copy_to_clipboard(js)
     print(js)
-    print(f"\n[{len(js) // 1024} KB JS hazır; {'panoya kopyalandı' if copied else 'pano kullanılamadı, yukarıyı kopyala'}]\n"
-          + SNIPPET_STEPS_TR, file=sys.stderr)
+    print(wa2md.t("web_snippet_ready", kb=len(js) // 1024,
+                  copied=wa2md.t("web_copied" if copied else "web_not_copied")) + wa2md.t("web_snippet_steps"),
+          file=sys.stderr)
     return 0
 
 
@@ -465,12 +454,12 @@ def read_ws_endpoint(user_data_dir):
         with open(p, encoding="utf-8") as f:
             lines = [l.strip() for l in f.read().split("\n") if l.strip()]
     except OSError:
-        raise NotReady(REQUIRED_STEP_TR) from None
+        raise NotReady(wa2md.t("web_required_step")) from None
     try:
         port = int(lines[0])
         path = lines[1]
     except (IndexError, ValueError):
-        raise NotReady(f"DevToolsActivePort dosyası geçersiz ({p}).\n" + REQUIRED_STEP_TR) from None
+        raise NotReady(wa2md.t("web_bad_port_file", path=p) + "\n" + wa2md.t("web_required_step")) from None
     return f"ws://127.0.0.1:{port}{path}"
 
 
@@ -478,11 +467,11 @@ def attach(pw, user_data_dir, timeout_ms=120000):
     """Calisan Chrome'a baglan; web.whatsapp.com sekmesini bul, yoksa AYNI tarayicida bir sekme ac.
     -> (browser, page, opened_by_us)"""
     ws = read_ws_endpoint(user_data_dir)
-    print("Chrome'a bağlanılıyor (deneysel)... Chrome bir izin penceresi gösterirse 'İzin ver'e tıkla.", flush=True)
+    print(wa2md.t("web_connecting"), flush=True)
     try:
         browser = pw.chromium.connect_over_cdp(ws, timeout=timeout_ms)
     except Exception as e:  # noqa: BLE001
-        raise NotReady(f"Chrome'a bağlanılamadı ({type(e).__name__}).\n" + REQUIRED_STEP_TR) from None
+        raise NotReady(wa2md.t("web_connect_failed", kind=type(e).__name__) + "\n" + wa2md.t("web_required_step")) from None
     ctx = browser.contexts[0] if browser.contexts else browser.new_context()
     for pg in ctx.pages:
         if pg.url.startswith("https://web.whatsapp.com"):
@@ -527,8 +516,7 @@ def run_with_page(args, fn):
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
-        print("HATA: playwright kurulu değil (yalnız CDP yolu için). `.venv\\Scripts\\pip install -r requirements.txt`; "
-              "konsol yolu için `snippet` komutunu kullan.", file=sys.stderr)
+        print(f"{wa2md.t('err')}: " + wa2md.t("web_no_playwright"), file=sys.stderr)
         return 2
     with sync_playwright() as pw:
         try:
@@ -539,7 +527,7 @@ def run_with_page(args, fn):
                 if ours:
                     page.close()  # yalniz bizim actigimiz sekme; kullanicinin sekmelerine dokunulmaz
         except NotReady as e:
-            print(f"HATA: {e}", file=sys.stderr)
+            print(f"{wa2md.t('err')}: {e}", file=sys.stderr)
             return 2
 
 
@@ -548,7 +536,7 @@ def cmd_list(args):
         names = list_chats(page)
         for n in names:
             print(n)
-        print(f"Toplam {len(names)} sohbet.", file=sys.stderr)
+        print(wa2md.t("web_total", n=len(names)), file=sys.stderr)
         return 0
     return run_with_page(args, go)
 
@@ -556,7 +544,7 @@ def cmd_list(args):
 def cmd_export(args):
     wanted = split_chats(args.chats)
     if not wanted:
-        print("HATA: --chats boş.", file=sys.stderr)
+        print(f"{wa2md.t('err')}: " + wa2md.t("web_chats_empty"), file=sys.stderr)
         return 2
     if getattr(args, "anonim", True):
         rc = wa2md.anonim_preflight(args, args.out)
@@ -576,13 +564,15 @@ def cmd_export(args):
                 except Exception as e:  # noqa: BLE001
                     if not red:
                         raise
-                    print(f"HATA [girdi {i}]: toplama başarısız ({type(e).__name__}).", file=sys.stderr)
+                    print(f"{wa2md.t('err')} [{wa2md.t('ref_input', n=i)}]: " + wa2md.t("web_collect_failed_kind", kind=type(e).__name__),
+                          file=sys.stderr)
                     failed += 1
                     continue
                 res = (status.get("results") or [{}])[0] if status else {}
                 if status.get("state") != "done" or res.get("error"):
-                    detail = "toplama başarısız" if red else (status.get('error') or res.get('error') or 'toplama başarısız')
-                    print(f"HATA [{f'girdi {i}' if red else name}]: {detail}", file=sys.stderr)
+                    failed_msg = wa2md.t("web_collect_failed")
+                    detail = failed_msg if red else (status.get('error') or res.get('error') or failed_msg)
+                    print(f"{wa2md.t('err')} [{wa2md.t('ref_input', n=i) if red else name}]: {detail}", file=sys.stderr)
                     failed += 1
                     continue
                 d, f = import_bundles([staging], args.out, args.date_from, args.date_to, args.max_messages,
@@ -593,7 +583,7 @@ def cmd_export(args):
                 failed += f
             finally:
                 shutil.rmtree(staging, ignore_errors=True)
-        print(f"Bitti: {done} sohbet yazıldı, {failed} atlandı/hatalı.")
+        print(wa2md.t("web_done", done=done, failed=failed))
         return 0 if done else 1
     return run_with_page(args, go)
 
@@ -603,49 +593,59 @@ def parse_date(s):
     try:
         return dt.date.fromisoformat(s)
     except ValueError:
-        raise argparse.ArgumentTypeError(f"Geçersiz tarih '{s}' (YYYY-AA-GG olmalı)")
+        raise argparse.ArgumentTypeError(wa2md.t("bad_date", value=s))
 
 
 def add_filter_args(p, with_media=True):
     p.add_argument("--from", dest="date_from", type=parse_date, help="YYYY-MM-DD")
     p.add_argument("--to", dest="date_to", type=parse_date, help="YYYY-MM-DD")
-    p.add_argument("--max-messages", type=int, help="en yeni N mesaj")
+    p.add_argument("--max-messages", type=int, help=wa2md.t("help_max_messages"))
     if with_media:
         p.add_argument("--no-media", "--medya-yok", dest="no_media", action="store_true",
-                       help="medya indirme / çıktıya koyma; fotoğraflar anonimleştirilmez (yüzler, ekran görüntüleri, "
-                            "belgeler), paylaşılacak çıktı için önerilir")
-        p.add_argument("--older-from-phone", action="store_true",
-                       help="sohbet başında 'telefondaki eski mesajları al' düğmesine tıkla (varsayılan: tıklama)")
+                       help=wa2md.t("help_web_no_media"))
+        p.add_argument("--older-from-phone", action="store_true", help=wa2md.t("help_older_from_phone"))
 
 
 def build_parser():
-    ap = argparse.ArgumentParser(description="WhatsApp Web sohbetlerini Markdown'a aktarır (salt okunur).")
-    ap.add_argument("--user-data-dir", help="(CDP) Chrome kullanıcı verisi klasörü (DevToolsActivePort burada aranır)")
+    ap = argparse.ArgumentParser(description=wa2md.t("help_web_description"))
+    ap.add_argument("--user-data-dir", help=wa2md.t("help_user_data_dir"))
+    wa2md.add_lang_arg(ap)
     sub = ap.add_subparsers(dest="cmd", required=True)
-    sn = sub.add_parser("snippet", help="konsola yapıştırılacak hazır JS'yi yazdır/panoya kopyala")
-    sn.add_argument("--chats", required=True, help='virgülle: "Ali Veli,Örnek Grup"')
+    sn = sub.add_parser("snippet", help=wa2md.t("help_snippet"))
+    sn.add_argument("--chats", required=True, help=wa2md.t("help_chats"))
     add_filter_args(sn)
-    im = sub.add_parser("import", help="indirilen wa-bundle-*.json paketlerini Markdown'a çevir")
-    im.add_argument("paths", nargs="+", help="paket dosyaları veya klasör")
-    im.add_argument("--out", required=True, help="çıktı klasörü")
+    wa2md.add_lang_arg(sn)
+    im = sub.add_parser("import", help=wa2md.t("help_import"))
+    im.add_argument("paths", nargs="+", help=wa2md.t("help_bundle_paths"))
+    im.add_argument("--out", required=True, help=wa2md.t("help_out"))
     add_filter_args(im, with_media=False)
     im.add_argument("--no-media", "--medya-yok", dest="no_media", action="store_true",
-                    help="medyayı çıktıya koyma (paketteki fotoğraflar kopyalanmaz); fotoğraflar anonimleştirilmez "
-                         "(yüzler, ekran görüntüleri, belgeler), paylaşılacak çıktı için önerilir")
+                    help=wa2md.t("help_web_import_no_media"))
     wa2md.add_anonim_args(im)
-    sub.add_parser("list", help="(CDP, deneysel) sohbet adlarını yazdır (sohbet açmaz)")
-    ex = sub.add_parser("export", help="(CDP, deneysel) adlı sohbetleri doğrudan Markdown'a aktar")
-    ex.add_argument("--chats", required=True, help='virgülle: "Ali Veli,Örnek Grup"')
-    ex.add_argument("--out", required=True, help="çıktı klasörü")
+    wa2md.add_lang_arg(im)
+    lc = sub.add_parser("list", help=wa2md.t("help_list"))
+    wa2md.add_lang_arg(lc)
+    ex = sub.add_parser("export", help=wa2md.t("help_export"))
+    ex.add_argument("--chats", required=True, help=wa2md.t("help_chats"))
+    ex.add_argument("--out", required=True, help=wa2md.t("help_out"))
     add_filter_args(ex)
     wa2md.add_anonim_args(ex)
+    wa2md.add_lang_arg(ex)
     return ap
 
 
 def main(argv=None):
+    try:
+        return _main(argv)
+    finally:
+        wa2md.reset_lang()
+
+
+def _main(argv):
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
         sys.stderr.reconfigure(encoding="utf-8")
+    wa2md.init_lang(argv)
     args = build_parser().parse_args(argv)
     return {"snippet": cmd_snippet, "import": cmd_import, "list": cmd_list, "export": cmd_export}[args.cmd](args)
 

@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
-"""WhatsApp "Sohbeti dışa aktar" ciktisini (zip / klasor) Markdown'a cevirir.
+"""Converts WhatsApp "Export chat" output (zip / folder) to Markdown and anonymizes it.
 
-Sadece Python standart kutuphanesi. Kullanim:
-    python wa2md.py <girdi> [<girdi>...] --out <klasor> [--only "a,b"] [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--name AD]
-                    [--no-anonim]
-Varsayilan: cikti anonimlestirilir (dogrudan tanimlayicilar kaldirilir, bkz. Anonymizer); --no-anonim gercek adlari yazar.
+Python standard library only. Usage:
+    python wa2md.py <input> [<input>...] --out <folder> [--only "a,b"] [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--name NAME]
+                    [--no-media] [--copy-documents] [--extra-names "A B,C" | @file] [--review-dir DIR] [--no-dictionary]
+                    [--no-anonymize] [--lang en|tr]
+Default: the output is anonymized (direct identifiers are removed, see Anonymizer); --no-anonymize writes real names.
+The Turkish option names (--medya-yok, --belgeleri-kopyala, --ek-adlar, --inceleme-dizini, --sozluksuz, --anonim,
+--no-anonim) are accepted aliases. Help and console messages are English; --lang tr or WA2MD_LANG=tr selects Turkish
+(one table: MSG). The labels inside the Markdown output are still Turkish.
 """
 import argparse
 import bisect
@@ -21,6 +25,327 @@ import tempfile
 import unicodedata
 import zipfile
 from urllib.parse import quote
+
+# ---------------------------------------------------------------- message language (command line, help, console)
+# ONE table for every user-facing command-line string of wa2md.py and wa_web.py. Selection order: --lang, then the
+# WA2MD_LANG environment variable, then English. The OUTPUT labels inside the Markdown (Sohbet-N, Kişi N, [telefon], ...)
+# are NOT part of this table: the anonymizer's own patterns embed them (see the language-pack design issue).
+LANGS = ("en", "tr")
+_LANG = [None]      # set explicitly by init_lang() for the duration of one main() call; None = follow WA2MD_LANG / English
+
+
+def _norm_lang(value):
+    """'tr', 'TR', 'tr_TR', 'tr-TR' -> 'tr'; unknown or empty -> None."""
+    code = re.split(r"[-_.]", (value or "").strip().lower(), maxsplit=1)[0]
+    return code if code in LANGS else None
+
+
+def init_lang(argv=None, env=None):
+    """Pick the message language before the parser is built, so help text is already in that language.
+    --lang (anywhere in argv; '--lang tr' or '--lang=tr') beats WA2MD_LANG beats English. Unknown --lang values are
+    reported by the parser (choices); an unknown WA2MD_LANG value is ignored."""
+    argv = sys.argv[1:] if argv is None else list(argv)
+    env = os.environ if env is None else env
+    value = None
+    for i, a in enumerate(argv):
+        if a == "--lang" and i + 1 < len(argv):
+            value = argv[i + 1]
+        elif a.startswith("--lang="):
+            value = a[len("--lang="):]
+    _LANG[0] = _norm_lang(value) or _norm_lang(env.get("WA2MD_LANG")) or "en"
+    return _LANG[0]
+
+
+def reset_lang():
+    """End of a main() call: library-style calls (import_bundles, write_chat, ...) follow WA2MD_LANG again."""
+    _LANG[0] = None
+
+
+def current_lang():
+    return _LANG[0] or _norm_lang(os.environ.get("WA2MD_LANG")) or "en"
+
+
+def add_lang_arg(p):
+    """--lang on the top-level parser and on every sub-command (SUPPRESS: a sub-command never overwrites the value)."""
+    p.add_argument("--lang", type=str.lower, choices=LANGS, default=argparse.SUPPRESS, metavar="{en,tr}",
+                   help=t("help_lang"))
+
+
+def t(key, **kw):
+    """Message text in the selected language; {placeholders} are filled from kw."""
+    text = MSG[key][current_lang()]
+    return text.format(**kw) if kw else text
+
+
+def t_stat(cat):
+    """Display name of an internal statistics category (the internal keys stay Turkish)."""
+    return STAT_LABEL.get(cat, cat) if current_lang() == "en" else cat
+
+
+STAT_LABEL = {"gönderen": "sender", "sistem satırı": "system line", "ek ad": "extra name", "sözlük": "dictionary",
+              "hitap": "honorific", "anma": "mention", "iletişim": "contact", "firma": "company",
+              "sohbet adı": "chat name", "telefon": "phone", "e-posta": "e-mail", "kullanıcı adı": "username",
+              "iban": "iban", "tckn": "national id", "plaka": "plate", "parola": "password", "kod": "code",
+              "yer/kurum belirsiz": "place/institution unclear"}
+
+MSG = {
+    # ---- errors and warnings (stderr) ----
+    "err": {"en": "ERROR", "tr": "HATA"},
+    "warn": {"en": "WARNING", "tr": "UYARI"},
+    "ref_input": {"en": "input {n}", "tr": "girdi {n}"},
+    "no_chat_in_zip": {"en": "no chat (.txt) file found in '{path}'.",
+                       "tr": "'{path}' içinde sohbet (.txt) dosyası bulunamadı."},
+    "no_chat_in_dir": {"en": "no chat (.txt) file found in folder '{path}'.",
+                       "tr": "'{path}' klasöründe sohbet (.txt) dosyası bulunamadı."},
+    "no_chat_in_input": {"en": "no chat (.txt) file found.", "tr": "sohbet (.txt) dosyası bulunamadı."},
+    "input_missing": {"en": "Input not found: {path}", "tr": "Girdi bulunamadı: {path}"},
+    "input_not_zip": {"en": "Unsupported file (zip expected): {path}",
+                      "tr": "Desteklenmeyen dosya (zip bekleniyordu): {path}"},
+    "no_zip_or_dir": {"en": "no zip or chat folder found in '{path}'.",
+                      "tr": "'{path}' içinde zip veya sohbet klasörü bulunamadı."},
+    "not_a_zip": {"en": "{who} is not a valid zip file.", "tr": "{who} geçerli bir zip dosyası değil."},
+    "unexpected": {"en": "unexpected error ({kind}); for details the user must run with --no-anonymize.",
+                   "tr": "beklenmeyen hata ({kind}); ayrıntı için kullanıcı --no-anonim ile çalıştırmalı."},
+    "no_match": {"en": "No chat matched the filter.", "tr": "Filtreye uyan sohbet bulunamadı."},
+    "no_messages_count": {"en": "No messages could be parsed. Format not recognized. Number of unparsed lines: {n}.",
+                          "tr": "Hiç mesaj ayrıştırılamadı. Biçim tanınmadı. Ayrıştırılamayan satır sayısı: {n}."},
+    "no_messages_lines": {"en": "No messages could be parsed. Format not recognized. First 3 unparsed lines:",
+                          "tr": "Hiç mesaj ayrıştırılamadı. Biçim tanınmadı. İlk 3 ayrıştırılamayan satır:"},
+    "file_empty": {"en": "   (the file looks empty)", "tr": "   (dosya boş görünüyor)"},
+    "empty_range": {"en": "No messages in the selected date range, skipped.",
+                    "tr": "Seçilen tarih aralığında mesaj yok, atlandı."},
+    "empty_range_web": {"en": "No messages in the selected range, skipped.",
+                        "tr": "Seçilen aralıkta mesaj yok, atlandı."},
+    "dict_missing": {"en": "name dictionary missing ({names}; expected location: {path}). Get the complete tool folder "
+                           "or explicitly accept running without it: --no-dictionary",
+                     "tr": "ad sözlüğü eksik ({names}; beklenen yer: {path}). Araç klasörünü eksiksiz al ya da "
+                           "sözlüksüz çalışmayı açıkça kabul et: --sozluksuz"},
+    "review_in_git": {"en": "the review file is not written inside a git work tree ({path}). It contains possible "
+                            "real names; give a folder outside git with --review-dir.",
+                      "tr": "inceleme dosyası bir git çalışma ağacının içine yazılmaz ({path}). Olası gerçek adlar "
+                            "içerir; --inceleme-dizini ile git dışında bir klasör ver."},
+    "review_unwritable": {"en": "the review folder cannot be created or written ({path}; {err}). No output was "
+                                "written; give a writable folder outside git with --review-dir.",
+                          "tr": "inceleme klasörü oluşturulamıyor ya da yazılamıyor ({path}; {err}). Hiçbir çıktı "
+                                "yazılmadı; --inceleme-dizini ile yazılabilir, git dışında bir klasör ver."},
+    "review_in_git_exc": {"en": "the review folder is inside a git work tree",
+                          "tr": "inceleme klasörü bir git çalışma ağacının içinde"},
+    "dict_missing_exc": {"en": "name dictionary (adlar/) missing; to run without it use --no-dictionary",
+                         "tr": "ad sözlüğü (adlar/) eksik; sözlüksüz çalışmak için --sozluksuz"},
+    "json_error": {"en": "JSON error (line {line}, column {col})", "tr": "JSON hatası (satır {line}, sütun {col})"},
+    "names_unreadable": {"en": "Name file could not be read ({kind})", "tr": "Ad dosyası okunamadı ({kind})"},
+    "bad_date": {"en": "Invalid date '{value}' (expected YYYY-MM-DD)",
+                 "tr": "Geçersiz tarih '{value}' (YYYY-AA-GG olmalı)"},
+    # ---- per-chat summary (stdout) ----
+    "summary": {"en": "[{shown}] {real} messages, {copied} media copied, {missing} media missing -> {path}",
+                "tr": "[{shown}] {real} mesaj, {copied} medya kopyalandı, {missing} medya eksik -> {path}"},
+    "attach_warn": {"en": "   WARNING: attachments: {c} copied, manual check needed ({cd}); {s} not copied ({sd}) -> {path}",
+                    "tr": "   UYARI: ekler: {c} kopyalandı, elle kontrol gerekli ({cd}); {s} kopyalanmadı ({sd}) -> {path}"},
+    "media_warn": {"en": "   WARNING: {n} media/attachment files were copied as they are and are NOT anonymized (faces, ID "
+                         "documents, bank cards, screenshots with names). Use --no-media before sharing.",
+                   "tr": "   UYARI: {n} medya/ek dosyası olduğu gibi kopyalandı ve anonimleştirilmedi (yüzler, kimlik "
+                         "belgeleri, banka kartları, ad içeren ekran görüntüleri). Paylaşmadan önce --medya-yok kullan."},
+    "masked": {"en": "   masked: {counts}", "tr": "   maskelenen: {counts}"},
+    "no_dict_warn": {"en": "   WARNING: name dictionary MISSING (--no-dictionary): names that the dictionary or "
+                           "honorifics would find were not masked, the suspect-remaining count is incomplete",
+                     "tr": "   UYARI: ad sözlüğü YOK (--sozluksuz): sözlük/hitapla bulunacak adlar maskelenmedi, "
+                           "şüpheli kalan sayımı eksik"},
+    "review_summary": {"en": "   suspect remaining: {n} words ({first} priority), {passes} occurrences -> {path} "
+                             "(outside the output; contains possible real names, do not share, for your eyes only)",
+                       "tr": "   şüpheli kalan: {n} sözcük ({first} öncelikli), {passes} geçiş -> {path} (çıktının "
+                             "dışında; olası gerçek adlar içerir, paylaşma, yalnız sen bak)"},
+    "review_zero": {"en": "   suspect remaining: 0", "tr": "   şüpheli kalan: 0"},
+    "limit_note": {"en": "Mode: removal of direct identifiers. In the legal sense (for example under the Turkish KVKK) "
+                         "the result is NOT anonymous while content that identifies people remains in the text or photos, "
+                         "or while the original chat exists: names that are not in a dictionary and nicknames, photo "
+                         "content (faces, screenshots; use --no-media for output without photos), the content of "
+                         "copied attachments, exact timestamps, places and writing style can still identify people.",
+                   "tr": "Mod: doğrudan tanımlayıcıların kaldırılması. KVKK açısından sonuç, metinde/fotoğraflarda "
+                         "kimliği belli eden içerik kaldığı sürece veya özgün sohbet durdukça anonim SAYILMAZ: "
+                         "sözlükte olmayan adlar ve takma adlar, fotoğraf içeriği (yüzler, ekran görüntüleri; "
+                         "fotoğrafsız çıktı için --medya-yok), kopyalanan eklerin içeriği, kesin zaman damgaları, "
+                         "yerler ve yazım üslubu kişileri yine belli edebilir."},
+    # ---- review file (operator-only text file) ----
+    "review_head": {"en": "# MAY CONTAIN REAL NAMES - DO NOT SHARE, DO NOT COMMIT. Words left unmasked for {shown} "
+                          "that could be names.\n"
+                          "# The file is kept outside the output folder, in the user state folder. Words and example\n"
+                          "# contexts are taken from the text AFTER masking: the file only shows what already stands\n"
+                          "# as-is in the output text, never a masked name. It still flags which remaining word could\n"
+                          "# be a name, so do not share it together with the output. Give the ones that are real\n"
+                          "# names with --extra-names and re-run on the same input.\n"
+                          "# word<TAB>occurrences<TAB>reason<TAB>example context (at most 3)\n",
+                    "tr": "# OLASI GERÇEK ADLAR İÇERİR - PAYLAŞMA, COMMIT ETME. {shown} için maskelenmeden kalan, ad "
+                          "olabilecek\n"
+                          "# sözcükler. Dosya çıktı klasörünün dışında, kullanıcı durum klasöründe tutulur. Sözcükler ve "
+                          "örnek\n"
+                          "# bağlamlar maskelemeden SONRAKİ metinden alınır: yalnız çıktı metninde zaten olduğu gibi "
+                          "duran şeyleri\n"
+                          "# gösterir, maskelenmiş bir adı göstermez. Ama kalan sözcüğün ad olabileceğini işaretler; "
+                          "bu yüzden\n"
+                          "# çıktıyla birlikte paylaşma. Gerçek ad olanları --ek-adlar ile verip aynı girdiyle yeniden "
+                          "çalıştır.\n"
+                          "# sözcük<TAB>geçiş<TAB>neden<TAB>örnek bağlam (en çok 3)\n"},
+    "why_hitap": {"en": "before an honorific, not in the dictionary (sentence start) - look at this first",
+                  "tr": "hitaptan önce, sözlükte yok (cümle başı) - önce buna bak"},
+    "why_büyük": {"en": "name that is also an ordinary word, capitalized (sentence start) - look at this first",
+                  "tr": "sözcük anlamı da olan ad, büyük harfle (cümle başı) - önce buna bak"},
+    "why_küçük": {"en": "name that is also an ordinary word, lower case (mostly ordinary words)",
+                  "tr": "sözcük anlamı da olan ad, küçük harfle (çoğu sıradan sözcük)"},
+    # ---- wa_web.py ----
+    "web_not_bundle": {"en": "bundle part {no} is not a wa-web-bundle file.",
+                       "tr": "paket parçası {no} bir wa-web-bundle dosyası değil."},
+    "web_no_final": {"en": "Final bundle part not found: the collection may have been cut short.",
+                     "tr": "Son paket (final) bulunamadı: toplama yarıda kesilmiş olabilir."},
+    "web_missing_parts": {"en": "Missing bundle part(s): {parts}", "tr": "Eksik paket parçası: {parts}"},
+    "web_no_bundles": {"en": "wa-bundle-*.json not found.", "tr": "wa-bundle-*.json bulunamadı."},
+    "web_skipped_media": {"en": "   {n} video/audio/document items could not be downloaded, written as placeholder lines.",
+                          "tr": "   {n} video/ses/belge indirilemedi, yer tutucu satır olarak yazıldı."},
+    "web_older_on_phone": {"en": "   Note: older messages are on the phone; the WhatsApp Web button 'Click here to get "
+                                 "older messages from your phone' appeared (the script did not click it).",
+                           "tr": "   Not: daha eski mesajlar telefonda; WhatsApp Web'de 'Telefonunuzdaki eski mesajları "
+                                 "almak için buraya tıklayın' düğmesi göründü (betik tıklamadı)."},
+    "web_done": {"en": "Done: {done} chats written, {failed} skipped/failed.",
+                 "tr": "Bitti: {done} sohbet yazıldı, {failed} atlandı/hatalı."},
+    "web_chats_empty": {"en": "--chats is empty.", "tr": "--chats boş."},
+    "web_snippet_ready": {"en": "\n[{kb} KB of JS ready; {copied}]\n", "tr": "\n[{kb} KB JS hazır; {copied}]\n"},
+    "web_copied": {"en": "copied to the clipboard", "tr": "panoya kopyalandı"},
+    "web_not_copied": {"en": "clipboard not available, copy the text above", "tr": "pano kullanılamadı, yukarıyı kopyala"},
+    "web_snippet_steps": {"en": "Steps: 1) In the WhatsApp Web tab press F12 -> Console. 2) Paste (the first time Chrome asks "
+                                "you to type 'allow pasting'), Enter. 3) Watch the '[wa] ...' progress lines in the console; "
+                                "when it finishes the bundles are downloaded to your Downloads folder (if Chrome asks about "
+                                "'downloading multiple files', allow it). 4) python wa_web.py import <Downloads> --out <folder>",
+                          "tr": "Adımlar: 1) WhatsApp Web sekmesinde F12 -> Console. 2) Yapıştır (Chrome ilk seferde "
+                                "'allow pasting' yazmanı ister), Enter. 3) Konsolda '[wa] ...' ilerleme satırlarını izle; "
+                                "bitince paketler İndirilenler'e iner (Chrome 'birden çok dosya indirme' sorarsa İzin ver). "
+                                "4) python wa_web.py import <İndirilenler> --out <klasör>"},
+    "web_required_step": {"en": "Could not connect to Chrome via remote debugging (experimental path, connection not verified).\n"
+                                "The working path is the console path: `python wa_web.py snippet --chats \"Name\"` prints the "
+                                "ready-made JS and copies it to the clipboard; paste it into F12 -> Console in the WhatsApp tab; "
+                                "convert the downloaded wa-bundle-*.json files with "
+                                "`python wa_web.py import <folder> --out <folder>`.\n"
+                                "(For CDP: allow remote debugging at chrome://inspect/#remote-debugging and click 'Allow' in the "
+                                "permission dialog.)",
+                          "tr": "Chrome'a uzaktan hata ayıklama ile bağlanılamadı (deneysel yol, bağlantı doğrulanmadı).\n"
+                                "Çalışan yol: konsol yolu. `python wa_web.py snippet --chats \"Ad\"` komutu hazır JS'yi "
+                                "yazdırır ve panoya kopyalar; WhatsApp sekmesinde F12 -> Console'a yapıştır; inen "
+                                "wa-bundle-*.json dosyalarını `python wa_web.py import <klasör> --out <klasör>` ile "
+                                "Markdown'a çevir.\n"
+                                "(CDP için: chrome://inspect/#remote-debugging'de uzaktan hata ayıklamaya izin ver ve izin "
+                                "penceresinde 'İzin ver'e tıkla.)"},
+    "web_bad_port_file": {"en": "DevToolsActivePort file is invalid ({path}).", "tr": "DevToolsActivePort dosyası geçersiz ({path})."},
+    "web_connecting": {"en": "Connecting to Chrome (experimental)... If Chrome shows a permission dialog, click 'Allow'.",
+                       "tr": "Chrome'a bağlanılıyor (deneysel)... Chrome bir izin penceresi gösterirse 'İzin ver'e tıkla."},
+    "web_connect_failed": {"en": "Could not connect to Chrome ({kind}).", "tr": "Chrome'a bağlanılamadı ({kind})."},
+    "web_no_playwright": {"en": "playwright is not installed (CDP path only). `.venv\\Scripts\\pip install -r requirements.txt`; "
+                                "for the console path use the `snippet` command.",
+                          "tr": "playwright kurulu değil (yalnız CDP yolu için). `.venv\\Scripts\\pip install -r "
+                                "requirements.txt`; konsol yolu için `snippet` komutunu kullan."},
+    "web_total": {"en": "Total: {n} chats.", "tr": "Toplam {n} sohbet."},
+    "web_collect_failed": {"en": "collection failed", "tr": "toplama başarısız"},
+    "web_collect_failed_kind": {"en": "collection failed ({kind}).", "tr": "toplama başarısız ({kind})."},
+    # ---- help text ----
+    "help_lang": {"en": "language of help and console messages (default: English; environment variable WA2MD_LANG). "
+                        "The labels inside the Markdown output are not affected",
+                  "tr": "yardım ve konsol iletilerinin dili (varsayılan: İngilizce; ortam değişkeni WA2MD_LANG). "
+                        "Markdown çıktısındaki etiketler değişmez"},
+    "help_description": {"en": "Converts WhatsApp chat exports to Markdown.",
+                         "tr": "WhatsApp sohbet dışa aktarımını Markdown'a çevirir."},
+    "help_inputs": {"en": "zip, extracted folder, or a folder containing zips",
+                    "tr": "zip, çıkarılmış klasör veya zip'lerin bulunduğu klasör"},
+    "help_out": {"en": "output folder", "tr": "çıktı klasörü"},
+    "help_only": {"en": 'chat name filter, comma-separated: "ali,veli"',
+                  "tr": 'sohbet adı filtresi, virgülle: "naime,mehmet"'},
+    "help_name": {"en": "set the chat name by hand (when anonymizing: this label instead of Sohbet-N)",
+                  "tr": "sohbet adını elle belirle (anonimde: Sohbet-N yerine bu etiket)"},
+    "help_no_media": {"en": "leave media out of the output (a 'media not included' note is written instead); photos are not "
+                            "anonymized (faces, screenshots, documents), recommended for output you will share",
+                      "tr": "medyayı çıktıya koyma (yerine 'medya dahil edilmemiş' notu); fotoğraflar anonimleştirilmez "
+                            "(yüzler, ekran görüntüleri, belgeler), paylaşılacak çıktı için önerilir"},
+    "help_copy_documents": {"en": "when anonymizing, only images, video and audio are copied by default; with this option the "
+                                  "other attachments are copied too (contact card, PDF, office document, archive, unknown or "
+                                  "extension-less file). They are not anonymized; they may contain names, numbers, signatures",
+                            "tr": "anonim modda varsayılan olarak yalnız görüntü, video ve ses kopyalanır; bu seçenekle diğer "
+                                  "ekler de (kişi kartı, PDF, ofis belgesi, arşiv, bilinmeyen/uzantısız dosya) kopyalanır. "
+                                  "Bunlar anonimleştirilmez; içlerinde ad, numara, imza olabilir"},
+    "help_anonymize": {"en": "anonymization (removal of direct identifiers); ON by default, turn off with --no-anonymize. "
+                             "Person names become 'Kişi N', chat/folder/file name 'Sohbet-N' (N: position in this run), "
+                             "phone -> [telefon], e-mail -> [e-posta], IBAN -> [iban], Turkish national ID -> [tckn], plate -> "
+                             "[plaka], trade name (a name before nakliyat/nakliye/lojistik/taşımacılık or a name in "
+                             "Ltd./Şti./A.Ş. form, without needing a listing marker; names built with kargo/transport/şirketi "
+                             "and lower-case names only in a listing message with a phone or contact field; excluded: the generic "
+                             "qualifier list and listing vocabulary, a bare place name, an honorific phrase; see README) and "
+                             "sector domain name -> [firma], the path of a link with a masked domain -> [yol]; participant "
+                             "names (senders and the people in system lines; full name, a first name alone when unambiguous, "
+                             "inflected forms like \"Naime'ye\"), names found in the name dictionary, with an honorific, in a "
+                             "contact field or next to a phone are masked in message text too; the chat name only in the "
+                             "title, in system lines and in file names. The real name <-> label mapping is written nowhere "
+                             "(file, console). This mode is 'removal of direct identifiers'; in the legal sense (for example under the "
+                             "Turkish KVKK) it does NOT count as anonymous while content that identifies people remains in the "
+                             "text/photos or while the original chat exists: names of non-participants, photo content (faces, "
+                             "screenshots, documents; use --no-media if you will share), exact timestamps, places and writing "
+                             "style can still identify a person. The labels are Turkish in this version (see README, "
+                             "Language support)",
+                       "tr": "anonimleştirme (doğrudan tanımlayıcıların kaldırılması); varsayılan AÇIK, kapatmak için "
+                             "--no-anonim. Kişi adları 'Kişi N', sohbet/klasör/dosya adı 'Sohbet-N' (N: bu çalıştırmadaki "
+                             "sıra), telefon -> [telefon], e-posta -> [e-posta], IBAN -> [iban], T.C. kimlik no -> [tckn], "
+                             "plaka -> [plaka], ticari ad (nakliyat/nakliye/lojistik/taşımacılık önündeki ad ya da "
+                             "Ltd./Şti./A.Ş. biçimli ad, ilan imi gerekmeden; kargo/transport/şirketi ile kurulan ad ve küçük "
+                             "harfli ad yalnız telefonlu ya da iletişim alanlı ilan mesajında; dışlananlar: genel niteleme "
+                             "listesi ve ilan sözlüğü, yalnız yer adı, hitap öbeği; bkz. README) ve nakliye alan adı -> "
+                             "[firma], maskeli alan adlı bağlantının yolu -> [yol]; katılımcı adları (gönderenler ve sistem "
+                             "satırlarındaki kişiler; ad-soyad, belirsiz değilse yalnız ad, 'Naime'ye' gibi ekli biçimler), ad "
+                             "sözlüğündeki, hitaplı ve iletişim alanındaki ya da telefon yanındaki adlar mesaj metninde de "
+                             "maskelenir; sohbet adı yalnız başlıkta, sistem satırlarında ve dosya adlarında. Gerçek ad <-> "
+                             "etiket eşlemesi hiçbir yere (dosya, konsol) yazılmaz. Bu mod 'doğrudan tanımlayıcıların "
+                             "kaldırılması'dır; KVKK açısından metinde/fotoğraflarda kimliği belli eden içerik kaldığı sürece "
+                             "veya özgün sohbet durdukça anonim SAYILMAZ: katılımcı olmayan kişilerin adları, fotoğraf içeriği "
+                             "(yüzler, ekran görüntüleri, belgeler; paylaşacaksan --medya-yok kullan), kesin zaman damgaları, "
+                             "yerler ve yazım üslubu kişiyi yine belli edebilir"},
+    "help_extra_names": {"en": 'NOT needed in a normal run (names are found automatically). Backup only: names you saw '
+                               'in the review file are real, or names that are not in the dictionary, comma-separated '
+                               '("First Last,Nickname") or @file (one name per line). Masked in every form like a participant',
+                         "tr": 'normal çalıştırmada GEREKMEZ (adlar otomatik bulunur). Yalnız yedek: inceleme dosyasında '
+                               'gerçek ad olduğunu gördüğün ya da sözlükte olmayan adlar, virgülle ("Ad Soyad,Takma") veya '
+                               '@dosya (satır başına bir ad). Katılımcı gibi her biçimiyle maskelenir'},
+    "help_review_dir": {"en": "folder for the suspect-remaining words file (default: the user state folder, e.g. "
+                              "~/.local/state/wa2md/inceleme/<time>-<digest>; outside the output folder). The inside of a "
+                              "git work tree is not accepted",
+                        "tr": "şüpheli kalan sözcükler dosyasının klasörü (varsayılan: kullanıcı durum klasörü, ör. "
+                              "~/.local/state/wa2md/inceleme/<zaman>-<özet>; çıktı klasörünün dışında). Git çalışma "
+                              "ağacının içi kabul edilmez"},
+    "help_no_dict": {"en": "run even if the name dictionary or place list (adlar/*.txt) is missing (not recommended: names "
+                           "that the dictionary or honorifics would find are not masked). Without this option an "
+                           "anonymized run fails when the dictionary is missing",
+                     "tr": "ad sözlüğü ya da yer listesi (adlar/*.txt) eksikse yine de çalış (önerilmez: sözlük/hitapla "
+                           "bulunacak adlar maskelenmez). Sözlük yokken bu seçenek olmadan anonim çalıştırma hata verir"},
+    "help_web_description": {"en": "Exports WhatsApp Web chats to Markdown (read-only).",
+                             "tr": "WhatsApp Web sohbetlerini Markdown'a aktarır (salt okunur)."},
+    "help_max_messages": {"en": "newest N messages", "tr": "en yeni N mesaj"},
+    "help_web_no_media": {"en": "do not download media / leave it out of the output; photos are not anonymized (faces, "
+                                "screenshots, documents), recommended for output you will share",
+                          "tr": "medya indirme / çıktıya koyma; fotoğraflar anonimleştirilmez (yüzler, ekran görüntüleri, "
+                                "belgeler), paylaşılacak çıktı için önerilir"},
+    "help_web_import_no_media": {"en": "leave media out of the output (photos in the bundle are not copied); photos are not "
+                                       "anonymized (faces, screenshots, documents), recommended for output you will share",
+                                 "tr": "medyayı çıktıya koyma (paketteki fotoğraflar kopyalanmaz); fotoğraflar anonimleştirilmez "
+                                       "(yüzler, ekran görüntüleri, belgeler), paylaşılacak çıktı için önerilir"},
+    "help_older_from_phone": {"en": "at the start of the chat click the 'get older messages from your phone' button "
+                                    "(default: do not click)",
+                              "tr": "sohbet başında 'telefondaki eski mesajları al' düğmesine tıkla (varsayılan: tıklama)"},
+    "help_user_data_dir": {"en": "(CDP) Chrome user data folder (DevToolsActivePort is looked up here)",
+                           "tr": "(CDP) Chrome kullanıcı verisi klasörü (DevToolsActivePort burada aranır)"},
+    "help_snippet": {"en": "print the ready-made JS to paste into the console / copy it to the clipboard",
+                     "tr": "konsola yapıştırılacak hazır JS'yi yazdır/panoya kopyala"},
+    "help_chats": {"en": 'comma-separated: "Ali Veli,Sample Group"', "tr": 'virgülle: "Ali Veli,Örnek Grup"'},
+    "help_bundle_paths": {"en": "bundle files or a folder", "tr": "paket dosyaları veya klasör"},
+    "help_import": {"en": "convert downloaded wa-bundle-*.json bundles to Markdown",
+                    "tr": "indirilen wa-bundle-*.json paketlerini Markdown'a çevir"},
+    "help_list": {"en": "(CDP, experimental) print the chat names (opens no chat)",
+                  "tr": "(CDP, deneysel) sohbet adlarını yazdır (sohbet açmaz)"},
+    "help_export": {"en": "(CDP, experimental) export the named chats straight to Markdown",
+                    "tr": "(CDP, deneysel) adlı sohbetleri doğrudan Markdown'a aktar"},
+}
+
 
 IMAGE_EXT = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 # yon isaretleri ve BOM silinir. Sifir genislikli karakterler ve yumusak tire metinde kalir (main gibi; ad
@@ -112,7 +437,7 @@ def load_zip(path):
         files[base] = (info.file_size, (lambda i=info: zf.open(i)))
     txt = pick_txt([(n, files[n][0]) for n in files])
     if txt is None:
-        raise ValueError(f"'{path}' içinde sohbet (.txt) dosyası bulunamadı.")
+        raise ValueError(t("no_chat_in_zip", path=path))
     data = files[txt][1]().read()
     media = {k: v for k, v in files.items() if k != txt and not k.lower().endswith(".txt")}
     return Export(label, txt, data, media)
@@ -133,7 +458,7 @@ def load_dir(path):
     files = scan_files(path)
     txt = pick_txt([(n, files[n][0]) for n in files])
     if txt is None:
-        raise ValueError(f"'{path}' klasöründe sohbet (.txt) dosyası bulunamadı.")
+        raise ValueError(t("no_chat_in_dir", path=path))
     with files[txt][1]() as fh:
         data = fh.read()
     media = {k: v for k, v in files.items() if k != txt and not k.lower().endswith(".txt")}
@@ -149,10 +474,10 @@ def discover(inputs):
     found = []
     for inp in inputs:
         if not os.path.exists(inp):
-            raise FileNotFoundError(f"Girdi bulunamadı: {inp}")
+            raise FileNotFoundError(t("input_missing", path=inp))
         if os.path.isfile(inp):
             if not inp.lower().endswith(".zip"):
-                raise ValueError(f"Desteklenmeyen dosya (zip bekleniyordu): {inp}")
+                raise ValueError(t("input_not_zip", path=inp))
             found.append(("zip", inp))
         elif has_txt(inp):
             found.append(("dir", inp))
@@ -165,7 +490,7 @@ def discover(inputs):
                 elif os.path.isdir(p) and has_txt(p):
                     sub.append(("dir", p))
             if not sub:
-                raise ValueError(f"'{inp}' içinde zip veya sohbet klasörü bulunamadı.")
+                raise ValueError(t("no_zip_or_dir", path=inp))
             found.extend(sub)
     return found
 
@@ -263,10 +588,6 @@ def split_line(line):
 
 
 # ---------------------------------------------------------------- anonimlestirme
-ANONIM_LIMIT_TR = ("Mod: doğrudan tanımlayıcıların kaldırılması. KVKK açısından sonuç, metinde/fotoğraflarda kimliği belli "
-                   "eden içerik kaldığı sürece veya özgün sohbet durdukça anonim SAYILMAZ: sözlükte olmayan adlar ve takma "
-                   "adlar, fotoğraf içeriği (yüzler, ekran görüntüleri; fotoğrafsız çıktı için --medya-yok), kopyalanan "
-                   "eklerin içeriği, kesin zaman damgaları, yerler ve yazım üslubu kişileri yine belli edebilir.")
 _SEP = r"[ \-.\u00a0\u2010-\u2015\u2212\uff0d]"   # sabit kaliplarin ayraci: bosluk, NBSP, tire bicimleri, nokta
 # Rakam: ASCII ve Unicode suslu bicimleri ayni sayilir. '\d' tum Unicode ondalik rakamlari (tam genislikli,
 # matematiksel kalin/cift cizgili/...) zaten kapsar; sabit rakamlar (0, 5, 90, [2-5]) icin ayni rakamin tam genislikli,
@@ -2528,7 +2849,7 @@ def redact_console(args):
 def safe_error(e):
     """Icerik/ad tasimayan hata aciklamasi (OSError mesajlari dosya adi, JSON hatalari metin tasiyabilir)."""
     if isinstance(e, json.JSONDecodeError):
-        return f"JSON hatası (satır {e.lineno}, sütun {e.colno})"
+        return t("json_error", line=e.lineno, col=e.colno)
     return type(e).__name__
 
 
@@ -2687,7 +3008,8 @@ def copy_media(export, names, dest, rename=None):
     return copied
 
 
-def process(export, out_dir, args, chat_no=1, ref="girdi"):
+def process(export, out_dir, args, chat_no=1, ref=None):
+    ref = ref or t("ref_input", n=1)
     txt_stem = os.path.splitext(export.txt_name)[0]
     base = export.label if txt_stem.lower() == "_chat" else txt_stem
     chat = args.name or derive_name(base) or derive_name(export.label)
@@ -2700,15 +3022,13 @@ def process(export, out_dir, args, chat_no=1, ref="girdi"):
     msgs, unparsed = parse(decode(export.txt_bytes))
     if not msgs:
         if red:  # yalniz sayi; ayrintili tani icin --no-anonim
-            print(f"HATA [{who}]: Hiç mesaj ayrıştırılamadı. Biçim tanınmadı. Ayrıştırılamayan satır sayısı: "
-                  f"{len(unparsed)}.", file=sys.stderr)
+            print(f"{t('err')} [{who}]: " + t("no_messages_count", n=len(unparsed)), file=sys.stderr)
             return False
-        print(f"HATA [{who}]: Hiç mesaj ayrıştırılamadı. Biçim tanınmadı. İlk 3 ayrıştırılamayan satır:",
-              file=sys.stderr)
+        print(f"{t('err')} [{who}]: " + t("no_messages_lines"), file=sys.stderr)
         for l in unparsed[:3]:
             print(f"   > {l}", file=sys.stderr)
         if not unparsed:
-            print("   (dosya boş görünüyor)", file=sys.stderr)
+            print(t("file_empty"), file=sys.stderr)
         return False
     group = is_group(msgs, chat)          # TUM dosyadan, tarih suzgecinden ONCE: --from olaylari/karsi tarafi disarida biraksa da
     msgs = mark_system_lines(chat, msgs, group)
@@ -2717,7 +3037,7 @@ def process(export, out_dir, args, chat_no=1, ref="girdi"):
     if args.date_to:
         msgs = [m for m in msgs if m["dt"].date() <= args.date_to]
     if not msgs:
-        print(f"UYARI [{who}]: Seçilen tarih aralığında mesaj yok, atlandı.", file=sys.stderr)
+        print(f"{t('warn')} [{who}]: " + t("empty_range"), file=sys.stderr)
         return False
     write_chat(chat, msgs, export, out_dir, anonim=getattr(args, "anonim", True), chat_no=chat_no,
                label=args.name, no_media=getattr(args, "no_media", False),
@@ -2733,7 +3053,7 @@ _RUN_STAMP = []
 
 
 def _count_line(stats):
-    return ", ".join(f"{k} {stats[k]}" for k in [*_STAT_ORDER, *sorted(set(stats) - set(_STAT_ORDER))] if stats.get(k))
+    return ", ".join(f"{t_stat(k)} {stats[k]}" for k in [*_STAT_ORDER, *sorted(set(stats) - set(_STAT_ORDER))] if stats.get(k))
 
 
 def state_dir():
@@ -2804,18 +3124,16 @@ def anonim_preflight(args, out_dir):
     verilmemisse varsayilan konum atanir. -> None (devam) ya da cikis kodu 2 (Turkce mesaj stderr'de)."""
     miss = missing_name_lists()
     if miss and not getattr(args, "no_dict", False):
-        print(f"HATA: ad sözlüğü eksik ({', '.join(miss)}; beklenen yer: {os.path.join(_HERE, 'adlar')}). "
-              "Araç klasörünü eksiksiz al ya da sözlüksüz çalışmayı açıkça kabul et: --sozluksuz", file=sys.stderr)
+        print(f"{t('err')}: " + t("dict_missing", names=", ".join(miss), path=os.path.join(_HERE, "adlar")),
+              file=sys.stderr)
         return 2
     args.review_dir = getattr(args, "review_dir", None) or default_review_dir(out_dir)
     if git_work_tree(args.review_dir):
-        print(f"HATA: inceleme dosyası bir git çalışma ağacının içine yazılmaz ({args.review_dir}). Olası gerçek "
-              "adlar içerir; --inceleme-dizini ile git dışında bir klasör ver.", file=sys.stderr)
+        print(f"{t('err')}: " + t("review_in_git", path=args.review_dir), file=sys.stderr)
         return 2
     err = writable_dir(args.review_dir)
     if err:
-        print(f"HATA: inceleme klasörü oluşturulamıyor ya da yazılamıyor ({args.review_dir}; {err}). Hiçbir çıktı "
-              "yazılmadı; --inceleme-dizini ile yazılabilir, git dışında bir klasör ver.", file=sys.stderr)
+        print(f"{t('err')}: " + t("review_unwritable", path=args.review_dir, err=err), file=sys.stderr)
         return 2
     return None
 
@@ -2840,7 +3158,7 @@ def write_review(review_dir, shown, review):
     """<review_dir>/<Sohbet-N>-supheli-adlar.txt: maskelenmeden kalan, ad olabilecek sozcukler (yalniz operator icin).
     review_dir varsayilan olarak cikti klasorunun disinda (default_review_dir); git agacinin icine yazilmaz."""
     if git_work_tree(review_dir):
-        raise RuntimeError("inceleme klasörü bir git çalışma ağacının içinde")
+        raise RuntimeError(t("review_in_git_exc"))
     path = os.path.join(review_dir, sanitize(shown) + "-supheli-adlar.txt")
     if not review:
         if os.path.isfile(path):
@@ -2850,16 +3168,9 @@ def write_review(review_dir, shown, review):
     prio = {"hitap": 0, "büyük": 1, "küçük": 2}
     rows = sorted(review.values(), key=lambda r: (prio.get(r[2], 3), -r[1], _key(r[0])))
     with open(path, "w", encoding="utf-8", newline="\n") as f:
-        f.write(f"# OLASI GERÇEK ADLAR İÇERİR - PAYLAŞMA, COMMIT ETME. {shown} için maskelenmeden kalan, ad olabilecek\n"
-                "# sözcükler. Dosya çıktı klasörünün dışında, kullanıcı durum klasöründe tutulur. Sözcükler ve örnek\n"
-                "# bağlamlar maskelemeden SONRAKİ metinden alınır: yalnız çıktı metninde zaten olduğu gibi duran şeyleri\n"
-                "# gösterir, maskelenmiş bir adı göstermez. Ama kalan sözcüğün ad olabileceğini işaretler; bu yüzden\n"
-                "# çıktıyla birlikte paylaşma. Gerçek ad olanları --ek-adlar ile verip aynı girdiyle yeniden çalıştır.\n"
-                "# sözcük<TAB>geçiş<TAB>neden<TAB>örnek bağlam (en çok 3)\n")
+        f.write(t("review_head", shown=shown))
         for word, n, why, ex in rows:
-            reason = {"hitap": "hitaptan önce, sözlükte yok (cümle başı) - önce buna bak",
-                      "büyük": "sözcük anlamı da olan ad, büyük harfle (cümle başı) - önce buna bak",
-                      "küçük": "sözcük anlamı da olan ad, küçük harfle (çoğu sıradan sözcük)"}.get(why, why)
+            reason = t("why_" + why) if why in prio else why
             f.write(f"{word}\t{n}\t{reason}\t" + " | ".join(e.replace("\t", " ") for e in ex) + "\n")
     return path
 
@@ -2874,7 +3185,7 @@ def write_chat(chat, msgs, export, out_dir, anonim=False, chat_no=1, label=None,
     group: grup sohbeti mi (None: msgs'ten). -> (md_path, mesaj_sayisi, kopyalanan_medya, eksik_medya)"""
     msgs = mark_system_lines(chat, msgs, group)
     if anonim and missing_name_lists() and not no_dict:
-        raise RuntimeError("ad sözlüğü (adlar/) eksik; sözlüksüz çalışmak için --sozluksuz")
+        raise RuntimeError(t("dict_missing_exc"))
     anon = Anonymizer(chat, msgs, chat_no, label, extra=extra_names, group=group) if anonim else None
     shown = anon.code if anon else chat
     folder = os.path.join(out_dir, sanitize(shown))
@@ -2886,57 +3197,37 @@ def write_chat(chat, msgs, export, out_dir, anonim=False, chat_no=1, label=None,
     with open(md_path, "w", encoding="utf-8", newline="\n") as f:
         f.write(md)
     real = sum(1 for m in msgs if m["sender"])
-    print(f"[{shown}] {real} mesaj, {copied} medya kopyalandı, {missing} medya eksik -> {md_path}")
+    print(t("summary", shown=shown, real=real, copied=copied, missing=missing, path=md_path))
     if manifest:
         c, sk = write_manifest(folder, manifest)
         fmt = lambda d: ", ".join(f"{k} {v}" for k, v in sorted(d.items(), key=lambda x: -x[1])) or "-"
-        print(f"   UYARI: ekler: {sum(c.values())} kopyalandı, elle kontrol gerekli ({fmt(c)}); "
-              f"{sum(sk.values())} kopyalanmadı ({fmt(sk)}) -> {os.path.join(folder, 'ekler.md')}")
+        print(t("attach_warn", c=sum(c.values()), cd=fmt(c), s=sum(sk.values()), sd=fmt(sk),
+                path=os.path.join(folder, "ekler.md")))
     if anon:
-        print("   maskelenen: " + (_count_line(anon.stats) or "-"))
+        if copied:
+            print(t("media_warn", n=copied))
+        print(t("masked", counts=_count_line(anon.stats) or "-"))
         if missing_name_lists():
-            print("   UYARI: ad sözlüğü YOK (--sozluksuz): sözlük/hitapla bulunacak adlar maskelenmedi, şüpheli kalan "
-                  "sayımı eksik")
+            print(t("no_dict_warn"))
         path = write_review(review_dir or default_review_dir(out_dir), shown, anon.review)
         if path:
             first = sum(1 for r in anon.review.values() if r[2] != "küçük")
-            print(f"   şüpheli kalan: {len(anon.review)} sözcük ({first} öncelikli), "
-                  f"{sum(r[1] for r in anon.review.values())} geçiş -> "
-                  f"{path} (çıktının dışında; olası gerçek adlar içerir, paylaşma, yalnız sen bak)")
+            print(t("review_summary", n=len(anon.review), first=first,
+                    passes=sum(r[1] for r in anon.review.values()), path=path))
         else:
-            print("   şüpheli kalan: 0")
-        print("   " + ANONIM_LIMIT_TR)
+            print(t("review_zero"))
+        print("   " + t("limit_note"))
     return md_path, real, copied, missing
 
 
 def add_anonim_args(p):
-    p.add_argument("--anonim", action=argparse.BooleanOptionalAction, default=True,
-                   help="anonimleştirme (doğrudan tanımlayıcıların kaldırılması); varsayılan AÇIK, kapatmak için "
-                        "--no-anonim. Kişi adları 'Kişi N', sohbet/klasör/dosya adı 'Sohbet-N' (N: bu çalıştırmadaki "
-                        "sıra), telefon -> [telefon], e-posta -> [e-posta], IBAN -> [iban], T.C. kimlik no -> [tckn], "
-                        "plaka -> [plaka], ticari ad (nakliyat/nakliye/lojistik/taşımacılık önündeki ad ya da Ltd./Şti./A.Ş. biçimli ad, ilan imi "
-                        "gerekmeden; kargo/transport/şirketi ile kurulan ad ve küçük harfli ad yalnız telefonlu ya da iletişim "
-                        "alanlı ilan mesajında; dışlananlar: genel niteleme listesi ve ilan sözlüğü, yalnız yer adı, hitap öbeği; "
-                        "bkz. README) ve "
-                        "nakliye alan adı -> [firma], maskeli alan adlı bağlantının yolu -> [yol]; katılımcı adları (gönderenler ve sistem satırlarındaki kişiler; ad-soyad, belirsiz "
-                        "değilse yalnız ad, 'Naime'ye' gibi ekli biçimler), ad sözlüğündeki, hitaplı ve iletişim alanındaki ya da telefon "
-                        "yanındaki adlar mesaj metninde "
-                        "de maskelenir; sohbet adı yalnız başlıkta, sistem satırlarında ve dosya adlarında. Gerçek ad <-> etiket eşlemesi hiçbir yere (dosya, konsol) yazılmaz. "
-                        "Bu mod 'doğrudan tanımlayıcıların kaldırılması'dır; KVKK açısından metinde/fotoğraflarda kimliği "
-                        "belli eden içerik kaldığı sürece veya özgün sohbet durdukça anonim SAYILMAZ: katılımcı olmayan "
-                        "kişilerin adları, fotoğraf içeriği (yüzler, ekran görüntüleri, belgeler; paylaşacaksan "
-                        "--medya-yok kullan), kesin zaman damgaları, yerler ve yazım üslubu kişiyi yine belli edebilir")
-    p.add_argument("--ek-adlar", "--extra-names", dest="extra_names", type=parse_names,
-                   help='normal çalıştırmada GEREKMEZ (adlar otomatik bulunur). Yalnız yedek: inceleme dosyasında '
-                        'gerçek ad olduğunu gördüğün ya da sözlükte olmayan adlar, virgülle '
-                        '("Ad Soyad,Takma") veya @dosya (satır başına bir ad). Katılımcı gibi her biçimiyle maskelenir')
-    p.add_argument("--inceleme-dizini", "--review-dir", dest="review_dir",
-                   help="şüpheli kalan sözcükler dosyasının klasörü (varsayılan: kullanıcı durum klasörü, ör. "
-                        "~/.local/state/wa2md/inceleme/<zaman>-<özet>; çıktı klasörünün dışında). Git çalışma ağacının "
-                        "içi kabul edilmez")
-    p.add_argument("--sozluksuz", "--no-dictionary", dest="no_dict", action="store_true",
-                   help="ad sözlüğü ya da yer listesi (adlar/*.txt) eksikse yine de çalış (önerilmez: sözlük/hitapla bulunacak adlar "
-                        "maskelenmez). Sözlük yokken bu seçenek olmadan anonim çalıştırma hata verir")
+    # English names are primary; the Turkish names are accepted aliases with identical behaviour (same dest, same default).
+    # dest stays "anonim": it is an internal key read by wa2md.py, wa_web.py and the tests.
+    p.add_argument("--anonymize", "--anonim", dest="anonim", action=argparse.BooleanOptionalAction, default=True,
+                   help=t("help_anonymize"))
+    p.add_argument("--extra-names", "--ek-adlar", dest="extra_names", type=parse_names, help=t("help_extra_names"))
+    p.add_argument("--review-dir", "--inceleme-dizini", dest="review_dir", help=t("help_review_dir"))
+    p.add_argument("--no-dictionary", "--sozluksuz", dest="no_dict", action="store_true", help=t("help_no_dict"))
 
 
 def parse_names(s):
@@ -2946,7 +3237,7 @@ def parse_names(s):
             with open(s[1:], encoding="utf-8-sig") as f:
                 items = [l.strip() for l in f if l.strip() and not l.lstrip().startswith("#")]
         except OSError as e:
-            raise argparse.ArgumentTypeError(f"Ad dosyası okunamadı ({type(e).__name__})")
+            raise argparse.ArgumentTypeError(t("names_unreadable", kind=type(e).__name__))
     else:
         items = [x.strip() for x in s.split(",") if x.strip()]
     return [nfc(x) for x in items]
@@ -2956,28 +3247,38 @@ def parse_date(s):
     try:
         return dt.date.fromisoformat(s)
     except ValueError:
-        raise argparse.ArgumentTypeError(f"Geçersiz tarih '{s}' (YYYY-AA-GG olmalı)")
+        raise argparse.ArgumentTypeError(t("bad_date", value=s))
+
+
+def build_parser():
+    ap = argparse.ArgumentParser(description=t("help_description"))
+    ap.add_argument("inputs", nargs="+", help=t("help_inputs"))
+    ap.add_argument("--out", required=True, help=t("help_out"))
+    ap.add_argument("--only", help=t("help_only"))
+    ap.add_argument("--from", dest="date_from", type=parse_date, help="YYYY-MM-DD")
+    ap.add_argument("--to", dest="date_to", type=parse_date, help="YYYY-MM-DD")
+    ap.add_argument("--name", help=t("help_name"))
+    ap.add_argument("--no-media", "--medya-yok", dest="no_media", action="store_true", help=t("help_no_media"))
+    ap.add_argument("--copy-documents", "--belgeleri-kopyala", dest="copy_docs", action="store_true",
+                    help=t("help_copy_documents"))
+    add_anonim_args(ap)
+    add_lang_arg(ap)
+    return ap
 
 
 def main(argv=None):
+    try:
+        return _main(argv)
+    finally:
+        reset_lang()
+
+
+def _main(argv):
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
         sys.stderr.reconfigure(encoding="utf-8")
-    ap = argparse.ArgumentParser(description="WhatsApp sohbet dışa aktarımını Markdown'a çevirir.")
-    ap.add_argument("inputs", nargs="+", help="zip, çıkarılmış klasör veya zip'lerin bulunduğu klasör")
-    ap.add_argument("--out", required=True, help="çıktı klasörü")
-    ap.add_argument("--only", help='sohbet adı filtresi, virgülle: "naime,mehmet"')
-    ap.add_argument("--from", dest="date_from", type=parse_date, help="YYYY-MM-DD")
-    ap.add_argument("--to", dest="date_to", type=parse_date, help="YYYY-MM-DD")
-    ap.add_argument("--name", help="sohbet adını elle belirle (anonimde: Sohbet-N yerine bu etiket)")
-    ap.add_argument("--medya-yok", "--no-media", dest="no_media", action="store_true",
-                    help="medyayı çıktıya koyma (yerine 'medya dahil edilmemiş' notu); fotoğraflar anonimleştirilmez "
-                         "(yüzler, ekran görüntüleri, belgeler), paylaşılacak çıktı için önerilir")
-    ap.add_argument("--belgeleri-kopyala", "--copy-documents", dest="copy_docs", action="store_true",
-                    help="anonim modda varsayılan olarak yalnız görüntü, video ve ses kopyalanır; bu seçenekle diğer "
-                         "ekler de (kişi kartı, PDF, ofis belgesi, arşiv, bilinmeyen/uzantısız dosya) kopyalanır. Bunlar "
-                         "anonimleştirilmez; içlerinde ad, numara, imza olabilir")
-    add_anonim_args(ap)
+    init_lang(argv)
+    ap = build_parser()
     args = ap.parse_args(argv)
     if args.anonim:
         rc = anonim_preflight(args, args.out)
@@ -2987,28 +3288,27 @@ def main(argv=None):
     try:
         items = discover(args.inputs)
     except (FileNotFoundError, ValueError) as e:
-        print(f"HATA: {e}", file=sys.stderr)
+        print(f"{t('err')}: {e}", file=sys.stderr)
         return 2
     done = failed = 0
     red = redact_console(args)
     for idx, (kind, path) in enumerate(items, 1):
-        ref = f"girdi {idx}"
+        ref = t("ref_input", n=idx)
         try:
             export = load_zip(path) if kind == "zip" else load_dir(path)
             r = process(export, args.out, args, done + 1, ref)
         except zipfile.BadZipFile:
-            print(f"HATA: {ref if red else repr(path)} geçerli bir zip dosyası değil.", file=sys.stderr)
+            print(f"{t('err')}: " + t("not_a_zip", who=ref if red else repr(path)), file=sys.stderr)
             failed += 1
             continue
         except ValueError as e:
-            print(f"HATA: {ref + ': sohbet (.txt) dosyası bulunamadı.' if red else e}", file=sys.stderr)
+            print(f"{t('err')}: {ref + ': ' + t('no_chat_in_input') if red else e}", file=sys.stderr)
             failed += 1
             continue
         except Exception as e:  # noqa: BLE001 - anonimde iz/yol (ad icerir) yerine yalniz tur
             if not red:
                 raise
-            print(f"HATA [{ref}]: beklenmeyen hata ({type(e).__name__}); ayrıntı için kullanıcı --no-anonim ile çalıştırmalı.",
-                  file=sys.stderr)
+            print(f"{t('err')} [{ref}]: " + t("unexpected", kind=type(e).__name__), file=sys.stderr)
             failed += 1
             continue
         if r is True:
@@ -3016,7 +3316,7 @@ def main(argv=None):
         elif r is False:
             failed += 1
     if done == 0 and failed == 0:
-        print("Filtreye uyan sohbet bulunamadı.", file=sys.stderr)
+        print(t("no_match"), file=sys.stderr)
         return 1
     return 1 if failed and not done else 0
 

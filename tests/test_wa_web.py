@@ -26,12 +26,19 @@ _ENV = {}
 
 def setUpModule():
     """Inceleme dosyasi varsayilan olarak kullanici durum klasorune gider: testlerde gecici klasor."""
+    # these tests assert the Turkish console text: pin the message table to Turkish (English is covered by test_i18n.py)
+    _ENV["old_lang"] = os.environ.get("WA2MD_LANG")
+    os.environ["WA2MD_LANG"] = "tr"
     _ENV["old"] = os.environ.get("XDG_STATE_HOME")
     _ENV["dir"] = tempfile.mkdtemp(prefix="wa2md-state-")
     os.environ["XDG_STATE_HOME"] = _ENV["dir"]
 
 
 def tearDownModule():
+    if _ENV["old_lang"] is None:
+        os.environ.pop("WA2MD_LANG", None)
+    else:
+        os.environ["WA2MD_LANG"] = _ENV["old_lang"]
     if _ENV["old"] is None:
         os.environ.pop("XDG_STATE_HOME", None)
     else:
@@ -247,6 +254,15 @@ class Bundles(unittest.TestCase):
     def img(self, key, data=b"\xff\xd8jpegdata"):
         return {"key": key, "mime": "image/jpeg", "b64": base64.b64encode(data).decode()}
 
+    def test_media_warning_on_the_web_path_when_anonymized(self):
+        rows = [synth(1, stamp="[14:05, 14.11.2026] Naime: ", text="Bak",
+                      media=[{"kind": "image", "key": "AAAA0001-1", "label": ""}])]
+        a = self.part(1, final=True, rows=rows, total=1, media=[self.img("AAAA0001-1")])
+        res, out, err = self.run_import(a, anonim=True)
+        self.assertEqual(res, (1, 0), err)
+        self.assertIn("   UYARI: 1 medya/ek dosyası olduğu gibi kopyalandı ve anonimleştirilmedi", out)
+        self.assertEqual(out.count("anonimleştirilmedi"), 1)
+
     def test_two_part_bundle_with_media(self):
         rows = [synth(1, stamp="[14:05, 14.11.2026] Naime: ", text="Merhaba"),
                 synth(2, stamp="[14:10, 14.11.2026] Naime: ", text="Bak", media=[{"kind": "image", "key": "AAAA0002-1", "label": ""}]),
@@ -258,6 +274,7 @@ class Bundles(unittest.TestCase):
         self.assertEqual(res, (1, 0))
         self.assertIn("3 mesaj, 3 medya kopyalandı, 0 medya eksik", out)
         md = self.md()
+        self.assertNotIn("olduğu gibi kopyalandı ve anonimleştirilmedi", out)  # not anonymized: no media warning
         self.assertIn("**Naime** 14:05\nMerhaba", md)
         self.assertEqual(md.count("![](media/20261114-"), 3)
         self.assertEqual(len(os.listdir(os.path.join(self.out, "Naime", "media"))), 3)

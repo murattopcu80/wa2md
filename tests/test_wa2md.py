@@ -18,6 +18,22 @@ EN = os.path.join(FIX, "android_en")
 IOS = os.path.join(FIX, "WhatsApp Chat - Mehmet")
 
 
+_ENV = {}
+
+
+def setUpModule():
+    # these tests assert the Turkish console text: pin the message table to Turkish (English is covered by test_i18n.py)
+    _ENV["old_lang"] = os.environ.get("WA2MD_LANG")
+    os.environ["WA2MD_LANG"] = "tr"
+
+
+def tearDownModule():
+    if _ENV["old_lang"] is None:
+        os.environ.pop("WA2MD_LANG", None)
+    else:
+        os.environ["WA2MD_LANG"] = _ENV["old_lang"]
+
+
 def run(*argv):
     o, e = io.StringIO(), io.StringIO()
     with redirect_stdout(o), redirect_stderr(e):

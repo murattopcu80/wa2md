@@ -101,7 +101,7 @@ class Smoke(unittest.TestCase):
             result = status["results"][0]
             self.assertEqual((result["rows"], result["media"], result["missing"]), (40, 16, 0))
             amb = self.export("sohbet 0", out)[0]["results"][0]
-            self.assertIn("Birden fazla", amb["error"])
+            self.assertIn("More than one", amb["error"])
             md_path = os.path.join(out, "Sohbet 03", "Sohbet 03.md")
             with open(md_path, encoding="utf-8") as f:
                 md = f.read()
@@ -145,12 +145,12 @@ class Smoke(unittest.TestCase):
     def test_ambiguous_and_missing_titles_are_content_free(self):
         status, box, _ = self.lookup("deneme grup")
         err = status["results"][0]["error"]
-        self.assertIn("Birden fazla", err)
-        self.assertIn("2 aday", err)
+        self.assertIn("More than one", err)
+        self.assertIn("2 candidates", err)
         self.assertNotIn("Deneme", err)  # adlar hatada yer almaz, yalniz sayi
         self.assertEqual(box, "")
         status, box, _ = self.lookup("hic yok boyle bir sohbet")
-        self.assertIn("bulunamad", status["results"][0]["error"])
+        self.assertIn("No chat with this name", status["results"][0]["error"])
         self.assertEqual(box, "")
 
     def test_slow_search_results_are_awaited_and_heartbeat_kept(self):

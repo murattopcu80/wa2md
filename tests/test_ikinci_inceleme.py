@@ -18,12 +18,19 @@ _ENV = {}
 
 
 def setUpModule():
+    # these tests assert the Turkish console text: pin the message table to Turkish (English is covered by test_i18n.py)
+    _ENV["old_lang"] = os.environ.get("WA2MD_LANG")
+    os.environ["WA2MD_LANG"] = "tr"
     _ENV["old"] = os.environ.get("XDG_STATE_HOME")
     _ENV["dir"] = tempfile.mkdtemp(prefix="wa2md-state-")
     os.environ["XDG_STATE_HOME"] = _ENV["dir"]
 
 
 def tearDownModule():
+    if _ENV["old_lang"] is None:
+        os.environ.pop("WA2MD_LANG", None)
+    else:
+        os.environ["WA2MD_LANG"] = _ENV["old_lang"]
     if _ENV["old"] is None:
         os.environ.pop("XDG_STATE_HOME", None)
     else:
