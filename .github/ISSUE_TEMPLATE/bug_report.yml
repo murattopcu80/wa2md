@@ -1,0 +1,58 @@
+name: Bug report
+description: Something does not work as documented (crash, wrong output format, wrong date, missing media...).
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for the report. **Do not paste real chat content or personal data.** Reproduce the problem with invented data (see CONTRIBUTING.md).
+        If personal data is left unmasked contrary to the documented behaviour, do not use this form: report it privately through the Security tab ("Report a vulnerability").
+  - type: checkboxes
+    id: no-real-data
+    attributes:
+      label: Data check
+      options:
+        - label: I have not pasted real chat content or personal data
+          required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal reproduction (invented data)
+      description: The command you ran and the smallest invented input that shows the problem (for example two lines of an invented chat export).
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: "0.1.0 or a commit hash"
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Linux
+        - Windows
+        - macOS
+        - Other
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      placeholder: "3.12"
+  - type: dropdown
+    id: path
+    attributes:
+      label: Input path
+      options:
+        - Phone export (zip or folder), wa2md.py
+        - WhatsApp Web bundle, wa_web.py import
+        - WhatsApp Web direct connection, wa_web.py export (experimental)
+        - Not sure
