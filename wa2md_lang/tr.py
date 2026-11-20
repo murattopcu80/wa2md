@@ -142,9 +142,14 @@ PACK = LanguagePack(
     web_today=frozenset({"bugun", "today"}),
     web_yesterday=frozenset({"dun", "yesterday"}),
     # Kapali ek listesi (tek parca adlara apostrofsuz eklenebilen): kucultme/sevgi + cogul + iyelik + hal ekleri.
-    name_suffixes=([c + v + g + w + m for c in "cç" for v in "ıiuü" for g in ("ğ",) for w in "ıiuü" for m in ("m",)] + [
-        c + v + k for c in "cç" for v in "ıiuü" for k in "mk"], ["lar", "ler"], ["ım", "im", "um", "üm", "ın", "in", "un", "ün"], ["a", "e", "ya", "ye", "ı", "i", "u", "ü", "yı", "yi", "yu", "yü", "da", "de", "ta", "te", "dan", "den",
-                 "tan", "ten", "la", "le", "yla", "yle", "nın", "nin", "nun", "nün", "ca", "ce", "çe", "ça"]),
+    name_suffixes=(
+        [c + v + g + w + m for c in "cç" for v in "ıiuü" for g in ("ğ",) for w in "ıiuü" for m in ("m",)]
+        + [c + v + k for c in "cç" for v in "ıiuü" for k in "mk"],                                       # kucultme/sevgi
+        ["lar", "ler"],                                                                                  # cogul
+        ["ım", "im", "um", "üm", "ın", "in", "un", "ün"],                                                # iyelik
+        ["a", "e", "ya", "ye", "ı", "i", "u", "ü", "yı", "yi", "yu", "yü", "da", "de", "ta", "te", "dan", "den",
+         "tan", "ten", "la", "le", "yla", "yle", "nın", "nin", "nun", "nün", "ca", "ce", "çe", "ça"],     # hal
+    ),
     # Nakliye sektor sozcukleri: TEK liste. Ticari adda (_FIRM_TAIL, Anonymizer._special) ve ciplak alan adinda
     # (Anonymizer._web) ayni sozcukler; _SECTOR_GENERIC'tekiler genel ya da kisa oldugu icin alan adinda aranmaz (buyuk kargo
     # firmalari, 'translate', 'nakit'). Ekli bicimler (Nakliyattan, Nakliyatın, Lojistiği) _SECTOR_SFX ile.
@@ -282,7 +287,7 @@ PACK = LanguagePack(
     listing_places=("afyon antep maraş urfa içel hadımköy ambarlı "
                      "türkiye irak iran suriye gürcistan azerbaycan nahçıvan bulgaristan yunanistan romanya rusya ukrayna "
                      "almanya avrupa asya trakya anadolu marmara doğu batı orta").split(),
-    listing_words=(" "
+    listing_words=(
         "tır tir kamyon kamyonet kırkayak onteker teker lowbed lowbet tenteli tente damper frigo frigorifik dorse çekici "
         "panelvan pikap kasa açık kapalı sal sallı platform konteyner tanker silobas flatbed mega jumbo minivan vinç "
         "ton kg kilo palet paletli metre km tl lira euro dolar adet desi "
