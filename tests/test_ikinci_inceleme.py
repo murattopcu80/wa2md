@@ -293,17 +293,15 @@ class S3ReviewDirSymlinkIntoRepo(Tmp):
         self.assertTrue(os.path.isfile(os.path.join(self.tmp, "disarisi", "Sohbet-1-supheli-adlar.txt")))
 
 
-@unittest.skipIf(hasattr(os, "geteuid") and os.geteuid() == 0, "root her yere yazar")
 class N1ReviewDirCheckedFirst(Tmp):
     def test_read_only_or_uncreatable_review_dir_exit_2_before_output(self):
+        # portable: a regular file is the uncreatable directory (a path below it can never be created), on every OS and
+        # for root too; no chmod. The POSIX read-only case is the separate test below.
         src = make_dir(self.tmp, "Satranç Kulübü", TEXT)
-        ro = os.path.join(self.tmp, "salt-okunur")
-        os.makedirs(ro)
-        os.chmod(ro, stat.S_IRUSR | stat.S_IXUSR)
-        self.addCleanup(os.chmod, ro, stat.S_IRWXU)
-        with open(os.path.join(self.tmp, "dosya"), "w") as f:
+        blocker = os.path.join(self.tmp, "dosya")
+        with open(blocker, "w") as f:
             f.write("x")
-        for rv in (ro, os.path.join(ro, "alt"), os.path.join(self.tmp, "dosya", "alt")):
+        for rv in (blocker, os.path.join(blocker, "alt"), os.path.join(blocker, "alt", "daha")):
             with self.subTest(rv=rv):
                 out = os.path.join(self.tmp, "o")
                 code, o, e = run(src, "--out", out, "--inceleme-dizini", rv)
@@ -312,11 +310,27 @@ class N1ReviewDirCheckedFirst(Tmp):
                 self.assertNotIn("beklenmeyen hata", e)
                 self.assertFalse(os.path.exists(out))
         env = os.environ["XDG_STATE_HOME"]
-        os.environ["XDG_STATE_HOME"] = ro                       # varsayilan konum yazilamiyor
+        os.environ["XDG_STATE_HOME"] = blocker                  # varsayilan konum olusturulamiyor
         self.addCleanup(os.environ.__setitem__, "XDG_STATE_HOME", env)
         code, o, e = run(src, "--out", os.path.join(self.tmp, "o"))
         self.assertEqual(code, 2)
         self.assertFalse(os.path.exists(os.path.join(self.tmp, "o")))
+
+    @unittest.skipIf(os.name == "nt" or (hasattr(os, "geteuid") and os.geteuid() == 0),
+                     "chmod read-only needs POSIX permissions and a non-root user")
+    def test_read_only_review_dir_exit_2_before_output_posix(self):
+        src = make_dir(self.tmp, "Satranç Kulübü", TEXT)
+        ro = os.path.join(self.tmp, "salt-okunur")
+        os.makedirs(ro)
+        os.chmod(ro, stat.S_IRUSR | stat.S_IXUSR)
+        self.addCleanup(os.chmod, ro, stat.S_IRWXU)
+        for rv in (ro, os.path.join(ro, "alt")):
+            with self.subTest(rv=rv):
+                out = os.path.join(self.tmp, "o")
+                code, o, e = run(src, "--out", out, "--inceleme-dizini", rv)
+                self.assertEqual(code, 2)
+                self.assertIn("inceleme klasörü oluşturulamıyor ya da yazılamıyor", e)
+                self.assertFalse(os.path.exists(out))
 
     def test_writable_dir_check_leaves_no_empty_folders(self):
         rv = os.path.join(self.tmp, "a", "b", "c")
@@ -423,9 +437,9 @@ class S7BareSocialHandle(unittest.TestCase):
     def test_handles_masked_other_at_rules_kept(self):
         for fmt, mk in FORMATS.items():
             with self.subTest(fmt=fmt):
-                line = "@xandor.plimm ve @xandor_plimm takip, @905321112233 ara, @Qelvin bak, mail ali@ornek.com, @ahmet."
+                line = "@xandor.plimm ve @xandor_plimm takip, @905000001122 ara, @Qelvin bak, mail ali@ornek.test, @ahmet."
                 out, _ = md(mk(GROUP + [("Melis Tarnu", line)], "Örnek Satranç Kulübü"))
-                for bad in ("xandor", "plimm", "905321112233", "Qelvin", "ali@", "ahmet"):
+                for bad in ("xandor", "plimm", "905000001122", "Qelvin", "ali@", "ahmet"):
                     self.assertNotIn(bad, body(out).lower() if bad.islower() else body(out))
                 self.assertIn("[kullanıcı] ve [kullanıcı] takip, @[telefon] ara, Kişi", out)
                 self.assertIn("mail [e-posta]", out)
@@ -585,7 +599,7 @@ class ProbeCasesThirdReview(unittest.TestCase):
 
     def test_turkish_number_change_and_comma_left_people_masked(self):
         rows = [(None, "Zarvo Kentel, Melis Tarnu ve Jorvik Plimm adlı kişileri ekledi"),
-                (None, "Qelvin Yorst, +90 532 111 22 33 numarasına geçti"), (None, "Ostra Vell, left"),
+                (None, "Qelvin Yorst, +90 500 000 11 22 numarasına geçti"), (None, "Ostra Vell, left"),
                 ("Zarvo Kentel", "Qelvin, Ostra gelin. Yorst ve Vell de"), ("Melis Tarnu", "Ostra'ya söyle")]
         out, a = md(android_tr(rows))
         for bad in ("Qelvin", "Yorst", "Ostra", "Vell", "532"):

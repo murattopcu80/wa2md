@@ -43,10 +43,10 @@ TITLE = "Örnek Satranç Kulübü"
 EN = """11/14/26, 9:00 AM - Ali Veli created group "Örnek Satranç Kulübü"
 11/14/26, 9:01 AM - Ali Veli added Arvo Kestel and Brin Tamsel
 11/14/26, 9:02 AM - Dorin Kaplo joined using this group's invite link
-11/14/26, 9:03 AM - +90 532 111 22 33 left
+11/14/26, 9:03 AM - +90 500 000 11 22 left
 11/14/26, 9:04 AM - Ali Veli removed Fenna Ruskal
 11/14/26, 9:05 AM - Ali Veli changed the subject from "Eski Ekip" to "Örnek Satranç Kulübü"
-11/14/26, 9:06 AM - Velko Darsun changed to +90 533 222 33 44
+11/14/26, 9:06 AM - Velko Darsun changed to +90 500 000 33 44
 11/14/26, 9:07 AM - Ali Veli: Arvo Kestel'e ve Brin'e selam, Dorin geldi mi? Fenna'yı da ekleyelim
 11/14/26, 9:08 AM - Can Er: dün Tavro abi aradı, Hüseyin bey ve mehmet abi de gelecek
 11/14/26, 9:09 AM - Can Er: satranç eğitimi cumartesi, Örnek Satranç Kulübü toplantısı da var
@@ -60,7 +60,7 @@ a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6.0.pdf
 TR = """14.11.2026 09:00 - Ali Veli grubu oluşturdu
 14.11.2026 09:01 - Ali Veli, Arvo Kestel ve Brin Tamsel'i ekledi
 14.11.2026 09:02 - Dorin Kaplo bu grubun davet bağlantısını kullanarak katıldı
-14.11.2026 09:03 - +90 532 111 22 33 ayrıldı
+14.11.2026 09:03 - +90 500 000 11 22 ayrıldı
 14.11.2026 09:04 - Ali Veli, Fenna Ruskal'ı çıkardı
 14.11.2026 09:05 - Ali Veli konuyu "Örnek Satranç Kulübü" olarak değiştirdi
 14.11.2026 09:06 - Velko Darsun telefon numarasını değiştirdi
@@ -77,7 +77,7 @@ a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6.0.pdf
 FILES = {"DOC-20261114-WA0003.pdf": b"%PDF", "IMG-20261114-WA0001.jpg": b"jpg", "Kisi_karti.vcf": b"BEGIN:VCARD",
          "yedek.zip": b"PK"}
 REAL = ["Ali Veli", "Arvo", "Kestel", "Brin", "Tamsel", "Dorin", "Kaplo", "Fenna", "Ruskal", "Velko", "Darsun", "Tavro",
-        "Hüseyin", "mehmet", "532 111 22 33", "533 222 33 44", "Mavi-Kus99", "Can Er"]
+        "Hüseyin", "mehmet", "500 000 11 22", "500 000 33 44", "Mavi-Kus99", "Can Er"]
 
 
 def run(*argv):
@@ -124,7 +124,7 @@ class Locales(unittest.TestCase):
         for loc, text in self.each():
             with self.subTest(locale=loc):
                 md, _, _ = self.go(text)
-                for bad in ("Arvo", "Kestel", "Brin", "Tamsel", "Dorin", "Kaplo", "Fenna", "Ruskal", "532 111 22 33",
+                for bad in ("Arvo", "Kestel", "Brin", "Tamsel", "Dorin", "Kaplo", "Fenna", "Ruskal", "500 000 11 22",
                             "Velko", "Darsun"):
                     self.assertNotIn(bad, md, bad)
                 self.assertIn("Katılımcılar: Kişi 1, Kişi 2", md)          # baslik: yalniz yazanlar
@@ -213,7 +213,7 @@ class SystemPeople(unittest.TestCase):
             "~ Fenna joined using this group's invite link": ["Fenna"],
             "Ali Veli added ~\u202fTavro 🃏, ~\u202fBrin Tamsel, and ~\u202fDorin ✨": ["Ali Veli", "Tavro 🃏", "Brin Tamsel",
                                                                               "Dorin ✨"],
-            "+90 532 111 22 33 left": ["+90 532 111 22 33"],
+            "+90 500 000 11 22 left": ["+90 500 000 11 22"],
             "Ali Veli removed Tavro": ["Ali Veli", "Tavro"],
             "Ali Veli changed this group's icon": ["Ali Veli"],
             "Ali Veli changed the group description": ["Ali Veli"],
@@ -231,7 +231,7 @@ class SystemPeople(unittest.TestCase):
             "Ali Veli, Arvo Kestel'i ekledi": ["Ali Veli", "Arvo Kestel"],
             "Ali Veli, Brin Tamsel ve Dorin'i ekledi": ["Ali Veli", "Brin Tamsel", "Dorin"],
             "Fenna bu grubun davet bağlantısını kullanarak katıldı": ["Fenna"],
-            "+90 532 111 22 33 ayrıldı": ["+90 532 111 22 33"],
+            "+90 500 000 11 22 ayrıldı": ["+90 500 000 11 22"],
             "Ali Veli, Tavro'yu çıkardı": ["Ali Veli", "Tavro"],
             "Ali Veli grubu oluşturdu": ["Ali Veli"],
             "Ali Veli bu grubun simgesini değiştirdi": ["Ali Veli"],
@@ -245,8 +245,8 @@ class SystemPeople(unittest.TestCase):
 
     def test_number_change_keeps_one_pseudonym(self):
         a = anon("11/14/26, 9:00 AM - Can Er: selam\n"
-                 "11/14/26, 9:01 AM - +90 532 111 22 33 changed to +90 533 222 33 44\n")
-        self.assertEqual(a.text("+90 532 111 22 33 ve +90 533 222 33 44"), "Kişi 2 ve Kişi 2")
+                 "11/14/26, 9:01 AM - +90 500 000 11 22 changed to +90 500 000 33 44\n")
+        self.assertEqual(a.text("+90 500 000 11 22 ve +90 500 000 33 44"), "Kişi 2 ve Kişi 2")
 
     def test_system_person_all_forms_in_body(self):
         a = anon("14.11.2026 09:00 - Ali Veli, Arvo Kestel'i ekledi\n14.11.2026 09:01 - Ali Veli: selam\n")

@@ -2,6 +2,8 @@
 
 # wa2md
 
+[![CI](../../actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml) ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg) ![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)
+
 > **Resmî olmayan araç.** wa2md bağımsız bir açık kaynak projedir. WhatsApp ya da Meta ile bağlantılı, onlar tarafından onaylanmış veya desteklenmiş değildir. "WhatsApp" adı burada yalnızca aracın okuduğu sohbet biçimini ve web sayfasını belirtmek için kullanılır.
 
 > **Paylaşmadan önce ÇIKTININ TAMAMINI oku.** Buradaki anonimleştirme sezgiseldir: doğrudan tanımlayıcıları kaldırır ve bazılarını kaçırır ("Bu aracın otomatik bulamadıkları" bölümüne bak). İnceleme dosyası yardımcıdır, garanti değildir. **Fotoğraflar, videolar ve ses kayıtları olduğu gibi kopyalanır ve anonimleştirilmez** (yüzler, kimlik belgeleri, banka kartları, ad içeren ekran görüntüleri): paylaşmadan önce `--medya-yok` kullan.
@@ -26,6 +28,26 @@ python wa2md.py "C:\Users\kullanici\Downloads\WhatsApp Chat with Ali Veli.zip" -
 ```
 python wa2md.py "C:\Users\kullanici\Downloads\WhatsApp Chat with Ali Veli.zip" --out C:\Users\kullanici\wa-out --medya-yok
 ```
+
+## Sınırlar ve sorumlu kullanım
+
+- **Tespit elinden geleni yapar (best-effort).** Buradaki anonimleştirme sezgiseldir (sözlükler, kalıplar ve bağlam kuralları). Doğrudan tanımlayıcıları kaldırır; sohbeti hukuki anlamda anonim yapmaz ve hiçbir anonimleştirici her şeyi bulamaz. Sözlükte olmayan adlar, olağandışı yazımlar, lakaplar, yerler, unvanlar ve yalnız bir araya geldiklerinde kişiyi belli eden ayrıntılar kaçar; sıradan sözcükler de bazen yanlışlıkla maskelenir.
+- **Paylaşmadan önce çıktının TAMAMINI okuyun.** İnceleme dosyası metinde kalan şüpheli sözcükleri listeler; yardımcıdır, garanti değildir.
+- **Medya anonimleştirilmez.** Fotoğraf, video ve ses kayıtları olduğu gibi kopyalanır (yüzler, belgeler, ekran görüntüleri); paylaşacağınız her şey için `--no-media` kullanın.
+- **Yalnız işleme hakkınız olan sohbetlerde kullanın.** Sizin ve diğer katılımcıların dönüştürmeye uygun olduğundan emin olun; özgün dosyaları, ham `wa-bundle-*.json` dosyalarını ve çıktıyı özgün sohbet kadar güvende tutun.
+- **Kaçanları yalnız uydurma örneklerle bildirin.** Bkz. [CONTRIBUTING.md](CONTRIBUTING.md); kişisel veriyi belgelenen davranışın aksine maskesiz bırakan bir durum güvenlik sorunudur ([SECURITY.md](SECURITY.md)).
+
+## Kurulum (isteğe bağlı)
+
+`python wa2md.py ...` doğrudan depo klasöründen çalışır. Komutların PATH'te olmasını istersen depo klasöründen kur (Python 3.9+, üçüncü taraf bağımlılık yok):
+
+```
+pip install .
+wa2md --help        # python wa2md.py ile aynı
+wa2md-web --help    # python wa_web.py ile aynı (WhatsApp Web yardımcısı)
+```
+
+Sözlükler (`adlar/`) ve toplayıcı (`wa2md_assets/wa_collect.js`) birlikte kurulur ve çalışma anında bulunur. Deneysel doğrudan Chrome bağlantısı (`wa2md-web list` / `export`) isteğe bağlı eklentiyi ister: `pip install ".[browser]"` (Playwright). PyPI'ye hiçbir şey yayımlanmaz.
 
 ## Dil desteği
 
@@ -58,11 +80,11 @@ Zaten İngilizce olanlar değişmedi: `--out`, `--only`, `--from`, `--to`, `--na
 
 > **Önemli not (WhatsApp Web yolu):** Bu yol yalnız senin kendi sohbetlerini, kendi girişini yaptığın tarayıcı sekmesinde okur ve hiçbir yere veri göndermez. Yine de WhatsApp Web'den otomatik toplama WhatsApp'ın kullanım koşullarıyla çakışabilir. Önerilen yol WhatsApp'ın resmi "Sohbeti dışa aktar" yoludur (aşağıdaki 2. bölüm). Web yolunun kullanımı tamamen kendi sorumluluğundadır. Bu yola ait dosyalar: `wa_web.py`, `wa_collect.js`, `tests/test_wa_web.py`, `tests/test_browser_smoke.py` ve `tests/fixtures/web/`.
 
-Toplama mantığı (sohbeti arama kutusundan bulma, eski mesajlara kaydırma, mesaj ayrıştırma, fotoğraf blob'ları) tek dosyada: `wa_collect.js`. Chrome'a dışarıdan bağlanmak gerekmez; kod senin açık WhatsApp Web sekmende çalışır.
+Toplama mantığı (sohbeti arama kutusundan bulma, eski mesajlara kaydırma, mesaj ayrıştırma, fotoğraf blob'ları) tek dosyada: `wa2md_assets/wa_collect.js`. Chrome'a dışarıdan bağlanmak gerekmez; kod senin açık WhatsApp Web sekmende çalışır.
 
 ### Kurulum (bir kez)
 
-Python 3 yeterli (konsol yolu için ek paket gerekmez). Yalnız deneysel CDP yolu ve tarayıcı testleri için: `python -m venv .venv` ve `.venv\Scripts\pip install -r requirements.txt`.
+Python 3 yeterli (konsol yolu için ek paket gerekmez). Yalnız deneysel CDP yolu ve tarayıcı testleri için: `python -m venv .venv` ve `.venv\Scripts\pip install -r requirements.txt` (ya da `pip install ".[browser]"`).
 
 ### Adımlar
 
@@ -209,5 +231,18 @@ python -m unittest discover -s tests -v
 Kod MIT lisansı altındadır (bkz. `LICENSE`). Bu lisans yalnız koda uygulanır; `adlar/` altındaki veri dosyaları ayrıdır (aşağıya bak).
 
 ## Veri kaynakları ve atıf
+
+`adlar/` klasöründeki sözlükler araçla birlikte gelen düz metin dosyalarıdır ve çevrimdışı okunur (çalışma anında hiçbir şey indirilmez):
+
+| Dosya | İçerik | Kaynak ve nasıl derlendi | Alınma |
+|---|---|---|---|
+| `tr-adlar.txt` | Türkçe kişi adları | Wikidata Query Service: Türkiye vatandaşlarının en az iki kez geçen adları ve Türkçe ad ögeleri; iki ad elle çıkarıldı | 2026-11-14 |
+| `tr-soyadlar.txt` | Türkçe soyadları | Wikidata Query Service: Türkiye vatandaşlarının en az iki kez geçen soyadları ve Türkçe soyadı ögeleri | 2026-11-14 |
+| `tr-yerler.txt` | Türkiye il ve ilçeleri | Wikidata Query Service: il ve ilçe ögeleri, birincil etiket, temizlenmiş (ekler ve parantezler atıldı) | 2026-11-15 |
+| `sozcuk-adlar.txt` | sözcük anlamı da olan adlar (yalnız bağlamla maskelenir) | Wikidata sözcükbirimleri ve yer adları (CC0 1.0) ile bu proje için elle derlenen bölüm (MIT, kodla aynı) | 2026-11-14 / 2026-11-15 |
+
+Lisans: Wikidata'nın yapısal verisi CC0 1.0'dır (kamu malı, https://www.wikidata.org/wiki/Wikidata:Licensing); `sozcuk-adlar.txt` içindeki elle derlenen bölüm bu deponun lisansı altındadır. Sorgular, süzgeçler, sayılar ve elle çıkarmalar her dosyanın başındaki yorum satırlarında yazılıdır; listeler yeniden üretilebilir. Listeler elinden geleni yapar: özel veri içermezler, ama eksiksiz ya da hatasız değildirler ("Sınırlar ve sorumlu kullanım" bölümüne bak).
+
+**Bu depodaki tüm test verileri ve örnek dosyalar uydurmadır** (uydurma adlar, ayrılmış `0500 000 xx xx` ailesinden numaralar, `example.*` ve `.test` adresleri); gerçek bir sohbet ya da gerçek bir kişi kullanılmamıştır.
 
 `adlar/` klasöründeki ad, soyad, sözcük-ad ve yer listeleri Wikidata'dan (https://www.wikidata.org) Wikidata Query Service ile derlenmiştir. Wikidata'nın yapısal verisi CC0 1.0 (kamu malı) kapsamındadır: https://www.wikidata.org/wiki/Wikidata:Licensing. Alınma tarihleri ve kullanılan sorgular her dosyanın başında yazılıdır (`tr-adlar.txt` ve `tr-soyadlar.txt`: 2026-11-14; `tr-yerler.txt` ve `sozcuk-adlar.txt`: 2026-11-15).

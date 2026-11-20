@@ -38,15 +38,15 @@ def tearDownModule():
         os.environ["XDG_STATE_HOME"] = _ENV["old"]
     shutil.rmtree(_ENV["dir"], ignore_errors=True)
 
-REAL = ["Zeynep Kaya", "Orhan", "Fatma", "Mavi Ekip", "zeynep@ornek.test", "5321234567", "532 123 45 67",
+REAL = ["Zeynep Kaya", "Orhan", "Fatma", "Mavi Ekip", "zeynep@ornek.test", "5000001234", "500 000 12 34",
         "ORHAN", "Orhan Demir"]
 
 CHAT_A = """14.11.2026 10:00 - Zeynep Kaya: Merhaba ben Zeynep Kaya, bu da ORHAN
 14.11.2026 10:01 - Orhan: @Orhan yazdı, ben orhan'ım; ıSIRGAN değil
-14.11.2026 10:02 - Fatma: Mail: zeynep@ornek.test tel 0532 123 45 67 veya +90 (532) 123 45 67
+14.11.2026 10:02 - Fatma: Mail: zeynep@ornek.test tel 0500 000 12 34 veya +90 (500) 000 12 34
 14.11.2026 10:03 - Zeynep Kaya: Alt satırlar 05.12.2026 saat 10:30 fiyat 1.250,50 TL ve 1.234.567 plaka 34 ABC 123
 14.11.2026 10:04 - Mavi Ekip grubu hakkında Fatma geldi
-14.11.2026 10:05 - Fatma: https://wa.me/905321234567 ve +49 170 1234567
+14.11.2026 10:05 - Fatma: https://wa.me/905000001234 ve +44 7700 900123
 14.11.2026 10:06 - Orhan: Zeynep_Kaya_foto.jpg (dosya ekli)
 """
 
@@ -230,7 +230,7 @@ class Anonim(unittest.TestCase):
         part = {"format": "wa-web-bundle", "version": 1, "session": "s1", "part": 1, "chat": "Ayla Yıldız",
                 "final": True, "media": [], "total": 1, "today": "2026-11-16", "opts": {},
                 "rows": [{"id": "true_1@c.us_AAAAAAAA", "stamp": "[10:00, 14.11.2026] Ayla Yıldız: ",
-                          "text": "ben Ayla Yıldız, tel +90 532 123 45 67"}]}
+                          "text": "ben Ayla Yıldız, tel +90 500 000 12 34"}]}
         with open(os.path.join(self.tmp, "wa-bundle-x-s1-001.json"), "w", encoding="utf-8") as f:
             json.dump(part, f)
         with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
@@ -240,7 +240,7 @@ class Anonim(unittest.TestCase):
         self.assertNotIn("Ayla", md)
 
 
-SECRETS = ["Selin Aydın", "Selin", "Aydın", "Kerem", "Tuna Bey", "5329876543", "0532 987 65 43", "selin@ornek.test",
+SECRETS = ["Selin Aydın", "Selin", "Aydın", "Kerem", "Tuna Bey", "5000009876", "0500 000 98 76", "selin@ornek.test",
            "gizli-proje", "Gizli Toplantı", "wa-bundle-selin", "Selin_Aydin"]
 
 
@@ -552,11 +552,11 @@ class BlindConsole(unittest.TestCase):
         self.out = os.path.join(self.tmp, "out")
         os.makedirs(self.src)
         import zipfile
-        txt = ("14.11.2026 10:00 - Selin Aydın: gizli-proje için Kerem'e 0532 987 65 43 yaz\n"
+        txt = ("14.11.2026 10:00 - Selin Aydın: gizli-proje için Kerem'e 0500 000 98 76 yaz\n"
                "14.11.2026 10:01 - Kerem: tamam selin@ornek.test Gizli Toplantı\n")
         with zipfile.ZipFile(os.path.join(self.src, "WhatsApp Chat with Selin Aydın.zip"), "w") as z:
             z.writestr("_chat.txt", txt)
-            z.writestr("Selin_Aydin_5329876543.jpg", b"x")
+            z.writestr("Selin_Aydin_5000009876.jpg", b"x")
         with zipfile.ZipFile(os.path.join(self.src, "WhatsApp Chat with Tuna Bey.zip"), "w") as z:
             z.writestr("_chat.txt", "bu satir bicimsiz Tuna Bey gizli-proje\nbir daha Kerem\n")
         with open(os.path.join(self.src, "WhatsApp Chat with Kerem.zip"), "wb") as f:
@@ -619,7 +619,7 @@ class BlindConsole(unittest.TestCase):
         good = {"format": "wa-web-bundle", "version": 1, "session": "s1", "part": 1, "chat": "Selin Aydın", "final": True,
                 "media": [], "total": 1, "today": "2026-11-16", "opts": {},
                 "rows": [{"id": "true_1@c.us_AAAAAAAA", "stamp": "[10:00, 14.11.2026] Selin Aydın: ",
-                          "text": "gizli-proje 0532 987 65 43"}]}
+                          "text": "gizli-proje 0500 000 98 76"}]}
         with open(os.path.join(bdir, "wa-bundle-selin-s1-001.json"), "w", encoding="utf-8") as f:
             json.dump(good, f)
         with open(os.path.join(bdir, "wa-bundle-selin-s2-001.json"), "w", encoding="utf-8") as f:

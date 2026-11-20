@@ -142,7 +142,7 @@ class E_WhatsAppLinks(unittest.TestCase):
             self.assertEqual(out, exp)
 
     def test_other_links_kept(self):
-        for s in ("https://github.com/ornek/proje/issues/12", "https://web.whatsapp.com/", "https://faq.whatsapp.com/123"):
+        for s in ("https://github.com/example-org/proje/issues/12", "https://web.whatsapp.com/", "https://faq.whatsapp.com/123"):
             out, _ = one(s)
             self.assertEqual(out, s)
 
@@ -287,21 +287,21 @@ class F_BusinessDomain(unittest.TestCase):
     """F: dar kural: ana bolumunde nakliye sektor sozcugu olan ticari alan adi -> [firma]; baska baglanti okunur kalir."""
 
     def test_masked(self):
-        for line, exp in (("www.kaplonakliyat.com", "www.[firma].com"),
-                          ("https://www.kaplo-lojistik.com.tr/iletisim", "https://www.[firma].com.tr/[yol]"),   # L9
-                          ("kaplotransport.net adresinden bakın", "[firma].net adresinden bakın"),
-                          ("KaploNakliyat.com.tr/ilan?id=5", "[firma].com.tr/[yol]")):
+        for line, exp in (("www.ornekfirmanakliyat.com", "www.[firma].com"),
+                          ("https://www.ornekfirma-lojistik.com.tr/iletisim", "https://www.[firma].com.tr/[yol]"),   # L9
+                          ("ornekfirmatransport.net adresinden bakın", "[firma].net adresinden bakın"),
+                          ("OrnekfirmaNakliyat.com.tr/ilan?id=5", "[firma].com.tr/[yol]")):
             out, a = one(line)
             self.assertEqual(out, exp, line)
 
     def test_software_and_other_links_kept(self):
-        for line in ("https://github.com/ornek/nakliye-app/issues/12", "https://www.ornekurun.com.tr/ilan/nakliye-12",
+        for line in ("https://github.com/example-org/nakliye-app/issues/12", "https://www.ornekurun.com.tr/ilan/nakliye-12",
                      "demo.ornekurun.com.tr", "https://docs.python.org/3/library/re.html", "www.ornekkargo.com",
-                     "lojistikbirligi.org.tr", "https://translate.google.com", "nakliye.app.example.com",
+                     "ornek-lojistikbirligi.org.tr", "https://translate.google.com", "nakliye.app.example.com",
                      "dosya_nakliyat.com.pdf"):
             out, _ = one(line)
             self.assertEqual(out, line)
 
     def test_email_wins(self):
-        out, _ = one("info@kaplonakliyat.com")
+        out, _ = one("info@ornekfirmanakliyat.com")
         self.assertEqual(out, "[e-posta]")

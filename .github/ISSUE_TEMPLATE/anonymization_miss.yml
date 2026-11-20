@@ -1,0 +1,66 @@
+name: Anonymization miss or over-masking
+description: Something that should have been masked was not, or something harmless was masked.
+labels: ["anonymization"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for best-effort misses and over-masking, with an **invented** example. Detection is heuristic and no anonymizer finds everything (see "Limitations and responsible use" in the README).
+        **Do not paste real chat content or personal data.** If personal data is left unmasked in a form that the README says is masked, treat it as a security problem and report it privately through the Security tab ("Report a vulnerability") instead.
+  - type: checkboxes
+    id: no-real-data
+    attributes:
+      label: Data check
+      options:
+        - label: I have not pasted real chat content or personal data
+          required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of problem is it?
+      options:
+        - Missed (not masked, should have been)
+        - Over-masking (masked, should not have been)
+    validations:
+      required: true
+  - type: dropdown
+    id: category
+    attributes:
+      label: What kind of item?
+      options:
+        - Person name
+        - Phone number
+        - E-mail address
+        - IBAN, national ID or plate
+        - Company or trade name
+        - Domain name or link
+        - Username or handle
+        - Password or code
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: input
+    attributes:
+      label: Invented input line(s)
+      description: Replace every real value with an invented one that still has the same shape (for example `0500 000 11 22` for a phone number).
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Output you got and output you expected
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: command
+    attributes:
+      label: Command (options used)
+      placeholder: "wa2md.py <input> --out <folder>"
+  - type: input
+    id: language
+    attributes:
+      label: Language of the chat
+      placeholder: "English, Turkish, ..."

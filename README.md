@@ -2,6 +2,8 @@
 
 # wa2md
 
+[![CI](../../actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml) ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg) ![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)
+
 > **Unofficial tool.** wa2md is an independent open-source project. It is not affiliated with, endorsed by or connected to WhatsApp or Meta. "WhatsApp" is used here only to name the chat format and the web page that the tool reads.
 
 > **Read the ENTIRE output before you share it.** Anonymization here is heuristic: it removes direct identifiers and misses things (see "What this tool does not find automatically"). The review file is a help, not a guarantee. **Pictures, videos and voice notes are copied as they are and are NOT anonymized** (faces, ID documents, bank cards, screenshots with names): use `--no-media` before sharing.
@@ -28,6 +30,26 @@ The output is anonymized by default. You need Python 3.9 or later and nothing el
 ```
 python wa2md.py "C:\Users\user\Downloads\WhatsApp Chat with Ali Veli.zip" --out C:\Users\user\wa-out --no-media
 ```
+
+## Limitations and responsible use
+
+- **Detection is best-effort.** Anonymization here is heuristic (dictionaries, patterns and context rules). It removes direct identifiers; it does not make a chat anonymous in the legal sense, and no anonymizer finds everything. Names that are not in the dictionaries, unusual spellings, nicknames, places, job titles, and details that identify a person only in combination will be missed, and ordinary words are sometimes masked by mistake.
+- **Read the entire output before you share it.** The review file lists suspicious words that stayed in the text; it is a help, not a guarantee.
+- **Media is not anonymized.** Photos, videos and voice notes are copied as they are (faces, documents, screenshots); use `--no-media` for anything you share.
+- **Use it only on chats you are entitled to process.** Make sure that you and the other participants are fine with the conversion, and keep the originals, the raw `wa-bundle-*.json` files and the output as safe as the original chat.
+- **Report misses with invented examples only.** See [CONTRIBUTING.md](CONTRIBUTING.md); a way to leave personal data unmasked contrary to the documented behaviour is a security problem ([SECURITY.md](SECURITY.md)).
+
+## Install (optional)
+
+`python wa2md.py ...` works straight from a checkout. To get commands on your PATH instead, install from the checkout (Python 3.9 or later, no third-party dependency):
+
+```
+pip install .
+wa2md --help        # same as python wa2md.py
+wa2md-web --help    # same as python wa_web.py (WhatsApp Web helper)
+```
+
+The dictionaries (`adlar/`) and the collector (`wa2md_assets/wa_collect.js`) are installed with it and found at run time. The experimental direct Chrome connection (`wa2md-web list` / `export`) needs the optional extra: `pip install ".[browser]"` (Playwright). Nothing is published to PyPI.
 
 ## Language support
 
@@ -77,11 +99,11 @@ These were already English and did not change: `--out`, `--only`, `--from`, `--t
 
 > **Important note (WhatsApp Web path):** This path only reads your own chats, in a browser tab that you logged in to yourself, and sends no data anywhere. Even so, automated collection from WhatsApp Web can conflict with WhatsApp's terms of service. The recommended path is WhatsApp's official "Export chat" feature (section 2 below). Using the Web path is entirely at your own responsibility. Files that belong to this path: `wa_web.py`, `wa_collect.js`, `tests/test_wa_web.py`, `tests/test_browser_smoke.py` and `tests/fixtures/web/`.
 
-The collection logic (finding the chat through the search box, scrolling to older messages, message parsing, photo blobs) is in a single file: `wa_collect.js`. No external connection to Chrome is needed; the code runs in your open WhatsApp Web tab.
+The collection logic (finding the chat through the search box, scrolling to older messages, message parsing, photo blobs) is in a single file: `wa2md_assets/wa_collect.js`. No external connection to Chrome is needed; the code runs in your open WhatsApp Web tab.
 
 ### Setup (once)
 
-Python 3 is enough (no extra package for the console path). Only for the experimental CDP path and the browser tests: `python -m venv .venv` and `.venv\Scripts\pip install -r requirements.txt`.
+Python 3 is enough (no extra package for the console path). Only for the experimental CDP path and the browser tests: `python -m venv .venv` and `.venv\Scripts\pip install -r requirements.txt` (or `pip install ".[browser]"`).
 
 ### Steps
 
@@ -221,12 +243,25 @@ The second (venv) also runs the real-Chrome tests: it runs `wa_collect.js` in a 
 
 ## Privacy
 
-`exports/`, `out/`, `*.zip`, `wa-bundle-*.json` and `.venv/` are listed in `.gitignore`. That lowers the risk of committing chat data but does not remove it: other folders and file names are not covered, and `git add -f` overrides it. Check `git status` and the contents before every commit and push. The test fixtures are invented data.
+`exports/`, `out/`, `*.zip`, `wa-bundle-*.json` and `.venv/` are listed in `.gitignore`. That lowers the risk of committing chat data but does not remove it: other folders and file names are not covered, and `git add -f` overrides it. Check `git status` and the contents before every commit and push. The test data and fixtures are synthetic (see "Data sources and attribution").
 
 ## License
 
 The code is under the MIT license (see `LICENSE`). This license applies only to the code; the data files under `adlar/` are separate (see below).
 
 ## Data sources and attribution
+
+The dictionaries in the `adlar/` folder are plain text files that ship with the tool and are read offline (nothing is downloaded at run time):
+
+| File | Content | Source and how it was built | Retrieved |
+|---|---|---|---|
+| `tr-adlar.txt` | Turkish given names | Wikidata Query Service: given names of Turkish citizens that occur at least twice, plus Turkish given-name items; two names removed by hand | 2026-11-14 |
+| `tr-soyadlar.txt` | Turkish surnames | Wikidata Query Service: surnames of Turkish citizens that occur at least twice, plus Turkish surname items | 2026-11-14 |
+| `tr-yerler.txt` | Turkish provinces and districts | Wikidata Query Service: province and district items, primary label, cleaned (suffixes and brackets removed) | 2026-11-15 |
+| `sozcuk-adlar.txt` | names that are also ordinary words (masked only with context) | Wikidata lexemes and place names (CC0 1.0) plus a hand-compiled part written for this project (MIT, as the code) | 2026-11-14 / 2026-11-15 |
+
+Licence: Wikidata's structured data is CC0 1.0 (public domain, https://www.wikidata.org/wiki/Wikidata:Licensing); the hand-compiled part of `sozcuk-adlar.txt` is under the licence of this repository. The exact queries, the filters, the counts and the manual removals are written in the comment lines at the top of each file, so the lists can be rebuilt. The lists are best-effort: they contain no private data, but they are neither complete nor error-free (see "Limitations and responsible use").
+
+**All test data and fixtures in this repository are synthetic** (invented names, numbers from the reserved `0500 000 xx xx` family, `example.*` and `.test` addresses); no real chat or real person was used.
 
 The name, surname, word-name and place lists in the `adlar/` folder were compiled from Wikidata (https://www.wikidata.org) with the Wikidata Query Service. Wikidata's structured data is under CC0 1.0 (public domain): https://www.wikidata.org/wiki/Wikidata:Licensing. The retrieval dates and the queries used are written at the top of each file (`tr-adlar.txt` and `tr-soyadlar.txt`: 2026-11-14; `tr-yerler.txt` and `sozcuk-adlar.txt`: 2026-11-15).

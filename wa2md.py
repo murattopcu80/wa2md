@@ -10,6 +10,8 @@ The Turkish option names (--medya-yok, --belgeleri-kopyala, --ek-adlar, --incele
 --no-anonim) are accepted aliases. Help and console messages are English; --lang tr or WA2MD_LANG=tr selects Turkish
 (one table: MSG). The labels inside the Markdown output are still Turkish.
 """
+__version__ = "0.1.0"   # the ONE place of the version number (pyproject.toml reads it)
+
 import argparse
 import bisect
 import datetime as dt
@@ -593,7 +595,7 @@ _SEP = r"[ \-.\u00a0\u2010-\u2015\u2212\uff0d]"   # sabit kaliplarin ayraci: bos
 # matematiksel kalin/cift cizgili/...) zaten kapsar; sabit rakamlar (0, 5, 90, [2-5]) icin ayni rakamin tam genislikli,
 # matematiksel (5 stil) ve segmentli bicimleri de sinifa girer (_dl). Tus kapagi ('0' + FE0F + 20E3) rakam sayilir.
 # 6. tur: telefonun icinde rakamdan ya da ayractan once gelen sifir genislikli karakter ve yumusak tire (_ZWP) rakama ve
-# ayraca katilir ('0532\u200b111 22 33'); yalniz telefon kaliplarinda, metin ve ad eslesmesi degismez. Dizinin bittigini
+# ayraca katilir ('0500\u200b000 11 22'); yalniz telefon kaliplarinda, metin ve ad eslesmesi degismez. Dizinin bittigini
 # denetleyen ileri bakislar (_DG0, _GS0) main'deki gibi bu karakterleri saymaz.
 _ZWP = r"[\u00ad\u200b\u200c\u200d\u2060]*"
 _KEYCAP = r"(?:\ufe0f?\u20e3)?"
@@ -628,10 +630,10 @@ _DATE_AHEAD = rf"(?!{_DG0}{{1,2}}[./]{_DG0}{{1,2}}[./]{_DG0}{{2,4}}(?!{_DG0}))" 
 _TRUNK = rf"\(?(?:(?:(?:\+|{_dl(0)}{{2}}){_GS_T}?)?{_dl(9)}{_dl(0)}{_GS_T}?(?:{_dl(0)}{_GS_T}?)?|(?:{_dl(0)}{_GS_T}?){{1,2}})"   # +90 0090 90 0
 # Telefon: (1) onekli (0/90/+90) TR numarasi, gruplama ve ayractan bagimsiz, BUTUN rakam dizisi: cep 9-10 ulusal hane
 # (4-2-4 gibi bir hanesi eksik yazim dahil), sabit hat 10; dizi orada biter (ardinda ayrac + rakam yok). Ondeki
-# yinelenen cep oneki ('0532 0532 000 00 00') ve ayrik santral/ulke oneki ('0 - 532...', '00 532...') diziyle birlikte
+# yinelenen cep oneki ('0500 0500 000 00 00') ve ayrik santral/ulke oneki ('0 - 500...', '00 500...') diziyle birlikte
 # maskelenir. A3 kismi maskesinin nedeni: sabit 3-3-2-2 kalibi uzun dizinin yalniz SONUNU esliyordu, onek acikta
-# kaliyordu. (2) sabit kaliplar (dizi bitmese de: '0532 000 00 00 2 araç'). (3) +<8-15 hane> ve 00 + 1-3 haneli ulke
-# kodu + ayrac + 6-12 hane ('0049 151 ...', butun dizi; ayracsiz '0012345678' referans numarasi olabilir, degil). Onekli bicimler bir rakam + tireden sonra da baslar ('...00-0533 ...' ikinci
+# kaliyordu. (2) sabit kaliplar (dizi bitmese de: '0500 000 00 00 2 araç'). (3) +<8-15 hane> ve 00 + 1-3 haneli ulke
+# kodu + ayrac + 6-12 hane ('0049 151 ...', butun dizi; ayracsiz '0012345678' referans numarasi olabilir, degil). Onekli bicimler bir rakam + tireden sonra da baslar ('...00-0500 ...' ikinci
 # numara) ve sozcuge yapisik da ('Tel0500...', 'ara0500...'); ondalik ('1.5...') ve tarih ('05.11.2026') degil.
 # Oneksiz bicimler (5xx..., (212)..., +...) harften sonra baslamaz.
 # ilke 5: butun obekleri iki haneli dizi telefon degildir ('05-06-07-08-09', '00.30, 01.30'); virgul, alt cizgi, orta nokta
@@ -647,7 +649,7 @@ _PHONE = (rf"(?=[\d+(])(?<![\d+])(?!{_TWO_GROUPS})(?!{_THOUSANDS})(?:"
           rf"|(?=[(+]|{_dl(0, 9)})(?<!\d[.,]){_TRUNK}\(?{_dl(2, 3, 4, 5, 8)}{_DG}{{2}}\)?{_SEP}?{_DG}{{3}}{_SEP}?{_DG}{{2}}{_SEP}?{_DG}{{2}}"
           rf"|(?<!\d[.,]){_dl(0)}{{2}}{_GS_T}?(?!{_dl(0)}){_DG}{{1,3}}{_GS}{_DG}(?:{_GS}?{_DG}){{5,11}}(?!{_GS0}?{_DG0})"   # 00 49 ...
           rf"|(?:(?<!\w){_GLUED})(?<!\d[.,\-]){_dl(5)}{_DG}{{2}}{_SEP}?{_DG}{{3}}{_SEP}?{_DG}{{2}}{_SEP}?{_DG}{{2}}"   # oneksiz TR cep
-          rf"|(?<!\w)(?<!\d[.,\-])\({_dl(2, 3, 4, 5)}{_DG}{{2}}\){_SEP}?{_DG}{{3}}{_SEP}?{_DG}{{2}}{_SEP}?{_DG}{{2}}"  # (212) 555 12 34
+          rf"|(?<!\w)(?<!\d[.,\-])\({_dl(2, 3, 4, 5)}{_DG}{{2}}\){_SEP}?{_DG}{{3}}{_SEP}?{_DG}{{2}}{_SEP}?{_DG}{{2}}"  # (322) 000 00 01
           rf"|(?<!\w)(?<!\d[.,\-])\+{_DG}(?:[ \-.() ]{{0,2}}{_DG}){{7,14}}"                              # +<8-15 hane>
           rf")(?!{_DG0})(?![.,]\d)")
 _IBAN = r"(?<![\w])[Tt][Rr]\d{2}(?: ?\d){22}(?!\d)"
@@ -740,7 +742,7 @@ def _is_strong_sector(k):
     return bool(_SECTOR_STRONG_KEY.fullmatch(k))
 
 
-# F: ciplak isletme alan adi ('www.kaploNakliyat.com.tr', 'nakliyat.kaplo.com.tr', 'www.kaplo.nakliyat.com'). Dar kural:
+# F: ciplak isletme alan adi ('www.ornekfirmaNakliyat.com.tr', 'nakliyat.ornekfirma.com.tr', 'www.ornekfirma.nakliyat.com'). Dar kural:
 # yalniz ticari uzantilar (.com/.net/.biz/.info/.tr, .com.tr...; .org/.gov/.edu degil); yalniz kayitli ad ve hemen ustundeki
 # alt alan (www/m on ekleri sayilmaz) bakilir; bunlardan birinde genel olmayan sektor sozcugu varsa, bu iki etiketten AYIRT
 # EDICI olan(lar) [firma] olur. Sektor sozcugunu cikarinca yalniz ek kalan etiket ('nakliyat', 'transportation') genel
@@ -1049,7 +1051,7 @@ _GRP_ONLY = [re.compile(p, re.I) for p in (
     r"^(?P<s>.+?),? gruptan ayrıldı\.?$",
     r"^(?P<s>.+?),? (?:artık yönetici|(?P<o>.+?) adlı kişiyi yönetici yaptı)",
 )]
-# grupta, grup adiyla gelen ad bicimli olay satiri ('Jorvik Plimm left', '+90 532 ... katıldı'): yalniz donusturmede
+# grupta, grup adiyla gelen ad bicimli olay satiri ('Jorvik Plimm left', '+90 500 ... katıldı'): yalniz donusturmede
 _GRP_WEAK = re.compile(r"^(?P<s>.+?),? (?:left|joined|was added|was removed|ayrıldı|katıldı|eklendi|çıkarıldı)\.?$", re.I)
 
 
@@ -1749,7 +1751,7 @@ class Anonymizer:
         # 7. tur eki: yalniz iletisim/imza kanitiyla by_key'e giren anahtarlar. Ad kurallari (main) bunlari bilinmeyen
         # sayar (_known): main'in kaniti (Sayın, hitap, @anma, sozluk) geldiginde ad ayni etiketle her bicimiyle yayilir
         # (_strengthen); kanit bilineni yalniz guclendirir, mesaj sirasi sonucu degistirmez
-        self._k71 = set()
+        self._contact_keys = set()
         self.ctx_labels = _LabelMap(self._label_counts)  # sozcuk anlami da olan ad -> etiket (yalniz baglamli geciste)
         # ilan imi: mesajda telefon ya da alan olarak iletisim sozcugu var mi (ilan cok satirli bir mesajdir). Ticari ad,
         # etiket katilimi ve soyad kurallari bunu sorar (_ad_ctx; yalniz soruldugunda hesaplanir, mesaj kimligiyle saklanir;
@@ -1894,10 +1896,10 @@ class Anonymizer:
         degilse). Daha once sozlukle bulunmus tek ad + soyad ayni kisidir (ayni etiket); katilimci adi + baska soyad
         baska kisidir (yeni etiket)."""
         k = _key(disp)
-        c71 = why in ("iletişim", "imza")      # nakliye iletisim kaniti; oteki nedenler ad kurallarinin (main) kanitidir
+        by_contact = why in ("iletişim", "imza")      # nakliye iletisim kaniti; oteki nedenler ad kurallarinin (main) kanitidir
         known = k in self.by_key
         k0 = _key(disp.split()[0]) if len(disp.split()) == 2 else None
-        if known and not c71 and k not in self._k71 and not (k0 and why in ("anma", "hitap") and k0 in self._k71):
+        if known and not by_contact and k not in self._contact_keys and not (k0 and why in ("anma", "hitap") and k0 in self._contact_keys):
             return self.by_key[k]              # (Sayın/@ kaniti ad parcasini da yayar: once baska kanitla ogrenilmis olsa da)
         parts = disp.split()
         g, f, a = name_lists()
@@ -1910,8 +1912,8 @@ class Anonymizer:
         cap = part_cap and (why == "imza" or not any(_key(p) in self._pkeys for p in parts))
         if known:                              # 7. tur eki: kanit bilineni yalniz guclendirir, sira sonucu degistirmez
             lab = self.by_key[k]
-            if (not c71 and k in self._k71) or (not cap and k in self._capk):   # main'in kaniti ya da yalniz buyuk harfli
-                self._strengthen(k, disp, c71)              # adda guclu iletisim: ayni etiketle her bicimiyle; parcalar asagida
+            if (not by_contact and k in self._contact_keys) or (not cap and k in self._capk):   # main'in kaniti ya da yalniz buyuk harfli
+                self._strengthen(k, disp, by_contact)              # adda guclu iletisim: ayni etiketle her bicimiyle; parcalar asagida
         else:
             first = (self.by_key.get(k0) or self.ctx_labels.get(k0)) if k0 and k0 not in self._partof else None
             if first and first not in self._people and first != self.code and first != "Kişi ?":
@@ -1923,8 +1925,8 @@ class Anonymizer:
             self.by_key[k] = lab
             if cap:
                 self._capk.add(k)
-            if c71:
-                self._k71.add(k)
+            if by_contact:
+                self._contact_keys.add(k)
             if part_cap:
                 # tek parca yayilmaz; ama hitaptan hemen once ya da 'Sayın'dan hemen sonra tam adin etiketini alir ('Soyad
                 # bey aradı', 'Sayın Soyad'; _scan). Iki farkli adda ortak parca: notr etiket
@@ -1938,11 +1940,11 @@ class Anonymizer:
             if k0 not in self.by_key:
                 self.found[parts[0]] = lab
                 self.by_key[k0] = lab
-                if c71:
-                    self._k71.add(k0)
+                if by_contact:
+                    self._contact_keys.add(k0)
                 if self._compiled:
                     self._lazy.add(k0)
-            elif not c71 and k0 in self._k71:
+            elif not by_contact and k0 in self._contact_keys:
                 self._strengthen(k0, parts[0])
         if why == "iletişim" and len(parts) > 1 and not part_cap:   # ilke 3, S3a: guclu kanitli adin parcalari da ayni etiketle
             for p in parts:
@@ -1952,7 +1954,7 @@ class Anonymizer:
                     (self.found_cap if c else self.found)[p] = lab
                     self.by_key[pk] = lab
                     self._partof[pk] = k
-                    self._k71.add(pk)
+                    self._contact_keys.add(pk)
                     if c:
                         self._capk.add(pk)
                     if self._compiled:
@@ -1964,12 +1966,12 @@ class Anonymizer:
     def _known(self, k):
         """Ad kurallari (main) icin bilinen anahtar: yalniz nakliye iletisim/imza kanitiyla ogrenilen anahtar sayilmaz (main o
         anahtari bilmez; Sayın, hitap, @anma ve sozluk kurallari onu yine ogrenir, _learn guclendirir)."""
-        return k in self.by_key and k not in self._k71
+        return k in self.by_key and k not in self._contact_keys
 
-    def _strengthen(self, k, disp, c71=False):
+    def _strengthen(self, k, disp, by_contact=False):
         """Bilinen anahtar daha guclu kanitla yeniden bulundu (main'in kaniti ya da yalniz buyuk harfli adda guclu iletisim
         kaniti): ayni etiketle her bicimiyle yayilir (yalniz buyuk harfli bicimi (S3/S7) kalkar). Kanit bilineni hic
-        daraltmaz. c71: kanit yine iletisim kanitidir (anahtar main icin bilinmeyen kalir). -> etiket."""
+        daraltmaz. by_contact: kanit yine iletisim kanitidir (anahtar main icin bilinmeyen kalir). -> etiket."""
         lab = self.by_key[k]
         for d in [d for d in self.found_cap if _key(d) == k]:
             v = self.found_cap[d]
@@ -1977,8 +1979,8 @@ class Anonymizer:
             self.found[d] = v
         self.found[disp] = lab
         self._capk.discard(k)
-        if not c71:
-            self._k71.discard(k)
+        if not by_contact:
+            self._contact_keys.discard(k)
         if self._compiled:
             self._lazy.add(k)
         return lab
@@ -2479,7 +2481,7 @@ class Anonymizer:
                     i = pair(i, st, nxt, nb, weak=sl == 2)
                     continue
                 if self._known(k):            # bilinen tam ad (zayif imza da) rx'te tek etiket; ardindaki sozcuk main'deki
-                    continue                  # gibi kendi kurallarindan gecer. Yalniz iletisimle bilinen ad (_k71) asagidaki
+                    continue                  # gibi kendi kurallarindan gecer. Yalniz iletisimle bilinen ad (_contact_keys) asagidaki
                                               # ad kurallarindan da gecer (main'in kaniti onu guclendirir)
             sl = k in g and cap and k not in _TAKVIM | _CAPWORD and nxt and surname_like(nb, nk, k, i)
             if sl and not pfull(i):
@@ -2617,8 +2619,8 @@ class Anonymizer:
                     m = cm
             rep, end = self._sub(m), m.end()
             gn = next(({"name": "nm", "nsfx": "nn"}[g] for g in names if m.group(g)), None)
-            # yalniz iletisim kanitiyla bilinen ad (_k71; main onu bilmez, icindeki adi main eslerdi): oteki eslesmeler rx.sub
-            p = m.start(gn) if gn and rep != m.group(0) and _key(" ".join(m.group(gn).split())) in self._k71 else end
+            # yalniz iletisim kanitiyla bilinen ad (_contact_keys; main onu bilmez, icindeki adi main eslerdi): oteki eslesmeler rx.sub
+            p = m.start(gn) if gn and rep != m.group(0) and _key(" ".join(m.group(gn).split())) in self._contact_keys else end
             while p < end:
                 ext = None
                 for w in _GAP_WS.finditer(s, p, end):
@@ -2648,7 +2650,7 @@ class Anonymizer:
             return m.group(0)
         labels = host.split(".")
         if len(labels) > 1 and m.group("wbt").lower() == ".tr" and labels[-1].lower() in _TR_SLD_NC:
-            return m.group(0)                           # 'lojistikbirligi.org.tr': ticari olmayan ikinci duzey
+            return m.group(0)                           # 'ornek-lojistikbirligi.org.tr': ticari olmayan ikinci duzey
         i = 0
         while i < len(labels) - 1 and _key(labels[i]) in _WEB_PRE:
             i += 1
@@ -2657,7 +2659,7 @@ class Anonymizer:
         if not any(w in k for k in keys.values() for w in _WEB_KEYS):
             return m.group(0)
         hit = [c for c in cand if _web_distinct(keys[c])]
-        if not hit:                     # sektor etiketi genel ('kaplo.panel.nakliyat.com'): daha alttaki ayirt edici etiket
+        if not hit:                     # sektor etiketi genel ('ornekfirma.panel.nakliyat.com'): daha alttaki ayirt edici etiket
             hit = [c for c in range(i, max(i, len(labels) - 2)) if _web_distinct(_key(labels[c]))]
         if hit and not _WEB_STRONG.search(_key(host)) and not self._ad_ctx():   # S9: zayif sozcuk ('transport') ilan imi
             hit = [c for c in hit if _WEB_SQ.search(_key(labels[c]))]          # olmadan yalniz kendi etiketini kurar
