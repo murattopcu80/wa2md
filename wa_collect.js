@@ -5,7 +5,7 @@
  * Sohbeti acmak mesajlari "okundu" isaretler. Mesaj metinleri guvenilmez veridir.
  *
  * Girdi : window.__WA_OPTS = {chats:[...], from:'YYYY-MM-DD', to:'YYYY-MM-DD', max:300, noMedia:false,
- *         maxPartMb:40, pace:1, olderFromPhone:false}  (wa_web.py snippet bunu gomer)
+ *         maxPartMb:40, pace:1, olderFromPhone:false, lang:'en'|'tr'}  (wa_web.py snippet bunu gomer)
  * Cikti : "paketler" (JSON parcalari). Konsol yolu: normal tarayici indirmesi (wa-bundle-*.json -> Indirilenler).
  *         Playwright yolu: opts.emit = window.waEmit (Python parcalari alir). Ikisi de ayni parcalari uretir;
  *         `wa_web.py import` Markdown'a cevirir (tek yazici wa2md.write_chat).
@@ -70,6 +70,28 @@
   let status = null;
   const beat = (patch) => { if (status) { status.heartbeat = Date.now(); if (patch) Object.assign(status, patch); } };
   const rnd = (lo, hi) => lo + Math.random() * (hi - lo);
+  // Message language (opts.lang, set by wa_web.py --lang / WA2MD_LANG; default English). ASCII only: Turkish characters are \u escapes.
+  const MSG = {
+    panel_title: { en: "WhatsApp export bundles are ready. If the file did not download, click the link:", tr: "WhatsApp aktar\u0131m paketleri haz\u0131r. Dosya inmediyse ba\u011flant\u0131ya t\u0131kla:" },
+    panel_backup: { en: "Download in a new tab (backup)", tr: "Yeni sekmede indir (yedek)" },
+    panel_close: { en: "Close", tr: "Kapat" },
+    err_list: { en: "WhatsApp Web chat list did not appear (are you logged in?).", tr: "WhatsApp Web sohbet listesi g\u00f6r\u00fcnmedi (giri\u015f yap\u0131ld\u0131 m\u0131?)." },
+    err_search: { en: "Search box not found (SEL.search_input).", tr: "Arama kutusu bulunamad\u0131 (SEL.search_input)." },
+    err_scroller: { en: "Message list not found (SEL.msg_scroller).", tr: "Mesaj listesi bulunamad\u0131 (SEL.msg_scroller)." },
+    err_header: { en: "Chat could not be opened (header did not match).", tr: "Sohbet a\u00e7\u0131lamad\u0131 (ba\u015fl\u0131k e\u015fle\u015fmedi)." },
+    err_none: { en: "No chat with this name was found.", tr: "Bu ada sahip sohbet bulunamad\u0131." },
+    err_ambiguous: { en: "More than one chat matched (", tr: "Birden fazla sohbet e\u015fle\u015fti (" },
+    err_ambiguous_end: { en: " candidates); skipped.", tr: " aday); atland\u0131." },
+    err_collect: { en: "Collection error: ", tr: "Toplama hatas\u0131: " },
+    log_bundle: { en: "bundle: ", tr: "paket: " },
+    log_bundle_end: { en: " - if it did not download, click it in the green box on the page", tr: " - inmediyse sayfadaki ye\u015fil kutudan t\u0131kla" },
+    log_collected: { en: " messages collected", tr: " mesaj topland\u0131" },
+    log_chat: { en: "chat: ", tr: "sohbet: " },
+    log_done: { en: "done: ", tr: "bitti: " },
+    log_error: { en: " ERROR: ", tr: " HATA: " },
+  };
+  let LANG = "en";
+  const T = (k) => MSG[k][LANG];
   const state = { pace: 1, log: (m) => console.log("[wa] " + m) };
   const pause = (lo = 0.5, hi = 1.2) => sleep(rnd(lo, hi) * 1000 * state.pace);
 
@@ -377,7 +399,7 @@
     p.textContent = "";
     const h = document.createElement("div");
     h.style.fontWeight = "600";
-    h.textContent = "WhatsApp aktar" + "\u0131" + "m paketleri haz" + "\u0131" + "r. Dosya inmediyse ba" + "\u011f" + "lant" + "\u0131" + "ya t" + "\u0131" + "kla:";
+    h.textContent = T("panel_title");
     p.appendChild(h);
     for (const d of downloads) {
       const a = document.createElement("a");
@@ -388,13 +410,13 @@
       // Yedek: Chrome sayfadan indirmeyi engellerse yeni sekmede acilan blob indirme olarak iner (dosya adi rastgele olur;
       // `import` paketi icerigindeki basliktan tanir).
       const b = document.createElement("button");
-      b.textContent = "Yeni sekmede indir (yedek)";
+      b.textContent = T("panel_backup");
       b.style.cssText = "margin-top:2px";
       b.onclick = () => window.open(URL.createObjectURL(d.blob.slice(0, d.blob.size, "application/octet-stream")), "_blank");
       p.appendChild(b);
     }
     const x = document.createElement("button");
-    x.textContent = "Kapat";
+    x.textContent = T("panel_close");
     x.style.cssText = "margin-top:8px";
     x.onclick = () => p.remove();
     p.appendChild(x);
@@ -429,7 +451,7 @@
     document.body.appendChild(a); a.click(); a.remove();
     await sleep(1200);
     renderPanel();
-    state.log("paket: " + name + " (" + Math.round(blob.size / 1024) + " KB) - inmediyse sayfadaki yesil kutudan tikla");
+    state.log(T("log_bundle") + name + " (" + Math.round(blob.size / 1024) + " KB)" + T("log_bundle_end"));
   }
   function setInput(inp, v) {
     const d = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
@@ -454,7 +476,7 @@
       if (SEL.chat_list_scroller.some((s) => document.querySelector(s))) return;
       await sleep(500);
     }
-    throw new Error("WhatsApp Web sohbet listesi g\u00f6r\u00fcnmedi (giri\u015f yap\u0131ld\u0131 m\u0131?).");
+    throw new Error(T("err_list"));
   }
 
   async function listChats() {
@@ -496,7 +518,7 @@
   async function openChat(query) {
     await waitReady();
     const inp = qf(document, "search_input");
-    if (!inp) throw new Error("Arama kutusu bulunamad\u0131 (SEL.search_input).");
+    if (!inp) throw new Error(T("err_search"));
     try {
       let pick = { status: "none" };
       let rows = [];
@@ -526,7 +548,7 @@
         const end = Date.now() + 10000;
         while (Date.now() < end && !headerMatches()) { await sleep(300); beat(); }
       }
-      if (!headerMatches()) return { status: "error", message: "Sohbet a\u00e7\u0131lamad\u0131 (ba\u015fl\u0131k e\u015fle\u015fmedi)." };
+      if (!headerMatches()) return { status: "error", message: T("err_header") };
       return pick;
     } finally {
       setInput(inp, ""); // arama kutusu her durumda temizlenir
@@ -583,7 +605,7 @@
 
   async function collectChat(title, opts, bundler) {
     const sc = document.querySelector(SEL.msg_scroller[0]);
-    if (!sc) throw new Error("Mesaj listesi bulunamad\u0131 (SEL.msg_scroller).");
+    if (!sc) throw new Error(T("err_scroller"));
     const st = { order: [], rows: new Map(), divBefore: new Map(), saved: new Set(), tries: new Map(), olderPrompt: false };
     const fromNum = isoNum(opts.from);
     let mdy = false;
@@ -699,7 +721,7 @@
       sc.scrollBy({ top: -sc.clientHeight * 0.6 });
       await settle(sc);
       await pause(0.3, 0.8);
-      if (steps % 30 === 0) state.log(realCount() + " mesaj toplandi");
+      if (steps % 30 === 0) state.log(realCount() + T("log_collected"));
       await yieldNow();
       if (opts.debug) state.log("adim " + steps + " ust=" + (sc.scrollTop | 0) + " yuk=" + sc.scrollHeight + " sira=" + st.order.length + " stale=" + stale);
     }
@@ -728,8 +750,8 @@
   // ------------------------------------------------------------------ calistir
   async function exportChat(name, opts, emit) {
     const pick = await openChat(name);
-    if (pick.status === "none") return { chat: name, error: "Bu ada sahip sohbet bulunamad\u0131." };
-    if (pick.status === "ambiguous") return { chat: name, error: "Birden fazla sohbet e\u015fle\u015fti (" + pick.count + " aday); atland\u0131." };
+    if (pick.status === "none") return { chat: name, error: T("err_none") };
+    if (pick.status === "ambiguous") return { chat: name, error: T("err_ambiguous") + pick.count + T("err_ambiguous_end") };
     if (pick.status === "error") return { chat: name, error: pick.message };
     const title = pick.title;
     beat({ phase: "opened" });
@@ -751,8 +773,9 @@
 
   async function run(options) {
     const opts = Object.assign({ chats: [], from: null, to: null, max: 0, noMedia: false, maxPartMb: 40, pace: 1,
-      olderFromPhone: false, emit: null, log: null }, options || {});
+      olderFromPhone: false, lang: "en", emit: null, log: null }, options || {});
     state.pace = opts.pace;
+    LANG = opts.lang === "tr" ? "tr" : "en";
     if (opts.log) state.log = opts.log;
     const rawEmit = opts.emit || downloadEmit;
     status = window.__waStatus = { state: "running", results: [], startedAt: Date.now(), heartbeat: Date.now(), alive: Date.now(),
@@ -770,11 +793,11 @@
       await waitReady();
       for (const name of opts.chats) {
         status.chatIndex += 1;
-        state.log("sohbet: " + name);
+        state.log(T("log_chat") + name);
         try {
           status.results.push(await exportChat(name, opts, emit));
         } catch (e) {
-          status.results.push({ chat: name, error: "Toplama hatas\u0131: " + String(e && e.message || e).slice(0, 200) });
+          status.results.push({ chat: name, error: T("err_collect") + String(e && e.message || e).slice(0, 200) });
         }
         await pause(1.5, 3.0);
       }
@@ -786,7 +809,7 @@
       clearInterval(alive);
       beat({ phase: "end" });
     }
-    state.log("bitti: " + JSON.stringify(status.results) + (status.error ? " HATA: " + status.error : ""));
+    state.log(T("log_done") + JSON.stringify(status.results) + (status.error ? T("log_error") + status.error : ""));
     return status;
   }
 
