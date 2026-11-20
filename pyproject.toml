@@ -46,12 +46,12 @@ Homepage = "https://github.com/murattopcu80/wa2md"
 Issues = "https://github.com/murattopcu80/wa2md/issues"
 Changelog = "https://github.com/murattopcu80/wa2md/blob/main/CHANGELOG.md"
 
-# Flat layout on purpose (two modules plus two data packages): the language-pack restructuring (issue #2) can move
-# the modules into a package later. The dictionaries (adlar/) and the collector (wa2md_assets/wa_collect.js) are
+# Flat layout on purpose (two modules, the language-pack package and two data packages). The language packs
+# (wa2md_lang/, issue #2) are imported; the dictionaries (adlar/) and the collector (wa2md_assets/wa_collect.js) are
 # installed next to the modules, so the run-time lookups relative to the module file work in a checkout and when installed.
 [tool.setuptools]
 py-modules = ["wa2md", "wa_web"]
-packages = ["adlar", "wa2md_assets"]
+packages = ["adlar", "wa2md_assets", "wa2md_lang"]
 
 [tool.setuptools.dynamic]
 version = { attr = "wa2md.__version__" }
