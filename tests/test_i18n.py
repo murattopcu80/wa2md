@@ -21,6 +21,7 @@ FIX = os.path.join(HERE, "fixtures")
 sys.path.insert(0, ROOT)
 import wa2md  # noqa: E402
 import wa_web  # noqa: E402
+import wa2md_lang  # noqa: E402
 
 TR = os.path.join(FIX, "android_tr")
 WEB = os.path.join(FIX, "web")
@@ -129,7 +130,7 @@ class OptionNames(Isolated):
             outs.append(out)
         cmp = filecmp.dircmp(outs[0], outs[1])
         self.assertEqual((cmp.left_only, cmp.right_only, cmp.diff_files), ([], [], []))
-        sub = filecmp.dircmp(os.path.join(outs[0], "Sohbet-1"), os.path.join(outs[1], "Sohbet-1"))
+        sub = filecmp.dircmp(os.path.join(outs[0], "Chat-1"), os.path.join(outs[1], "Chat-1"))   # English labels
         self.assertEqual((sub.left_only, sub.right_only, sub.diff_files), ([], [], []))
 
     def test_no_anonymize_and_no_anonim_write_real_names(self):
@@ -146,7 +147,7 @@ class OptionNames(Isolated):
             out = os.path.join(self.tmp, "c" + flag)
             code, _, err = self.wa2md_run(TR, "--out", out, flag)
             self.assertEqual(code, 0, err)
-            found.append(sorted(os.listdir(os.path.join(out, "Sohbet-1", "media"))))
+            found.append(sorted(os.listdir(os.path.join(out, "Chat-1", "media"))))
         self.assertEqual(found[0], found[1])
         self.assertTrue(any(n.endswith(".pdf") for n in found[0]))
 
@@ -242,7 +243,7 @@ class MessageLanguage(Isolated):
         out_tr = os.path.join(self.tmp, "tr")
         code, o_en, _ = self.wa2md_run(TR, "--out", out_en)
         self.assertEqual(code, 0)
-        self.assertRegex(o_en, r"\[Sohbet-1\] 7 messages, \d+ media copied, \d+ media missing -> ")
+        self.assertRegex(o_en, r"\[Chat-1\] 7 messages, \d+ media copied, \d+ media missing -> ")
         self.assertIn("   masked: sender", o_en)
         self.assertIn("Mode: removal of direct identifiers.", o_en)
         code, o_tr, _ = self.wa2md_run(TR, "--out", out_tr, "--lang", "tr")
@@ -262,20 +263,25 @@ class MessageLanguage(Isolated):
         _, _, e_tr = self.wa2md_run(TR, "--out", os.path.join(self.tmp, "o"), "--from", "2026-13-40", "--lang", "tr")
         self.assertIn("Geçersiz tarih '2026-13-40' (YYYY-AA-GG olmalı)", e_tr)
 
-    def test_markdown_output_is_identical_in_both_languages(self):
-        """Phase 1 does not translate the labels inside the Markdown: the message language never reaches the output."""
-        outs = []
-        for lang in ("en", "tr"):
+    def test_output_labels_follow_the_language(self):
+        """Phase 2 (issue #2): --lang selects the output labels too; the masking itself is the same in both languages
+        (the same chat gives the same Markdown once the labels are mapped)."""
+        mds = {}
+        for lang, chat in (("en", "Chat-1"), ("tr", "Sohbet-1")):
             out = os.path.join(self.tmp, "m-" + lang)
             code, _, err = self.wa2md_run(TR, "--out", out, "--lang", lang)
             self.assertEqual(code, 0, err)
-            outs.append(out)
-        cmp = filecmp.dircmp(os.path.join(outs[0], "Sohbet-1"), os.path.join(outs[1], "Sohbet-1"))
-        self.assertEqual((cmp.left_only, cmp.right_only, cmp.diff_files), ([], [], []))
-        with open(os.path.join(outs[0], "Sohbet-1", "Sohbet-1.md"), encoding="utf-8") as f:
-            md = f.read()
-        self.assertIn("Kişi 1", md)
-        self.assertIn("# Sohbet-1", md)
+            with open(os.path.join(out, chat, chat + ".md"), encoding="utf-8") as f:
+                mds[lang] = f.read()
+        self.assertIn("# Chat-1", mds["en"])
+        self.assertIn("Person 1", mds["en"])
+        self.assertIn("# Sohbet-1", mds["tr"])
+        self.assertIn("Kişi 1", mds["tr"])
+        en, tr = wa2md_lang.load_pack("en").labels, wa2md_lang.load_pack("tr").labels
+        self.assertEqual(mds["en"].count("\n"), mds["tr"].count("\n"))
+        self.assertEqual(mds["en"].count("Person "), mds["tr"].count("Kişi "))
+        for k in en.masks:
+            self.assertEqual(mds["en"].count(en.masks[k]), mds["tr"].count(tr.masks[k]), k)
 
     def test_review_file_follows_the_language(self):
         chat = ("14.11.2026 10:00 - Plimm Zorbek: merhaba\n14.11.2026 10:01 - Orhan: Deniz abi yarın gelir mi\n"
@@ -290,7 +296,7 @@ class MessageLanguage(Isolated):
             code, o, err = self.wa2md_run(src, "--out", os.path.join(self.tmp, "o-" + lang), "--lang", lang,
                                           "--review-dir", rv)
             self.assertEqual(code, 0, err)
-            files = [n for n in os.listdir(rv) if n.endswith("-supheli-adlar.txt")] if os.path.isdir(rv) else []
+            files = [n for n in os.listdir(rv) if n.endswith(("-suspect-names.txt", "-supheli-adlar.txt"))] if os.path.isdir(rv) else []
             if not files:
                 self.skipTest("fixture produced no review entries")
             with open(os.path.join(rv, files[0]), encoding="utf-8") as f:
@@ -412,7 +418,7 @@ class MessageTable(unittest.TestCase):
         self.assertTrue(js.isascii())  # the snippet goes through the Windows clipboard as ASCII
 
     def test_stat_labels_cover_the_internal_categories(self):
-        for cat in wa2md._STAT_ORDER + ["firma", "iletişim"]:
+        for cat in wa2md._STAT_ORDER + ["company", "contact"]:
             self.assertIn(cat, wa2md.STAT_LABEL)
 
 

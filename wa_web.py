@@ -35,6 +35,7 @@ import tempfile
 import unicodedata
 
 import wa2md
+import wa2md_lang  # noqa: E402 - importable once wa2md has set up its path
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 COLLECT_JS = os.path.join(HERE, "wa2md_assets", "wa_collect.js")
@@ -64,10 +65,14 @@ def parse_pre_plain(s):
 
 
 def fold(s):
-    """Accent-free lower case (day dividers); the pack's i-letters (Turkish dotless i) fold to 'i'."""
+    """Accent-free lower case (day dividers); the i-letters of every shipped pack (Turkish dotless i) fold to 'i' (the
+    dividers are the export's own words: they do not depend on the chat's pack selection)."""
     s = unicodedata.normalize("NFKD", s)
     s = "".join(c for c in s if unicodedata.category(c) != "Mn")
-    return s.lower().translate({ord(c): "i" for c in wa2md.active_pack().fold_i if c.islower()})
+    return s.lower().translate(_FOLD_I_TABLE)
+
+
+_FOLD_I_TABLE = {ord(c): "i" for code in wa2md_lang.PACKS for c in wa2md_lang.load_pack(code).fold_i if c.islower()}
 
 
 def parse_divider(text, today):
@@ -159,8 +164,8 @@ def build_messages(rows, title, today, media_files=None, staging=None, no_media=
     """Paket satirlari -> wa2md mesaj listesi (parts modeli). media_files: {anahtar: (yol, uzanti)} (staging icinde).
     Medya dosyalari <YYYYMMDD-HHMM>-<kisa id>[-n].<uzanti> adina tasinir."""
     media_files = media_files or {}
-    P = wa2md.active_pack()
-    own_name = P.labels.own_name if own_name is None else own_name
+    L = wa2md.output_labels()
+    own_name = L.own_name if own_name is None else own_name
     whens = resolve_when(rows, today)
     for r in rows:  # kendi adin: giden bir satirdaki damgadan
         if r.get("out") and r.get("stamp"):
@@ -170,7 +175,7 @@ def build_messages(rows, title, today, media_files=None, staging=None, no_media=
                 break
     msgs, prev_dt = [], None
     for r, (d, hm) in zip(rows, whens):
-        if r.get("system") is not None and re.search(P.web_system_skip, r["system"], re.I):
+        if r.get("system") is not None and re.search(wa2md.active_pack().web_system_skip, r["system"], re.I):
             continue
         if d is None:
             continue
@@ -189,9 +194,9 @@ def build_messages(rows, title, today, media_files=None, staging=None, no_media=
         parts = m["parts"]
         text = wa2md.INVISIBLE.sub("", r.get("text") or "").strip()
         if r.get("deleted") and not text:
-            parts.append(("note", P.labels.deleted))
+            parts.append(("note", L.deleted))
         if r.get("forwarded"):
-            parts.append(("note", P.labels.forwarded))
+            parts.append(("note", L.forwarded))
         if r.get("quote"):
             parts.append(("quote", wa2md.INVISIBLE.sub("", r["quote"]).strip()))
         media = r.get("media") or []
@@ -219,7 +224,7 @@ _QUOTED = re.compile(r'^["“](.+?)["”](?:\s|$)')
 
 def _download_failed_rx():
     """Pattern of the pack's 'download failed' note (the fixed text between its placeholders)."""
-    t = wa2md.active_pack().labels.download_failed
+    t = wa2md.output_labels().download_failed
     return re.compile(".*".join(re.escape(x) for x in re.split(r"\{\w+\}", t) if x.strip()))
 
 
@@ -231,7 +236,7 @@ def doc_name(label):
 
 
 def _media_parts(r, md, idx, total, when, media_files, staging):
-    kinds = wa2md.active_pack().labels.web_kinds
+    kinds = wa2md.output_labels().web_kinds
     kind = md.get("kind") if md.get("kind") in kinds else "document"
     stem = f"{when:%Y%m%d-%H%M}-{short_id(r['id'])}" + (f"-{idx + 1}" if total > 1 else "")
     got = media_files.get(md.get("key")) if md.get("key") else None
@@ -244,7 +249,7 @@ def _media_parts(r, md, idx, total, when, media_files, staging):
     if kind == "image":  # yazicinin mevcut "dosya eksik" isaretcisi
         return [("file", stem + EXT_BY_KIND["image"])]
     label = doc_name(md.get("label")) or kinds[kind]
-    return [("note", wa2md.active_pack().labels.download_failed.format(kind=kinds[kind], label=label))]
+    return [("note", wa2md.output_labels().download_failed.format(kind=kinds[kind], label=label))]
 
 
 def filter_messages(msgs, date_from=None, date_to=None, max_messages=None):
@@ -651,7 +656,9 @@ def _main(argv):
         sys.stdout.reconfigure(encoding="utf-8")
         sys.stderr.reconfigure(encoding="utf-8")
     wa2md.init_lang(argv)
-    args = build_parser().parse_args(argv)
+    ap = build_parser()
+    args = ap.parse_args(argv)
+    wa2md.check_packs_env(ap)
     return {"snippet": cmd_snippet, "import": cmd_import, "list": cmd_list, "export": cmd_export}[args.cmd](args)
 
 

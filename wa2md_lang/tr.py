@@ -3,7 +3,7 @@
 Moved verbatim from wa2md.py / wa_web.py (issue #2): the lists keep the English words they already contained, so
 the output under this pack is byte-identical to the engine before the move. Field meanings: wa2md_lang.LanguagePack.
 """
-from wa2md_lang import Labels, LanguagePack
+from wa2md_lang import NEVER, Labels, LanguagePack
 
 
 def _national_phones(b):
@@ -24,6 +24,15 @@ def _national_phones(b):
         rf"(?:(?<!\w){_GLUED})(?<!\d[.,\-]){_dl(5)}{_DG}{{2}}{_SEP}?{_DG}{{3}}{_SEP}?{_DG}{{2}}{_SEP}?{_DG}{{2}}",   # oneksiz TR cep
         rf"(?<!\w)(?<!\d[.,\-])\({_dl(2, 3, 4, 5)}{_DG}{{2}}\){_SEP}?{_DG}{{3}}{_SEP}?{_DG}{{2}}{_SEP}?{_DG}{{2}}",  # (322) 000 00 01
     ]
+
+
+def _mobile_phones(b):
+    """Turkish mobile numbers with the trunk 0 (0532 111 22 33, (0532) 111 22 33, 05321112233): the subset of
+    _national_phones that every pack selection masks. Never inside a word, a link or a decimal, never followed by a
+    further digit group."""
+    D, S = b.DG, b.SEP
+    return [rf"(?<![\w/=&?#%@.\-$£€])(?<!\d[.,]){b.DATE_AHEAD}(?:\(0{b.dl(5)}{D}{{2}}\)|0{b.dl(5)}{D}{{2}})"
+            rf"{S}?{D}{{3}}{S}?{D}{{2}}{S}?{D}{{2}}(?!{S}?{b.DG0})"]
 
 
 LABELS = Labels(
@@ -65,6 +74,15 @@ PACK = LanguagePack(
     code="tr",
     name="Türkçe",
     labels=LABELS,
+    stopwords=frozenset((
+        "ve bir bu için icin ben sen mı mu mü var yok çok cok ama gibi şu evet tamam nasıl nasil "
+        "daha değil degil olur şey hayır neden niye kadar sonra şimdi burada yani artık hep hiç biz siz onlar bana "
+        "sana beni seni bunu onu iyi merhaba selam teşekkürler sağol lütfen abi abla hocam kardeşim geldi gel "
+        "naber slm tmm yarın yarin bugün bugun akşam aksam saat gelir gelsin geliyorum misin musun nerde nerede ile "
+        "simdi hadi aradı aradi hanım hanim bey olsun oldu tabi tabii sagol tşk tsk").split()),
+    # selection evidence only: no short word other languages share (de da ne mi su ki her: Spanish, French, Dutch,
+    # Portuguese, German, English) and only the letters no other bundled or neighbouring Latin-script language uses
+    detect_chars="ğışĞİŞ",
     fold_i="iIıİ",
     fold_pairs={"c": "çÇ", "g": "ğĞ", "o": "öÖ", "s": "şŞ", "u": "üÜ"},
     ampm=r"[AaPp]\.?\s?[Mm]\.?|ÖÖ|ÖS|öö|ös",
@@ -95,9 +113,9 @@ PACK = LanguagePack(
     ),
     subject_change=r"created group|changed the subject|changed the group name|changed this group's name|"
                           r"grubunu oluşturdu|konuyu|grup adını|grubun adını|olarak değiştirdi",
-    system_split=r",\s*(?:and\s+|ve\s+)?|\s+(?:and|ve)\s+",
+    system_split=r",\s*and\s+|,\s*ve\s+|,\s*|\s+and\s+|\s+ve\s+",
     system_not_person=frozenset({"you", "your", "siz", "sizi", "seni", "sen", "ben", "beni", "biz"}),
-    system_bad=r"[\"“”:/@]|https?|\b(?:messages?|mesaj\w*|group|grub?\w*|this|bu)\b",
+    system_bad=r"[\"“”:/@]|https?|\b(?:messages?|group|this)\b|\b(?:mesaj\w*|grub?\w*|bu)\b",
     # iOS sistem satirlari gonderen yerinde grup adiyla gelir ('[..] Grup: Ali added Veli'); kisisiz bildirimler de oyle
     system_notice=r"end-to-end encrypted|uçtan uca şifreli|disappearing messages|süreli mesaj|security code|"
                              r"güvenlik kod|group description|grup açıklama|admin approval|only admins|yalnızca yönetici|"
@@ -125,7 +143,7 @@ PACK = LanguagePack(
         r"^(?P<s>.+?),? (?:artık yönetici|(?P<o>.+?) adlı kişiyi yönetici yaptı)",
     ),
     # grupta, grup adiyla gelen ad bicimli olay satiri ('Jorvik Plimm left', '+90 500 ... katıldı'): yalniz donusturmede
-    group_weak=r"^(?P<s>.+?),? (?:left|joined|was added|was removed|ayrıldı|katıldı|eklendi|çıkarıldı)\.?$",
+    group_weak=r"left|joined|was added|was removed|ayrıldı|katıldı|eklendi|çıkarıldı",
     # on eleme: olay, sistem satiri ve bildirim desenlerinin (_GRP_ONLY, _GRP_WEAK, _SYS_PATTERNS, _SYS_NOTICE) anahtar
     # sozcuklerinden biri yoksa satir olay/bildirim degildir (duz alt dize aramasi: buyuk mesaj akisinda hizli)
     event_words=(
@@ -216,7 +234,9 @@ PACK = LanguagePack(
     address_adjectives="sayın sn değerli kıymetli sevgili muhterem saygıdeğer aziz canım".split(),
     calendar_words=("ocak şubat mart nisan mayıs haziran temmuz ağustos eylül ekim kasım aralık pazartesi salı "
                                  "çarşamba perşembe cuma cumartesi pazar").split(),
+    calendar_names=(),
     capitalized_words="türk ege asya medine islam kuzey güney doğu akdeniz karadeniz".split(),
+    closing_phrases=NEVER,
     honorific_after=r"(?:bey|beyefendi|hanim|hanimefendi|abi|abla|hoca|baskan|kardes|amca|teyze|usta|agabey|abey|reis|dayi)"
                       r"(?:ler|lar)?(?:imiz|umuz|miz|muz|im|um|m)?(?:cigim|cugum|cim|cum)?"
                       r"(?:['\u2019]?(?:yle|yla|nin|nun|den|dan|ye|ya|yi|yu|in|un|de|da|le|la|si|e|a|i|u))?",
@@ -281,6 +301,8 @@ PACK = LanguagePack(
         r"|m[ae]k|[ae]bil[iu]r(?:im|sin|iz|siniz|ler|lar)?|[aeiu]r[iu][mz]"
         r"|l[ae]r[iu]?(?:m|n|miz|niz|n[iu]n)?(?:l[ae]|[ae]|d[ae]|d[ae]n)?|[iu]ml[ae]|[iu]n[iu]z(?:l[ae])?|[iu]m[iu]z"
         r"|[aeiou]s[iu]|[dt][ae]ki|[iu]nc[ae]|[ae]r[ae]k)$",
+    lower_case_context=True,
+    contraction_suffixes=frozenset(),
     # ilan sozlugu: il adlarinin gayriresmi bicimleri, yuk merkezi semtleri, ulke/bolge, arac/dorse, birim, sik ilan sozcukleri.
     # Bunlar kisi ya da firma adi sayilmaz. Il ve ilce adlarinin TEK kaynagi yer listesidir (adlar/tr-yerler.txt, places());
     # il adlari yuklenince bu sozluge katilir (_LISTS['ilan']).
@@ -315,10 +337,13 @@ PACK = LanguagePack(
     units=r"TL|TRY|KDV|KG|TON|ADET|LT|GR|CM|MM|USD|EUR|M2|M3|KM|SA|DK|SN|MT|GUN|GÜN|SAAT",
     secret_stop=("yok", "var", "ne", "neydi", "nedir", "bu", "şu", "su", "aynı", "değişti", "degisti", "unuttum",
                               "bilmiyorum", "gönderdim", "yeni", "eski", "tamam", "evet", "hayır", "hayir", "ve", "ile"),
+    secret_link=NEVER,
     code_context=r"whatsapp|(?<!\w)web(?!\w)|bagla|esle|qr",
     # sozcuge yapisik oneksiz cep numarasi yalniz iletisim sozcugunden sonra ('TEL500 000 00 00', 'GSM5000000000')
     phone_glued_words="tel tlf gsm cep telefon whatsapp wp".split(),
     phone_national=_national_phones,
+    phone_mobile=_mobile_phones,
+    phone_extension=NEVER,
     iban=r"(?<![\w])[Tt][Rr]\d{2}(?: ?\d){22}(?!\d)",
     national_id=r"(?<![\w.,+\-])[1-9]\d{10}(?!\d)(?![.,]\d)",
     # plaka: main'deki kalip; yalniz 0 ile baslayan rakam obegi (plakada olmaz, telefon basidir: '08:30 TEL 0500 000 00 00')
@@ -326,5 +351,6 @@ PACK = LanguagePack(
     plate=r"(?<!\w)(?:0[1-9]|[1-7]\d|8[01]) ?(?!(?:TL|TRY|KG|TON|KDV|ADET|LT|GR|CM|MM|USD|EUR)\b)[A-Z]{1,3} ?"
               r"(?:[1-9]\d{1,3}(?!\w)|0\d{1,3}(?!\w)(?![ \-.]\d))",
     dictionary_dir="adlar",
-    dictionary_files={"given": "tr-adlar.txt", "surname": "tr-soyadlar.txt", "ambiguous": "sozcuk-adlar.txt", "places": "tr-yerler.txt"},
+    dictionary_files={"given": "tr-adlar.txt", "surname": "tr-soyadlar.txt", "ambiguous": "sozcuk-adlar.txt", "places": "tr-yerler.txt",
+                      "common": "tr-common.txt"},
 )

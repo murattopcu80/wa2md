@@ -9,6 +9,7 @@ import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
+import _pin  # noqa: E402  (Turkish pack set and labels, issue #2)
 import wa2md  # noqa: E402
 import wa2md_lang  # noqa: E402
 
@@ -46,6 +47,14 @@ def render_chat(people, rows, title="Yük Grubu"):
     return out, sorted((r[0], r[1], r[2]) for r in a.review.values()), dict(a.stats)
 
 
+def setUpModule():
+    _pin.pin()
+
+
+def tearDownModule():
+    _pin.unpin()
+
+
 class PackContract(unittest.TestCase):
     def test_default_pack_passes_the_contract(self):
         p = wa2md_lang.load_pack(wa2md_lang.DEFAULT_PACK)
@@ -73,7 +82,7 @@ class LabelInvariance(unittest.TestCase):
     under a synthetic label set: identical after replacing the labels; the same review words and counts."""
 
     def tearDown(self):
-        wa2md.use_pack(wa2md_lang.DEFAULT_PACK)
+        wa2md.use_pack(None)
 
     def test_synthetic_labels_change_only_the_labels(self):
         with open(os.path.join(HERE, "fixtures", "etkilesim_main.json"), encoding="utf-8") as f:

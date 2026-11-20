@@ -11,6 +11,7 @@ import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
+import _pin  # noqa: E402  (Turkish pack set and labels, issue #2)
 import wa2md  # noqa: E402
 
 _ENV = {}
@@ -19,6 +20,7 @@ PEOPLE = ("Ali Veli", "Arvo Kestel", "Brin Tamsel")
 
 
 def setUpModule():
+    _pin.pin()
     _ENV["old"] = os.environ.get("XDG_STATE_HOME")
     _ENV["dir"] = tempfile.mkdtemp(prefix="wa2md-state-")
     os.environ["XDG_STATE_HOME"] = _ENV["dir"]
@@ -30,6 +32,7 @@ def tearDownModule():
     else:
         os.environ["XDG_STATE_HOME"] = _ENV["old"]
     shutil.rmtree(_ENV["dir"], ignore_errors=True)
+    _pin.unpin()
 
 
 def run(rows, people=PEOPLE):

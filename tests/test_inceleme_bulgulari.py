@@ -10,12 +10,14 @@ from contextlib import redirect_stderr, redirect_stdout
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
+import _pin  # noqa: E402  (Turkish pack set and labels, issue #2)
 import wa2md  # noqa: E402
 
 _ENV = {}
 
 
 def setUpModule():
+    _pin.pin()
     # these tests assert the Turkish console text: pin the message table to Turkish (English is covered by test_i18n.py)
     _ENV["old_lang"] = os.environ.get("WA2MD_LANG")
     os.environ["WA2MD_LANG"] = "tr"
@@ -34,6 +36,7 @@ def tearDownModule():
     else:
         os.environ["XDG_STATE_HOME"] = _ENV["old"]
     shutil.rmtree(_ENV["dir"], ignore_errors=True)
+    _pin.unpin()
 
 
 H = "14.11.2026 09:%02d - %s: %s"

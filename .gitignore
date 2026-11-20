@@ -12,6 +12,7 @@ _inceleme/
 inceleme/
 # ham WhatsApp Web paketleri ve disa aktarimlar
 Sohbet-*/
+Chat-*/
 *.egg-info/
 .idea/
 .vscode/

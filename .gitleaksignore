@@ -1,0 +1,4 @@
+# gitleaks false positives, one fingerprint per line (commit:file:rule:line); each entry was checked by hand.
+# wa2md.py, commit 6bc8e05: generic-api-key matched a comparison of the pack field secret_link with the
+# never-matching regex constant NEVER (r"(?!)"); no secret. The commit is in the pushed history, so it cannot be changed.
+6bc8e05e96572fae88ccb53b11324657a0bddbb6:wa2md.py:generic-api-key:1037

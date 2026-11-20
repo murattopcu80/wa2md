@@ -1,0 +1,211 @@
+# Places: regions and large cities of English-speaking countries (and countries)
+# Source: this repository's own hand-compiled list (public geographic names), distributed under the repository
+#  licence. Kinds: region (countries, states, provinces: listing vocabulary) | locality (large cities).
+# A place that is also in a name dictionary (Victoria, Charlotte, Austin, Georgia) stays ambiguous: it does not
+#  enter the place rules.
+# Built: 2026-11-20 by tools/build_en_lists.py; entries: 204
+# Format: one entry per line (NFC); matching is case- and accent-insensitive (wa2md._key).
+locality	Aberdeen
+locality	Adelaide
+locality	Albuquerque
+locality	Atlanta
+locality	Auckland
+locality	Austin
+locality	Baltimore
+locality	Bath
+locality	Belfast
+locality	Birmingham
+locality	Boston
+locality	Bournemouth
+locality	Bradford
+locality	Brighton
+locality	Brisbane
+locality	Bristol
+locality	Calgary
+locality	Cambridge
+locality	Canberra
+locality	Cardiff
+locality	Charlotte
+locality	Chicago
+locality	Christchurch
+locality	Cincinnati
+locality	Cleveland
+locality	Columbus
+locality	Cork
+locality	Coventry
+locality	Dallas
+locality	Denver
+locality	Derby
+locality	Detroit
+locality	Dublin
+locality	Dundee
+locality	Edinburgh
+locality	Edmonton
+locality	El Paso
+locality	Exeter
+locality	Fort Worth
+locality	Fresno
+locality	Galway
+locality	Glasgow
+locality	Halifax
+locality	Hobart
+locality	Houston
+locality	Hull
+locality	Indianapolis
+locality	Jacksonville
+locality	Kansas City
+locality	Las Vegas
+locality	Leeds
+locality	Leicester
+locality	Liverpool
+locality	London
+locality	Los Angeles
+locality	Louisville
+locality	Manchester
+locality	Melbourne
+locality	Memphis
+locality	Miami
+locality	Milton Keynes
+locality	Milwaukee
+locality	Minneapolis
+locality	Montreal
+locality	Nashville
+locality	New Orleans
+locality	Newcastle
+locality	Norwich
+locality	Nottingham
+locality	Oakland
+locality	Omaha
+locality	Ottawa
+locality	Oxford
+locality	Perth
+locality	Philadelphia
+locality	Phoenix
+locality	Pittsburgh
+locality	Plymouth
+locality	Portland
+locality	Portsmouth
+locality	Raleigh
+locality	Reading
+locality	Sacramento
+locality	Salt Lake City
+locality	San Antonio
+locality	San Diego
+locality	San Francisco
+locality	San Jose
+locality	Seattle
+locality	Sheffield
+locality	Southampton
+locality	St. Louis
+locality	Sunderland
+locality	Swansea
+locality	Sydney
+locality	Tampa
+locality	Toronto
+locality	Tucson
+locality	Tulsa
+locality	Vancouver
+locality	Wellington
+locality	Winnipeg
+locality	Wolverhampton
+locality	York
+region	Alabama
+region	Alaska
+region	Alberta
+region	America
+region	Arizona
+region	Arkansas
+region	Australia
+region	Belgium
+region	Brazil
+region	Britain
+region	British Columbia
+region	California
+region	Canada
+region	China
+region	Colorado
+region	Connecticut
+region	Delaware
+region	England
+region	Florida
+region	France
+region	Georgia
+region	Germany
+region	Ghana
+region	Greece
+region	Hawaii
+region	Idaho
+region	Illinois
+region	India
+region	Indiana
+region	Iowa
+region	Ireland
+region	Italy
+region	Jamaica
+region	Japan
+region	Kansas
+region	Kentucky
+region	Kenya
+region	Louisiana
+region	Maine
+region	Manitoba
+region	Maryland
+region	Massachusetts
+region	Mexico
+region	Michigan
+region	Minnesota
+region	Mississippi
+region	Missouri
+region	Montana
+region	Nebraska
+region	Netherlands
+region	Nevada
+region	New Brunswick
+region	New Hampshire
+region	New Jersey
+region	New Mexico
+region	New South Wales
+region	New York
+region	New Zealand
+region	Newfoundland
+region	Nigeria
+region	North Carolina
+region	North Dakota
+region	Northern Ireland
+region	Nova Scotia
+region	Ohio
+region	Oklahoma
+region	Ontario
+region	Oregon
+region	Pakistan
+region	Pennsylvania
+region	Philippines
+region	Poland
+region	Portugal
+region	Prince Edward Island
+region	Quebec
+region	Queensland
+region	Rhode Island
+region	Saskatchewan
+region	Scotland
+region	South Africa
+region	South Australia
+region	South Carolina
+region	South Dakota
+region	Spain
+region	Tasmania
+region	Tennessee
+region	Texas
+region	Turkey
+region	United Kingdom
+region	United States
+region	Utah
+region	Vermont
+region	Victoria
+region	Virginia
+region	Wales
+region	Washington
+region	West Virginia
+region	Western Australia
+region	Wisconsin
+region	Wyoming

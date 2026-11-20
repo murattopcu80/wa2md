@@ -1,0 +1,54 @@
+# Ordinary words of the 'tr' language pack (those that are also given names elsewhere)
+# Source: this repository's own hand-compiled list (TR_WORDS in tools/build_common_lists.py), distributed under the
+#  repository licence (MIT). Not copied from any word list; no share-alike material is used.
+# Method: the given-name dictionaries (en-given.txt, en-given-more.txt, tr-adlar.txt; CC0, Wikidata) were read through and
+#  the tokens that are everyday Turkish words were kept (pronouns, question and function words, very common nouns and
+#  verb forms); also checked: the tokens that these dictionaries share with the Turkish word lists of this repository's
+#  own rules (wa2md_lang/tr.py). Compiled 2026-11-20. Wikidata Lexemes cover Turkish too thinly to be the basis.
+# Use: with several packs selected, a given name of another pack that is listed here (and is no given name of the
+#  Turkish pack) is a word-name: masked only with context (Ben, Kim, Kira).
+# Built: 2026-11-20 by tools/build_common_lists.py; entries: 43
+# Format: one word per line (lower case, accents folded); matching is case- and accent-insensitive (wa2md._key).
+abi
+ada
+adam
+adi
+adin
+al
+alan
+alma
+aman
+ana
+anne
+ara
+aya
+ben
+cam
+cami
+dan
+dede
+elli
+genis
+hadi
+hakim
+hayat
+ilan
+kal
+kara
+kat
+kaya
+kim
+kira
+kirk
+lan
+mal
+ona
+oran
+sabah
+sal
+sari
+sen
+sira
+sol
+sonu
+yan

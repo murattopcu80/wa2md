@@ -7,6 +7,7 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.dirname(HERE))
+import _pin  # noqa: E402  (Turkish pack set and labels, issue #2)
 import wa2md  # noqa: E402
 from test_ikinci_inceleme import android_tr, body, md  # noqa: E402
 
@@ -16,6 +17,14 @@ PEOPLE = [("Mert Er", "merhaba"), ("Selin Kaya", "selam"), ("Melis Tarnu", "sela
 def lines(rows):
     out, a = md(android_tr(PEOPLE + [("Selin Kaya", r) for r in rows]))
     return body(out).split("\n")[-2 * len(rows) + 1::2], a
+
+
+def setUpModule():
+    _pin.pin()
+
+
+def tearDownModule():
+    _pin.unpin()
 
 
 class DictionaryNameBeforeParticipant(unittest.TestCase):

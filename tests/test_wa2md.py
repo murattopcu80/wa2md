@@ -11,6 +11,7 @@ from contextlib import redirect_stderr, redirect_stdout
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIX = os.path.join(HERE, "fixtures")
 sys.path.insert(0, os.path.dirname(HERE))
+import _pin  # noqa: E402  (Turkish pack set and labels, issue #2)
 import wa2md  # noqa: E402
 
 TR = os.path.join(FIX, "android_tr")
@@ -22,6 +23,7 @@ _ENV = {}
 
 
 def setUpModule():
+    _pin.pin()
     # these tests assert the Turkish console text: pin the message table to Turkish (English is covered by test_i18n.py)
     _ENV["old_lang"] = os.environ.get("WA2MD_LANG")
     os.environ["WA2MD_LANG"] = "tr"
@@ -32,6 +34,7 @@ def tearDownModule():
         os.environ.pop("WA2MD_LANG", None)
     else:
         os.environ["WA2MD_LANG"] = _ENV["old_lang"]
+    _pin.unpin()
 
 
 def run(*argv):

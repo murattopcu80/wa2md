@@ -8,8 +8,8 @@ dynamic = ["version"]           # read from wa2md.__version__ (the one place of 
 description = "Convert WhatsApp chat exports to Markdown and anonymize them (removal of direct identifiers)."
 readme = "README.md"
 requires-python = ">=3.9"
-license = "MIT"
-license-files = ["LICENSE"]
+license = "MIT"              # the code; the bundled data files are CC0, public domain or this project's own work (DATA-LICENSES.md)
+license-files = ["LICENSE", "DATA-LICENSES.md"]
 authors = [{ name = "wa2md contributors" }]
 keywords = ["whatsapp", "markdown", "anonymization", "privacy", "chat-export", "cli"]
 classifiers = [
@@ -36,6 +36,8 @@ dependencies = []               # standard library only
 [project.optional-dependencies]
 # only for the experimental direct Chrome connection (wa2md-web list / export) and the real-Chrome tests
 browser = ["playwright==1.65.2"]
+# optional validation of international phone candidates (Apache-2.0); wa2md works the same without it
+phone = ["phonenumbers>=8.13"]
 
 [project.scripts]
 wa2md = "wa2md:main"            # phone export (zip / folder) -> Markdown

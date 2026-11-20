@@ -17,6 +17,7 @@ from contextlib import redirect_stderr, redirect_stdout
 HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "fixtures", "web")
 sys.path.insert(0, os.path.dirname(HERE))
+import _pin  # noqa: E402  (Turkish pack set and labels, issue #2)
 import wa2md  # noqa: E402
 import wa_web  # noqa: E402
 
@@ -26,6 +27,7 @@ _ENV = {}
 
 def setUpModule():
     """Inceleme dosyasi varsayilan olarak kullanici durum klasorune gider: testlerde gecici klasor."""
+    _pin.pin()
     # these tests assert the Turkish console text: pin the message table to Turkish (English is covered by test_i18n.py)
     _ENV["old_lang"] = os.environ.get("WA2MD_LANG")
     os.environ["WA2MD_LANG"] = "tr"
@@ -44,6 +46,7 @@ def tearDownModule():
     else:
         os.environ["XDG_STATE_HOME"] = _ENV["old"]
     shutil.rmtree(_ENV["dir"], ignore_errors=True)
+    _pin.unpin()
 
 try:
     from playwright.sync_api import sync_playwright

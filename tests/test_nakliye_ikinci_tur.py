@@ -10,6 +10,7 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from test_nakliye_gruplari import PEOPLE, PHONE, KEEP_LINE, ad, one, run, setUpModule, tearDownModule  # noqa: E402,F401
+import _pin  # noqa: E402  (Turkish pack set and labels, issue #2)
 import wa2md  # noqa: E402
 
 
@@ -19,6 +20,14 @@ def lab(out, a):
     assert m, out
     assert m.group(0) not in a._people, out
     return m.group(0)
+
+
+def setUpModule():
+    _pin.pin()
+
+
+def tearDownModule():
+    _pin.unpin()
 
 
 class P1_FieldLabel(unittest.TestCase):

@@ -8,7 +8,8 @@ Python standard library only. Usage:
 Default: the output is anonymized (direct identifiers are removed, see Anonymizer); --no-anonymize writes real names.
 The Turkish option names (--medya-yok, --belgeleri-kopyala, --ek-adlar, --inceleme-dizini, --sozluksuz, --anonim,
 --no-anonim) are accepted aliases. Help and console messages are English; --lang tr or WA2MD_LANG=tr selects Turkish
-(one table: MSG). The labels inside the Markdown output are still Turkish.
+(one table: MSG); the same switch selects the output labels (Chat-N, Person N, [phone] / Sohbet-N, Kişi N, [telefon]).
+--packs auto|en|tr|en,tr (WA2MD_PACKS) selects the language packs used on the chat text; default auto (per chat).
 """
 __version__ = "0.1.0"   # the ONE place of the version number (pyproject.toml reads it)
 
@@ -62,22 +63,47 @@ def init_lang(argv=None, env=None):
         elif a.startswith("--lang="):
             value = a[len("--lang="):]
     _LANG[0] = _norm_lang(value) or _norm_lang(env.get("WA2MD_LANG")) or "en"
+    packs = None
+    for i, a in enumerate(argv):
+        if a == "--packs" and i + 1 < len(argv):
+            packs = argv[i + 1]
+        elif a.startswith("--packs="):
+            packs = a[len("--packs="):]
+    _PACKS[0] = _norm_packs(packs) or _norm_packs(env.get("WA2MD_PACKS")) or "auto"
+    raw = (env.get("WA2MD_PACKS") or "").strip()
+    _PACKS_ENV_BAD[0] = raw if packs is None and raw and _norm_packs(raw) is None else None
     return _LANG[0]
+
+
+def check_packs_env(parser):
+    """An invalid WA2MD_PACKS value (without --packs) is a usage error like an invalid --packs (exit code 2)."""
+    if _PACKS_ENV_BAD[0] is not None:
+        parser.error(t("bad_packs_env", value=_PACKS_ENV_BAD[0], packs=",".join(wa2md_lang.PACKS)))
 
 
 def reset_lang():
     """End of a main() call: library-style calls (import_bundles, write_chat, ...) follow WA2MD_LANG again."""
     _LANG[0] = None
+    _PACKS[0] = None
 
 
 def current_lang():
     return _LANG[0] or _norm_lang(os.environ.get("WA2MD_LANG")) or "en"
 
 
+def _packs_arg(value):
+    if _norm_packs(value) is None:
+        raise argparse.ArgumentTypeError(t("bad_packs", value=value, packs=",".join(wa2md_lang.PACKS)))
+    return value
+
+
 def add_lang_arg(p):
-    """--lang on the top-level parser and on every sub-command (SUPPRESS: a sub-command never overwrites the value)."""
+    """--lang and --packs on the top-level parser and on every sub-command (SUPPRESS: a sub-command never overwrites
+    the value; init_lang() reads both from argv before the parser runs)."""
     p.add_argument("--lang", type=str.lower, choices=LANGS, default=argparse.SUPPRESS, metavar="{en,tr}",
                    help=t("help_lang"))
+    p.add_argument("--packs", type=_packs_arg, default=argparse.SUPPRESS, metavar="auto|en|tr|en,tr",
+                   help=t("help_packs"))
 
 
 def t(key, **kw):
@@ -87,15 +113,22 @@ def t(key, **kw):
 
 
 def t_stat(cat):
-    """Display name of an internal statistics category (the internal keys stay Turkish)."""
-    return STAT_LABEL.get(cat, cat) if current_lang() == "en" else cat
+    """Display name of an internal statistics category (internal ids are English and language-neutral)."""
+    return STAT_LABEL.get(cat, {}).get(current_lang(), cat)
 
 
-STAT_LABEL = {"gönderen": "sender", "sistem satırı": "system line", "ek ad": "extra name", "sözlük": "dictionary",
-              "hitap": "honorific", "anma": "mention", "iletişim": "contact", "firma": "company",
-              "sohbet adı": "chat name", "telefon": "phone", "e-posta": "e-mail", "kullanıcı adı": "username",
-              "iban": "iban", "tckn": "national id", "plaka": "plate", "parola": "password", "kod": "code",
-              "yer/kurum belirsiz": "place/institution unclear"}
+# internal statistics / origin id -> display name per message language
+STAT_LABEL = {
+    "sender": {"en": "sender", "tr": "gönderen"}, "system_line": {"en": "system line", "tr": "sistem satırı"},
+    "extra_name": {"en": "extra name", "tr": "ek ad"}, "dictionary": {"en": "dictionary", "tr": "sözlük"},
+    "honorific": {"en": "honorific", "tr": "hitap"}, "mention": {"en": "mention", "tr": "anma"},
+    "contact": {"en": "contact", "tr": "iletişim"}, "signature": {"en": "signature", "tr": "imza"},
+    "company": {"en": "company", "tr": "firma"}, "chat_name": {"en": "chat name", "tr": "sohbet adı"},
+    "phone": {"en": "phone", "tr": "telefon"}, "email": {"en": "e-mail", "tr": "e-posta"},
+    "username": {"en": "username", "tr": "kullanıcı adı"}, "iban": {"en": "iban", "tr": "iban"},
+    "national_id": {"en": "national id", "tr": "tckn"}, "plate": {"en": "plate", "tr": "plaka"},
+    "password": {"en": "password", "tr": "parola"}, "code": {"en": "code", "tr": "kod"},
+    "place_unclear": {"en": "place/institution unclear", "tr": "yer/kurum belirsiz"}}
 
 MSG = {
     # ---- errors and warnings (stderr) ----
@@ -145,9 +178,15 @@ MSG = {
     "names_unreadable": {"en": "Name file could not be read ({kind})", "tr": "Ad dosyası okunamadı ({kind})"},
     "bad_date": {"en": "Invalid date '{value}' (expected YYYY-MM-DD)",
                  "tr": "Geçersiz tarih '{value}' (YYYY-AA-GG olmalı)"},
+    "bad_packs": {"en": "Invalid --packs value '{value}' (auto or a list of: {packs})",
+                  "tr": "Geçersiz --packs değeri '{value}' (auto ya da şunların listesi: {packs})"},
+    "bad_packs_env": {"en": "Invalid WA2MD_PACKS value '{value}' (auto or a list of: {packs})",
+                      "tr": "Geçersiz WA2MD_PACKS değeri '{value}' (auto ya da şunların listesi: {packs})"},
     # ---- per-chat summary (stdout) ----
     "summary": {"en": "[{shown}] {real} messages, {copied} media copied, {missing} media missing -> {path}",
                 "tr": "[{shown}] {real} mesaj, {copied} medya kopyalandı, {missing} medya eksik -> {path}"},
+    "packs_auto": {"en": "   Language packs (auto, from the chat text): {codes} - {n} of {total}",
+                   "tr": "   Dil paketleri (otomatik, sohbet metninden): {codes} - {total} paketten {n}"},
     "attach_warn": {"en": "   WARNING: attachments: {c} copied, manual check needed ({cd}); {s} not copied ({sd}) -> {path}",
                     "tr": "   UYARI: ekler: {c} kopyalandı, elle kontrol gerekli ({cd}); {s} kopyalanmadı ({sd}) -> {path}"},
     "media_warn": {"en": "   WARNING: {n} media/attachment files were copied as they are and are NOT anonymized (faces, ID "
@@ -194,11 +233,11 @@ MSG = {
                           "# çıktıyla birlikte paylaşma. Gerçek ad olanları --ek-adlar ile verip aynı girdiyle yeniden "
                           "çalıştır.\n"
                           "# sözcük<TAB>geçiş<TAB>neden<TAB>örnek bağlam (en çok 3)\n"},
-    "why_hitap": {"en": "before an honorific, not in the dictionary (sentence start) - look at this first",
+    "why_honorific": {"en": "before an honorific, not in the dictionary (sentence start) - look at this first",
                   "tr": "hitaptan önce, sözlükte yok (cümle başı) - önce buna bak"},
-    "why_büyük": {"en": "name that is also an ordinary word, capitalized (sentence start) - look at this first",
+    "why_capitalized": {"en": "name that is also an ordinary word, capitalized (sentence start) - look at this first",
                   "tr": "sözcük anlamı da olan ad, büyük harfle (cümle başı) - önce buna bak"},
-    "why_küçük": {"en": "name that is also an ordinary word, lower case (mostly ordinary words)",
+    "why_lowercase": {"en": "name that is also an ordinary word, lower case (mostly ordinary words)",
                   "tr": "sözcük anlamı da olan ad, küçük harfle (çoğu sıradan sözcük)"},
     # ---- wa_web.py ----
     "web_not_bundle": {"en": "bundle part {no} is not a wa-web-bundle file.",
@@ -253,10 +292,14 @@ MSG = {
     "web_collect_failed": {"en": "collection failed", "tr": "toplama başarısız"},
     "web_collect_failed_kind": {"en": "collection failed ({kind}).", "tr": "toplama başarısız ({kind})."},
     # ---- help text ----
-    "help_lang": {"en": "language of help and console messages (default: English; environment variable WA2MD_LANG). "
-                        "The labels inside the Markdown output are not affected",
-                  "tr": "yardım ve konsol iletilerinin dili (varsayılan: İngilizce; ortam değişkeni WA2MD_LANG). "
-                        "Markdown çıktısındaki etiketler değişmez"},
+    "help_lang": {"en": "language of help, console messages and the labels written into the output (Chat-N, Person N, "
+                        "[phone] / Sohbet-N, Kişi N, [telefon]); default: English; environment variable WA2MD_LANG",
+                  "tr": "yardım, konsol iletileri ve çıktıya yazılan etiketlerin dili (Chat-N, Person N, [phone] / "
+                        "Sohbet-N, Kişi N, [telefon]); varsayılan: İngilizce; ortam değişkeni WA2MD_LANG"},
+    "help_packs": {"en": "language packs used to find names in the chat text: auto (default: chosen per chat from its "
+                         "messages), or a list such as en, tr, en,tr; environment variable WA2MD_PACKS",
+                   "tr": "sohbet metninde ad aramak için dil paketleri: auto (varsayılan: her sohbet için mesajlarından "
+                         "seçilir) ya da en, tr, en,tr gibi bir liste; ortam değişkeni WA2MD_PACKS"},
     "help_description": {"en": "Converts WhatsApp chat exports to Markdown.",
                          "tr": "WhatsApp sohbet dışa aktarımını Markdown'a çevirir."},
     "help_inputs": {"en": "zip, extracted folder, or a folder containing zips",
@@ -277,13 +320,11 @@ MSG = {
                                   "ekler de (kişi kartı, PDF, ofis belgesi, arşiv, bilinmeyen/uzantısız dosya) kopyalanır. "
                                   "Bunlar anonimleştirilmez; içlerinde ad, numara, imza olabilir"},
     "help_anonymize": {"en": "anonymization (removal of direct identifiers); ON by default, turn off with --no-anonymize. "
-                             "Person names become 'Kişi N', chat/folder/file name 'Sohbet-N' (N: position in this run), "
-                             "phone -> [telefon], e-mail -> [e-posta], IBAN -> [iban], Turkish national ID -> [tckn], plate -> "
-                             "[plaka], trade name (a name before nakliyat/nakliye/lojistik/taşımacılık or a name in "
-                             "Ltd./Şti./A.Ş. form, without needing a listing marker; names built with kargo/transport/şirketi "
-                             "and lower-case names only in a listing message with a phone or contact field; excluded: the generic "
-                             "qualifier list and listing vocabulary, a bare place name, an honorific phrase; see README) and "
-                             "sector domain name -> [firma], the path of a link with a masked domain -> [yol]; participant "
+                             "Person names become 'Person N', chat/folder/file name 'Chat-N' (N: position in this run), "
+                             "phone -> [phone], e-mail -> [email], IBAN -> [iban], national ID -> [national-id], plate -> "
+                             "[plate], trade name (a distinctive name before a sector word such as haulage/freight/logistics "
+                             "or before a legal form such as Ltd/Limited/Inc/LLC; see README) and sector domain name -> "
+                             "[company], the path of a link with a masked domain -> [path]; participant "
                              "names (senders and the people in system lines; full name, a first name alone when unambiguous, "
                              "inflected forms like \"Naime'ye\"), names found in the name dictionary, with an honorific, in a "
                              "contact field or next to a phone are masked in message text too; the chat name only in the "
@@ -292,8 +333,8 @@ MSG = {
                              "Turkish KVKK) it does NOT count as anonymous while content that identifies people remains in the "
                              "text/photos or while the original chat exists: names of non-participants, photo content (faces, "
                              "screenshots, documents; use --no-media if you will share), exact timestamps, places and writing "
-                             "style can still identify a person. The labels are Turkish in this version (see README, "
-                             "Language support)",
+                             "style can still identify a person. The labels follow --lang (English by default; Turkish "
+                             "labels Kişi N, Sohbet-N, [telefon] ... with --lang tr; see README, Language support)",
                        "tr": "anonimleştirme (doğrudan tanımlayıcıların kaldırılması); varsayılan AÇIK, kapatmak için "
                              "--no-anonim. Kişi adları 'Kişi N', sohbet/klasör/dosya adı 'Sohbet-N' (N: bu çalıştırmadaki "
                              "sıra), telefon -> [telefon], e-posta -> [e-posta], IBAN -> [iban], T.C. kimlik no -> [tckn], "
@@ -372,15 +413,129 @@ def _on_pack(fn):
 
 
 def active_pack():
-    """The language pack in use (wa_web reads its export words and labels here)."""
+    """The language pack set in use (wa_web reads its export words here; they are the same in every pack set)."""
+    return _P
+
+
+# ---------------------------------------------------------------- pack selection (per chat) and output labels
+# ONE rule, applied by select_packs() for every chat (phone export and WhatsApp Web path):
+#   packs  = --packs, else WA2MD_PACKS, else "auto": detect_packs() on the chat's own message texts;
+#   labels = the label set of the message language (--lang, else WA2MD_LANG, else English), see output_labels().
+# The export's own words (system lines, attachment markers) are always those of every shipped pack, whatever the
+# selection: a Turkish chat exported from an English-language phone has English system lines and Turkish messages.
+_PACKS = [None]     # set by init_lang() for one main() call; None = follow WA2MD_PACKS / auto
+_PACKS_ENV_BAD = [None]     # invalid WA2MD_PACKS value seen by init_lang() (reported by check_packs_env)
+_PINNED = [False]   # use_pack(<pack>) pins a pack for library callers and tests; use_pack(None) returns to select_packs
+_ACTIVE_KEY = [None]
+
+
+def _norm_packs(value):
+    """'auto' -> 'auto'; 'tr', 'en,tr', 'EN TR' -> ('tr', 'en') (shipped order); unknown or empty -> None."""
+    v = (value or "").strip().lower()
+    if v == "auto":
+        return "auto"
+    codes = [c for c in re.split(r"[,+\s]+", v) if c]
+    if not codes or any(c not in wa2md_lang.PACKS for c in codes):
+        return None
+    return tuple(c for c in wa2md_lang.PACKS if c in codes)
+
+
+def current_packs():
+    return _PACKS[0] or _norm_packs(os.environ.get("WA2MD_PACKS")) or "auto"
+
+
+def output_labels():
+    """The output label set: the pinned pack's labels, else the label set of the message language."""
+    return _L if _PINNED[0] else wa2md_lang.load_pack(current_lang()).labels
+
+
+_WORD = re.compile(r"\w+(?:['’]\w+)?")
+_SEL_FLOOR = 0.10       # best score below this: no language signal, every pack (third languages, emoji, media)
+_SEL_MIN, _SEL_REL = 0.04, 0.35     # a further pack: at least this score and this share of the best score
+_DOM_SHARE, _DOM_MIN = 0.75, 6      # dominant language: wins >= 3/4 of at least 6 voting messages
+_DOMINANT = [None]      # code of the pack whose language clearly dominates the current chat (select_packs), or None
+
+
+def pack_scores(msgs, available=None):
+    """Selection evidence of a chat, one pass over the word tokens of its own messages (system lines and media markers
+    excluded). -> (scores, votes): scores[i] = share of the tokens that are a stopword of pack i or contain one of its
+    language-only letters; votes[i] = messages in which pack i has more hits than every other pack (ties: no vote)."""
+    packs = [wa2md_lang.load_pack(c) for c in tuple(available or wa2md_lang.PACKS)]
+    hits, votes, total = [0] * len(packs), [0] * len(packs), 0
+    for m in msgs:
+        if not m.get("sender") or m.get("system"):
+            continue
+        text = "\n".join(m.get("lines") or [p[1] for p in m.get("parts") or () if p[0] == "text"])
+        mh = [0] * len(packs)
+        for w in _WORD.findall(text):
+            lw = w.lower()
+            total += 1
+            for i, p in enumerate(packs):
+                if lw in p.stopwords or (p.detect_chars and any(c in p.detect_chars for c in w)):
+                    mh[i] += 1
+        top = max(mh, default=0)
+        if top and mh.count(top) == 1:
+            votes[mh.index(top)] += 1
+        hits = [a + b for a, b in zip(hits, mh)]
+    return [h / total if total else 0.0 for h in hits], votes
+
+
+def _choose(available, scores):
+    best = max(scores, default=0.0)
+    if best < _SEL_FLOOR:
+        return available
+    return tuple(c for c, sc in zip(available, scores) if sc >= _SEL_MIN and sc >= _SEL_REL * best) or available
+
+
+def detect_packs(msgs, available=None):
+    """Chat-text packs for a chat (the "auto" rule, scores: pack_scores). Best score below _SEL_FLOOR (no signal:
+    very short, word-less or third-language chats): every pack (over-masking is the safe side). Otherwise every pack
+    scoring at least _SEL_MIN and at least _SEL_REL x the best score. In memory only."""
+    available = tuple(available or wa2md_lang.PACKS)
+    return _choose(available, pack_scores(msgs, available)[0])
+
+
+def _dominant(codes, votes):
+    """The pack of codes whose language clearly dominates (message votes, see pack_scores), or None: a balanced or
+    short chat. Only a pack set of several packs has one."""
+    vs = [votes[wa2md_lang.PACKS.index(c)] for c in codes]
+    total, top = sum(vs), max(vs, default=0)
+    if len(codes) < 2 or total < _DOM_MIN or top < _DOM_SHARE * total:
+        return None
+    return codes[vs.index(top)]
+
+
+def select_packs(msgs):
+    """Apply the selection rule (see above) for one chat; rebuilds the pack-derived patterns only when the pack set or
+    the label set changes. Sets _DOMINANT for the chat (also for a pinned pack set). -> the active pack set."""
+    codes = tuple(_P.code.split("+")) if _PINNED[0] else current_packs()
+    scores, votes = pack_scores(msgs) if codes == "auto" or len(codes) > 1 else ((), ())
+    if not _PINNED[0]:
+        codes = _choose(wa2md_lang.PACKS, scores) if codes == "auto" else codes
+        key = (codes, current_lang())
+        if key != _ACTIVE_KEY[0]:
+            _activate(wa2md_lang.merge(codes, labels=key[1]))
+            _ACTIVE_KEY[0] = key
+    _DOMINANT[0] = _dominant(codes, votes) if votes else None
     return _P
 
 
 def use_pack(pack):
-    """Select the language pack (code or LanguagePack) for the following runs: rebuilds every pack-derived pattern,
-    reloads the dictionaries and clears the caches that depend on the pack."""
-    global _P, _L
+    """Pin a language pack (code, LanguagePack, or a merged pack set) for the following runs, bypassing
+    select_packs(); use_pack(None) removes the pin and returns to the import state (DEFAULT_PACK) until the next chat
+    selects its packs. Rebuilds every pack-derived pattern, reloads the dictionaries, clears the caches."""
+    if pack is None:
+        _PINNED[0] = False
+        _ACTIVE_KEY[0] = None
+        return _activate(wa2md_lang.load_pack(wa2md_lang.DEFAULT_PACK))
     new = wa2md_lang.load_pack(pack) if isinstance(pack, str) else pack
+    _activate(new)
+    _PINNED[0] = True
+    return _P
+
+
+def _activate(new):
+    global _P, _L
     wa2md_lang.check_pack(new)
     old = _P
     _P, _L = new, new.labels
@@ -699,18 +854,82 @@ _PHONE_UNIVERSAL = [
 ]
 
 
+def _after_words(words, links):
+    """Building block of national phone shapes: 'right after one of these words + link' (fixed-width lookbehinds, any
+    case), e.g. words ('call', 'tel') and links (' ', ': ', ' me on ') -> matches after 'Call me on '. Strings of the
+    same length share one lookbehind."""
+    by_len = {}
+    for w in words:
+        for k in links:
+            s = w + k
+            by_len.setdefault(len(s), []).append(re.escape(s))
+    if not by_len:
+        return wa2md_lang.NEVER
+    return "(?:" + "|".join(f"(?<=(?i:{'|'.join(sorted(set(v)))}))" for _, v in sorted(by_len.items())) + ")"
+
+
 @_on_pack
 def _build_phone_ids():
     """Phone pattern (national shapes of the pack + universal shapes) and the pack's identifiers (IBAN, national id,
     plate). The universal alternatives start with '00' or '+', a national one that can start there comes first."""
-    global _GLUED, _PHONE, _IBAN, _TCKN, _PLAKA
+    global _GLUED, _PHONE, _PHONE_RX, _PHONE_NAT_RX, _IBAN, _TCKN, _PLAKA
     # sozcuge yapisik oneksiz cep numarasi yalniz iletisim sozcugunden sonra ('TEL500 000 00 00', 'GSM5000000000')
     _GLUED = "".join(f"|(?<={''.join(f'[{c.upper()}{c}]' for c in w)})" for w in _P.phone_glued_words)
     b = types.SimpleNamespace(dl=_dl, DG=_DG, DG0=_DG0, GS=_GS, GS0=_GS0, GS_T=_GS_T, SEP=_SEP, DATE_AHEAD=_DATE_AHEAD,
-                              GLUED=_GLUED)
+                              GLUED=_GLUED, after=_after_words)
+    # extension suffix of the pack ('ext. 204'): part of the phone match; a pack without one adds nothing to the pattern
+    ext = "" if _P.phone_extension == wa2md_lang.NEVER else rf"(?:{_P.phone_extension})?"
+    # the national shapes of the selected packs, then the MOBILE shapes of every shipped pack whatever the selection
+    # (a Turkish mobile in an English chat is a phone; each mobile shape carries its own false-positive guards)
+    nat = list(dict.fromkeys([*_P.phone_national(b), *(x for c in wa2md_lang.PACKS
+                                                         for x in wa2md_lang.load_pack(c).phone_mobile(b))]))
     _PHONE = (rf"(?=[\d+(])(?<![\d+])(?!{_TWO_GROUPS})(?!{_THOUSANDS})(?:"
-              + "|".join([*_P.phone_national(b), *_PHONE_UNIVERSAL]) + rf")(?!{_DG0})(?![.,]\d)")
+              + "|".join([*nat, *_PHONE_UNIVERSAL]) + rf"){ext}(?!{_DG0})(?![.,]\d)")
+    _PHONE_RX = re.compile(_PHONE)
+    _PHONE_NAT_RX = re.compile("(?:" + "|".join(nat) + rf"){ext}")   # national shapes only
     _IBAN, _TCKN, _PLAKA = _P.iban, _P.national_id, _P.plate
+
+
+# IBAN of any country (ISO 13616): country code, two check digits, 11-30 letters/digits in groups of up to four;
+# masked only when the mod-97 check holds (_iban_valid). The pack's own IBAN shape (field iban) is tried first.
+_IBAN_ANY = r"(?<![\w])[A-Z]{2}\d{2}(?:[ \u00a0]?[A-Z0-9]{4}){2,7}(?:[ \u00a0]?[A-Z0-9]{1,3})?(?!\w)"
+
+
+def _iban_valid(s):
+    s = re.sub(r"\s", "", s)
+    if not 15 <= len(s) <= 34:
+        return False
+    return int("".join(str(int(c, 36)) for c in s[4:] + s[:4])) % 97 == 1
+
+
+# surname of several capitalized parts joined by a hyphen or an apostrophe, right after a given name (one space)
+_COMPOUND_SURNAME = re.compile(r" ((?:[^\W\d_]{1,12}['’\-])+[^\W\d_]{2,})(?![\w'’\-])")
+_INITIAL_BEFORE = re.compile(r"(?<![\w.])([A-Z])\.[ \t]?\Z")      # 'J. ' right before a word
+
+
+_PHONE_EXT_TAIL = re.compile(r"[\s,]*[^\W\d_]+\.?:?\s*\d{1,5}$")    # trailing '<word> <1-5 digits>' (extension)
+
+try:        # optional (Apache-2.0): validates phone candidates; wa2md works the same without it (standard library only)
+    import phonenumbers as _phonenumbers
+except ImportError:
+    _phonenumbers = None
+
+
+def _phone_ok(text, start, end):
+    """True when the phone candidate text[start:end] found by the pattern is kept. Without the optional 'phonenumbers'
+    package every candidate is kept, and so is every candidate in a national shape of the pack set (whatever the
+    package says). Otherwise ('+<country> ...', '00 <country> ...') it is kept when the package admits a number of
+    that length for that country code (is_possible_number): unknown country codes and impossible lengths stay text."""
+    if _phonenumbers is None or _PHONE_NAT_RX.fullmatch(text, start, end):
+        return True
+    s = unicodedata.normalize("NFKC", text[start:end]).strip()
+    tail = _PHONE_EXT_TAIL.search(s)
+    digits = re.sub(r"\D", "", s[:tail.start()] if tail else s)      # an extension is not part of the length
+    try:
+        return _phonenumbers.is_possible_number(
+            _phonenumbers.parse("+" + (digits if s.startswith("+") else digits[2:]), None))
+    except _phonenumbers.NumberParseException:
+        return False
 
 
 _EMAIL = r"(?<![\w.+\-])[\w.+\-]+@[\w\-]+(?:\.[\w\-]+)+"   # basta sinir: uzun sozcukte karesel tarama yok
@@ -916,13 +1135,14 @@ def _build_suffix():
 
 
 # ---- parola / gizli anahtar maskeleme (sezgisel; ayni tek Anonymizer yolu)
-_KW_SEP = r"(?P<sep>[ \t]*[:=][ \t]*|[ \t]+[-–—][ \t]+|[ \t]+)"
 
 
 @_on_pack
 def _build_secrets():
     """Password keywords, one-time-code words and units of the pack."""
-    global _KW_SUF, _KW_EXACT, _KW, _KW_RX, _KW_END, _KW_ANY, _OTP_KW, _OTP_NUM, _OTP_SHORT
+    global _KW_SUF, _KW_EXACT, _KW, _KW_RX, _KW_END, _KW_ANY, _OTP_KW, _OTP_NUM, _OTP_SHORT, _KW_SEP
+    link = "" if _P.secret_link == wa2md_lang.NEVER else r"[ \t]+(?:" + _P.secret_link + r")[ \t]+|"   # "PIN is 4321"
+    _KW_SEP = r"(?P<sep>[ \t]*[:=][ \t]*|[ \t]+[-–—][ \t]+|" + link + r"[ \t]+)"
     _KW_SUF, _KW_EXACT = list(_P.secret_keywords), list(_P.secret_keywords_exact)
     _KW = (r"(?<!\w)(?:" + _alt(_KW_SUF) + r"(?:['’]?\w*)|" + _alt(_KW_EXACT) + r"s?)(?!\w)")
     _KW_RX = re.compile(_KW + _KW_SEP)
@@ -1021,8 +1241,9 @@ def _cred_line(line, sink=None):
             pos = m.end() + len(tok)
     for a, b, tok in reversed(spans):
         line = line[:a] + _mask_tok(tok, sink) + line[b:]
-    if _OTP_KW.search(line):
-        line = _OTP_NUM.sub(_L.masks["code"], line)
+    if _OTP_KW.search(line):     # a digit group inside a phone number is no code ('+44 7700 900789 for the gate code')
+        ph = [mo.span() for mo in _PHONE_RX.finditer(line)] if _PHONE_Q.search(line) else ()
+        line = _OTP_NUM.sub(lambda mo: mo.group(0) if any(a <= mo.start() < b for a, b in ph) else _L.masks["code"], line)
     pending = (not spans) and bool(_KW_END.search(line))
     return line, pending
 
@@ -1048,7 +1269,7 @@ def _build_system():
     # oldugunu yalniz bunlar soyler. Siradan mesajda da gecen sozcukler ('Kardeşim de katıldı.') sayilmaz.
     _GRP_ONLY = [re.compile(p, re.I) for p in _P.group_only_patterns]
     # grupta, grup adiyla gelen ad bicimli olay satiri ('Jorvik Plimm left'): yalniz donusturmede
-    _GRP_WEAK = re.compile(_P.group_weak, re.I)
+    _GRP_WEAK = re.compile(r"^(?P<s>.+?),? (?:" + _P.group_weak + r")\.?$", re.I)
     # on eleme: olay, sistem satiri ve bildirim desenlerinin anahtar sozcuklerinden biri yoksa satir olay/bildirim degildir
     # (duz alt dize aramasi: buyuk mesaj akisinda hizli)
     _EVT_WORDS = tuple(_P.event_words)
@@ -1191,6 +1412,7 @@ def mark_system_lines(chat, msgs, group=None):
 # ---- ad sozlugu (adlar/*.txt; Wikidata CC0) ve baglam kurallari
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _LISTS = {}
+_RAW = {}            # dictionary file -> raw lines (read once per process)
 _WORD = re.compile(r"[^\W\d_]+(?:['’][^\W\d_]+)?")
 _APOS = re.compile("['’]")
 _GAP_INI = re.compile(r"[.!?…:;]")
@@ -1238,14 +1460,21 @@ def _keys(words):
 def _build_names():
     """Name-context vocabulary of the pack: honorifics, titles, institutions, contact and filler words, ordinary-word
     test, trade-name chain words, listing vocabulary and route words (all matched in key form unless stated)."""
-    global _TAKVIM, _CAPWORD, _HON, _HON_ORG, _HON_STOP, _INST_ANY, _INST_CAP, _INST_ANY_K, _INST_CAP_K, _LM_HZ
+    global _SIGN_ALONE, _SIGN_LONE
+    global _TAKVIM, _CAL_NAMES, _SIGN_OFF, _CAPWORD, _HON, _HON_ORG, _HON_STOP, _INST_ANY, _INST_CAP, _INST_ANY_K, _INST_CAP_K, _LM_HZ
     global _SURNAME_SFX, _FAMILY, _TITLE_STOP, _SAYIN, _NOT_NAME_SFX, _SAYIN_STOP, _CONTACT_W, _ORG_UNIT, _CONTACT
     global _FILLER_W, _FILLER, _ORD_SFX, _ORD_W, _FILLER_PFX, _CONTACT_FIELD, _LEGAL_W, _LEGAL_K, _LEGAL_STRONG
     global _LEGAL_FORM, _SAN, _TIC, _LEGAL_PAIR, _LEGAL_GLUED, _AS, _AS_Q, _FIRM_ITEM, _FIRM_TAIL, _FIRM_HYPH
-    global _ILAN_PLACE, _ILAN, _KIN, _KIN_JOIN, _FIRM_FUNC, _FIRM_STOP, _HON_BASE, _HON_SG, _ADDR_ADJ
+    global _ILAN_PLACE, _ILAN, _KIN, _KIN_JOIN, _FIRM_FUNC, _FIRM_STOP, _HON_BASE, _HON_SG, _ADDR_ADJ, _CONTRACTION
     global _ROUTE_LOAD, _ROUTE_FROM, _ROUTE_TO, _ROUTE_FROM_K, _ROUTE_TO_K, _ROUTE_CONTACT, _ROUTE_CONTACT_END
     P = _P
     _TAKVIM = _keys(P.calendar_words)                   # ay ve gun adlari: ad degil
+    _CAL_NAMES = _keys(P.calendar_names)                # calendar words that are names with a surname or a title
+    _SIGN_OFF = (None if P.closing_phrases == wa2md_lang.NEVER else      # closing phrase + one capitalized word, alone
+                 re.compile(r"[ \t]*(?i:" + P.closing_phrases + r")[ \t]*[,.!\-\u2013\u2014]?[ \t]+"
+                            r"(?P<w>[^\W\d_][^\W\d_'’\-]{1,14})[ \t]*[.!]*[ \t]*"))
+    _SIGN_ALONE = re.compile(r"[ \t]*(?i:" + P.closing_phrases + r")[ \t]*[,.!\-\u2013\u2014]?[ \t]*")   # line 1 of 2
+    _SIGN_LONE = re.compile(r"[ \t]*(?P<w>[^\W\d_][^\W\d_'’\-]{1,14})[ \t]*[.!]*[ \t]*")             # line 2 of 2
     _CAPWORD = _keys(P.capitalized_words)               # hep buyuk harfle yazilan, ad olmayan sozcukler
     _HON = re.compile(P.honorific_after)                # _key bicimi
     _HON_ORG = re.compile(P.honorific_org)              # Dernek Başkanı: onundeki sozcuk kurum adidir
@@ -1288,7 +1517,7 @@ def _build_names():
     _SAN, _TIC, _LEGAL_PAIR = _keys(P.legal_san), _keys(P.legal_tic), _keys(P.legal_pair)
     _LEGAL_GLUED = re.compile(P.legal_glued)                                     # 'Ltd.Şti.' tek parca yazimi
     _AS = re.compile(r"(?<!\w)" + P.legal_special + r"\.?(?!\w)")                # A.Ş.
-    _AS_Q = re.compile("[" + re.escape(P.legal_special_chars) + "]")            # on suzgec
+    _AS_Q = re.compile("[" + re.escape(P.legal_special_chars) + "]" if P.legal_special_chars else wa2md_lang.NEVER)  # on suzgec
     _FIRM_ITEM = (r"(?:(?:" + _alt(_SECTOR_W) + r")(?:['\u2019]\w+|" + _alt(_SECTOR_SFX_W) + r")?|" + _alt(_LEGAL_W)
                   + r"|" + P.legal_special + r")\.?(?!\w)")
     _FIRM_TAIL = re.compile(r"(?<!\w)" + _FIRM_ITEM + r"(?:[ \t.]*" + _FIRM_ITEM + r")*")   # 'Lojistik San. Tic. Ltd. Şti.'
@@ -1308,6 +1537,7 @@ def _build_names():
     _HON_BASE = _keys(P.hon_base)
     _HON_SG = re.compile(P.hon_singular)
     _ADDR_ADJ = _keys(P.address_adjectives)
+    _CONTRACTION = _keys(P.contraction_suffixes)          # "don't": a contraction, not Don + suffix
     # S8: yalniz kisinin ozne olamayacagi bicimler ('X yüklemeli', 'X çıkışlı')
     _ROUTE_LOAD = re.compile(r"[ \t]+" + _alt(P.route_load) + r"(?!\w)")
     _ROUTE_FROM = re.compile(r"([^\W\d_]+)['\u2019](?:" + P.route_from + r")(?!\w)")
@@ -1403,7 +1633,7 @@ def _route(s, st, en, end):
     return False
 
 
-_ACT_RANK = {"firma": 4, "join": 3, "rx": 2, "ctx": 1}
+_ACT_RANK = {"company": 4, "join": 3, "rx": 2, "ctx": 1}
 
 
 def _merge(line, spec, out):
@@ -1421,7 +1651,7 @@ def _merge(line, spec, out):
             continue
         p = res[-1]
         if d[1] <= p[1]:                                   # tamamen icinde
-            if p[:2] == d[:2] and p[4] == d[4] == "rx" and p[5] == "imza":    # S7: ad kurali (main) imzadan gucludur
+            if p[:2] == d[:2] and p[4] == d[4] == "rx" and p[5] == "signature":    # S7: ad kurali (main) imzadan gucludur
                 res[-1] = d
                 continue
             # ayni aralikta ayri kanitli iki 'rx' (iletisim + ad kurali): ad kuralinin karari da ogrenilir (main'in kaniti
@@ -1435,7 +1665,7 @@ def _merge(line, spec, out):
             if x[4] == "rx" and top[4] != "rx":
                 learn.append((x[0], x[1], x[2], x[3], "learn", x[5]))
         disp = " ".join(line[p[0]:d[1]].split())
-        res[-1] = (p[0], d[1], top[2] if top[4] == "join" else "" if top[4] == "firma" else _key(disp), disp, top[4],
+        res[-1] = (p[0], d[1], top[2] if top[4] == "join" else "" if top[4] == "company" else _key(disp), disp, top[4],
                    top[5])
     rev = [d for d in out if d[4] == "review" and not _overlaps(res, d)]
     return sorted(res + rev + learn + marks, key=lambda d: d[0])
@@ -1461,7 +1691,7 @@ def _landmark(text, st, en, end=None):
     True (dokunma): 'Hz.' sonrasi, ya da ad ile kurum sozcugu buyuk harfle, aralarinda yalniz tek bosluk, tek ozel ad
     obegi: ad kurum sozcugunun hemen onunde (Mimar Sinan Üniversitesi, Atatürk Caddesi) ya da aradaki sozcuklerle
     birlikte zincir (Fatih Sultan Mehmet Köprüsü: zincirin onceki halkalari sozcuk anlami da olan ad ya da ad degil).
-    None (karar yok -> maskelenir, 'yer/kurum belirsiz' sayilir): kurum sozcugune ulasildi ama bu dar bicim yok
+    None (karar yok -> maskelenir, 'place_unclear' sayilir): kurum sozcugune ulasildi ama bu dar bicim yok
     (Zeynep Gazi Üniversitesi'ni kazandı, Selin müzesinde, ekli ad + kurum). False: kurum sozcugu yok (maskelenir)."""
     if _LM_HZ.search(text[max(0, st - 12):st]):
         return True
@@ -1488,35 +1718,70 @@ def _landmark(text, st, en, end=None):
     return False
 
 
+def _read_list(fn, missing=None):
+    """Words of one dictionary file (raw, '#' lines skipped; read once per run) -> list; places: (kind, name) pairs."""
+    path = os.path.join(_HERE, _P.dictionary_dir, fn)
+    if path not in _RAW:
+        try:
+            with open(path, encoding="utf-8") as fh:
+                _RAW[path] = [ln.rstrip("\n") for ln in fh if not ln.startswith("#")]
+        except OSError:
+            _RAW[path] = None
+    if _RAW[path] is None and missing is not None:
+        missing.append(fn)
+    return _RAW[path] or []
+
+
+def _pack_files(kind_files):
+    return (kind_files,) if isinstance(kind_files, str) else tuple(kind_files)     # tuple: merged pack set
+
+
 def name_lists():
     """(adlar, soyadlar, sozcuk-olan-adlar) anahtar kumeleri; ayni yukleyici yer listesini de okur (places()). Dosya yoksa
-    bos kume; missing_name_lists() eksikleri verir (anonim modda main bunu hata sayar, bkz. --sozluksuz)."""
+    bos kume; missing_name_lists() eksikleri verir (anonim modda main bunu hata sayar, bkz. --sozluksuz).
+    Several packs selected: a given name of one pack that is an ordinary word of another selected pack (its 'common'
+    list) and no given name there is a word-name too ('x'; English 'Ben', 'Kim' are Turkish 'ben', 'kim')."""
     if not _LISTS:
         missing = []
         files = _P.dictionary_files
-        for k, fn in (("g", files["given"]), ("f", files["surname"]), ("a", files["ambiguous"]), ("p", files["places"])):
+        for k, kind_files in (("g", files["given"]), ("f", files["surname"]), ("a", files["ambiguous"]),
+                              ("p", files["places"]), ("c", files.get("common", ()))):
             s = {} if k == "p" else set()
-            try:
-                with open(os.path.join(_HERE, _P.dictionary_dir, fn), encoding="utf-8") as fh:
-                    for line in fh:
-                        if line.startswith("#"):
-                            continue
-                        if k == "p":                  # '<tur><TAB><ad>' (TR: il | ilçe)
-                            kind, _, name = line.rstrip("\n").partition("\t")
-                            if name.strip():
-                                s[_key(name.strip())] = kind
-                        else:
-                            s.update(_key(w) for w in line.split())
-            except OSError:
-                missing.append(fn)
+            for fn in _pack_files(kind_files):
+                for line in _read_list(fn, missing):
+                    if k == "p":                  # '<tur><TAB><ad>' (TR: il | ilçe)
+                        kind, _, name = line.partition("\t")
+                        if name.strip():
+                            s[_key(name.strip())] = kind
+                    else:
+                        s.update(_key(w) for w in line.split())
             _LISTS[k] = s
         _LISTS["missing"] = missing
+        _LISTS["x"], _LISTS["lw"], _LISTS["xo"], _LISTS["gcap"] = set(), set(), {}, set()
+        codes = _P.code.split("+")
+        if len(codes) > 1:                    # cross-pack ordinary words (one rule for every pair of selected packs)
+            per = {}
+            for c in codes:
+                df = wa2md_lang.load_pack(c).dictionary_files
+                per[c] = [{_key(w) for fn in _pack_files(df.get(kind, ())) for ln in _read_list(fn) for w in ln.split()}
+                          for kind in ("given", "common")]
+            for c in codes:
+                for o in codes:
+                    if o != c:                    # xo[o]: the word-names whose word sense is pack o's
+                        _LISTS["xo"].setdefault(o, set()).update((per[c][0] & per[o][1]) - per[o][0])
+                        _LISTS["x"] |= _LISTS["xo"][o]
+                    elif not wa2md_lang.load_pack(c).lower_case_context:    # merged set: lower case can be a name, but
+                        _LISTS["lw"] |= per[c][0] & per[c][1]               # in this pack it is the word ('120 miles')
+            _LISTS["a"] |= _LISTS["x"]
+            lcc = {c: wa2md_lang.load_pack(c).lower_case_context for c in codes}   # gcap: given names only of packs
+            _LISTS["gcap"] = (set().union(*(per[c][0] for c in codes if not lcc[c]))  # whose capitals mark names
+                              - set().union(*(per[c][0] for c in codes if lcc[c])))
         _ordinary.cache_clear()               # sozluk yeniden yuklendi (testler _LISTS'i temizler): onbellek eskidi
         p, g, f = _LISTS["p"], _LISTS["g"], _LISTS["f"]
-        region = _P.place_region_kind
-        _LISTS["ilan"] = _ILAN | {k for k, v in p.items() if v == region}     # il adlari ilan sozlugudur
+        region = set(_P.place_region_kind.split("|"))
+        _LISTS["ilan"] = _ILAN | {k for k, v in p.items() if v in region}     # il adlari ilan sozlugudur
         # yalniz yer: il adi ya da ad/soyad sozlugunde olmayan ilce adi (Bozova, Gebze); Fatih, Kartal, Bozkurt belirsizdir
-        _LISTS["pure"] = {k for k, v in p.items() if " " not in k and (v == region or (k not in g and k not in f))}
+        _LISTS["pure"] = {k for k, v in p.items() if " " not in k and (v in region or (k not in g and k not in f))}
     return _LISTS["g"], _LISTS["f"], _LISTS["a"]
 
 
@@ -1616,6 +1881,9 @@ class Anonymizer:
     group: grup sohbeti mi (None: msgs'ten is_group; process tarih suzgecinden ONCEKI tum mesajlarla verir)."""
 
     def __init__(self, chat, msgs, chat_no=1, code=None, extra=None, group=None):
+        select_packs(msgs)
+        self._prev_line = None                 # line before the scanned one in the same text ('Cheers,' / 'Gav')
+        self._dom = _DOMINANT[0]               # language that dominates this chat (its word-names need strong evidence)
         self.chat = nfc(chat)
         self.code = code or _L.chat.format(n=chat_no)
         self._label_counts = {}               # etiket -> dort etiket sozlugundeki gecis sayisi (_LabelMap, _new_label)
@@ -1644,7 +1912,7 @@ class Anonymizer:
         self.group = is_group(msgs, self.chat) if group is None else bool(group)
         titles = title_senders(msgs, self.chat) if self.group else set()
         for m in msgs:
-            person(m.get("sender"), "gönderen")
+            person(m.get("sender"), "sender")
         for m, ps in zip(msgs, mparts):
             if ps and (m.get("sender") is None or m["sender"] in titles):
                 body = " ".join(v for k, v in ps if k == "text" and v)
@@ -1652,11 +1920,11 @@ class Anonymizer:
                 # kisileri yine toplanir (ayni kural: title_event_line)
                 if m.get("sender") is None or title_event_line(body):
                     for real, same in system_people(body):
-                        person(real, "sistem satırı", same)
+                        person(real, "system_line", same)
         for real in extra or []:
-            person(nfc(real).strip(), "ek ad")
+            person(nfc(real).strip(), "extra_name")
         if not self.group:
-            person(self.chat, "sohbet adı")         # bire bir: baslik karsidaki kisi (hic yazmamis olsa da)
+            person(self.chat, "chat_name")         # bire bir: baslik karsidaki kisi (hic yazmamis olsa da)
         self._people = set(self.labels.values())   # katilimci etiketleri (sozlukle bulunanlardan ayirmak icin)
         self._single = {_key(r) for r in self.labels if len(nfc(r).split()) == 1}   # tek sozcuklu katilimci adlari (C)
         self.media = {}
@@ -1758,7 +2026,10 @@ class Anonymizer:
             if m.get("sender") is None:       # sistem satiri: kisileri system_people toplar; konu metni ad degildir
                 continue
             mctx = (id(m), ps)
+            self._prev_line = None             # the previous text line of the same message (its lines are parts)
             for kind, v in ps:
+                if not v or kind == "omitted" or kind != "text":
+                    self._prev_line = None
                 if not v or kind == "omitted":
                     continue
                 if kind == "file":
@@ -1768,6 +2039,7 @@ class Anonymizer:
                 for line in v.split("\n"):
                     self._ad_used = False
                     dec = self._scan(line)
+                    self._prev_line = line
                     if not dec and kind != "file":    # karar yok: ciktida (maskeleme yalniz ad cikarir) yeniden taranmaz;
                         if self._ad_used:             # ilan imini soran satir yalniz bu mesajda (baska mesajda imi farkli)
                             self._quiet_m.add((self._actx[0], line))
@@ -1778,11 +2050,11 @@ class Anonymizer:
                             self._learn(disp, why)
                         elif act == "ctx":
                             self._ctx_label(k, why, disp)
-                    loc = [d for d in dec if d[4] in ("ctx", "firma")]
+                    loc = [d for d in dec if d[4] in ("ctx", "company")]
                     # hiz: kararlarin hepsi nakliye iletisim/firma karari ise satir ciktida rx ve _pre_apply ile tamamen islenir;
                     # yeniden tarama yeni bir sey bulamaz (adlarin ilk taramadaki karari ayni ham satirdan cikar)
-                    done = bool(dec) and all(d[4] == "learn" or (d[4] in ("rx", "ctx", "firma")
-                                                                    and d[5] in ("iletişim", "imza", "firma")) for d in dec)
+                    done = bool(dec) and all(d[4] == "learn" or (d[4] in ("rx", "ctx", "company")
+                                                                    and d[5] in ("contact", "signature", "company")) for d in dec)
                     if loc and kind != "file":    # yerel kararlar ciktida rx'ten ONCE uygulanir (_pre_apply)
                         self._pre.setdefault((self._actx[0], line), (loc, done))
                         self._pre_keys.add(self._actx[0])
@@ -1863,7 +2135,8 @@ class Anonymizer:
     @staticmethod
     def _compile(names, forms, sfx_names, caps=()):
         names = sorted((n for n in {nfc(x) for x in names} if n.strip()), key=len, reverse=True)
-        alts = [f"(?P<wame>{_WAME})", f"(?P<social>{_SOCIAL})", f"(?P<iban>{_IBAN})", f"(?P<email>{_EMAIL})"]
+        alts = [f"(?P<wame>{_WAME})", f"(?P<social>{_SOCIAL})", f"(?P<iban>{_IBAN})", f"(?P<ibanx>{_IBAN_ANY})",
+                f"(?P<email>{_EMAIL})"]
         cats = sorted({"".join(_name_regex(p) + ("" if i == len(f) - 1 else r"[._\-]?") for i, p in enumerate(f))
                        for f in forms}, key=len, reverse=True)
         if cats:   # bitisik/ayrik ad: sozcuk siniri yok (kullanici adi, URL, dosya adi); tek parcalar icin yok
@@ -1888,20 +2161,22 @@ class Anonymizer:
         degilse). Daha once sozlukle bulunmus tek ad + soyad ayni kisidir (ayni etiket); katilimci adi + baska soyad
         baska kisidir (yeni etiket)."""
         k = _key(disp)
-        by_contact = why in ("iletişim", "imza")      # nakliye iletisim kaniti; oteki nedenler ad kurallarinin (main) kanitidir
+        by_contact = why in ("contact", "signature")      # nakliye iletisim kaniti; oteki nedenler ad kurallarinin (main) kanitidir
         known = k in self.by_key
         k0 = _key(disp.split()[0]) if len(disp.split()) == 2 else None
-        if known and not by_contact and k not in self._contact_keys and not (k0 and why in ("anma", "hitap") and k0 in self._contact_keys):
+        if known and not by_contact and k not in self._contact_keys and not (k0 and why in ("mention", "honorific") and k0 in self._contact_keys):
             return self.by_key[k]              # (Sayın/@ kaniti ad parcasini da yayar: once baska kanitla ogrenilmis olsa da)
         parts = disp.split()
         g, f, a = name_lists()
         # S3: iletisim kanitli ad, hicbir parcasi ad sozlugunde degilse (b) yalniz o obek ve yalniz buyuk harfli bicimiyle
         # yayilir ('Sıcak Çorba', 'Mavi Kapak': soyad listesinde siradan sozcuk coktur, tek basina kanit degildir). S7: zayif
         # kanitli imza ('imza') da yalniz tam obek, buyuk harfli bicimiyle; tek parcalari yayilmaz.
-        part_cap = why == "imza" or (why == "iletişim" and not any(_key(p) in g for p in parts))
+        part_cap = why == "signature" or (why == "contact" and not any(_key(p) in g for p in parts))
         # 7. tur: katilimci ad parcasi iceren ad tam obek olarak main gibi her bicimiyle yayilir; parcalari S3'teki gibi
         # (part_cap: yalniz hitap/Sayın yaninda)
-        cap = part_cap and (why == "imza" or not any(_key(p) in self._pkeys for p in parts))
+        cap = part_cap and (why == "signature" or not any(_key(p) in self._pkeys for p in parts))
+        lower_word = _LISTS.get("lw" if _P.lower_case_context else "c", ())  # English: lower case of a common word is the word
+        cap = cap or bool(lower_word and len(parts) == 1 and k in lower_word)   # ('Miles' masked, '120 miles' stays)
         if known:                              # 7. tur eki: kanit bilineni yalniz guclendirir, sira sonucu degistirmez
             lab = self.by_key[k]
             if (not by_contact and k in self._contact_keys) or (not cap and k in self._capk):   # main'in kaniti ya da yalniz buyuk harfli
@@ -1912,7 +2187,7 @@ class Anonymizer:
                 lab = first
             else:
                 lab = (self.ctx_labels.get(k) or self._capparts.get(k)
-                       or self._new_label("iletişim" if why == "imza" else why))
+                       or self._new_label("contact" if why == "signature" else why))
             (self.found_cap if cap else self.found)[disp] = lab
             self.by_key[k] = lab
             if cap:
@@ -1928,9 +2203,11 @@ class Anonymizer:
                         self._capparts[pk] = lab if self._capparts.get(pk, lab) == lab else _UNKNOWN
             if self._compiled:
                 self._lazy.add(k)
-        if k0 and k0 not in a and (k0 in g or why in ("anma", "hitap")):
+        if k0 and k0 not in a and (k0 in g or why in ("mention", "honorific")):
             if k0 not in self.by_key:
-                self.found[parts[0]] = lab
+                (self.found_cap if lower_word and k0 in lower_word else self.found)[parts[0]] = lab
+                if lower_word and k0 in lower_word:
+                    self._capk.add(k0)
                 self.by_key[k0] = lab
                 if by_contact:
                     self._contact_keys.add(k0)
@@ -1938,7 +2215,7 @@ class Anonymizer:
                     self._lazy.add(k0)
             elif not by_contact and k0 in self._contact_keys:
                 self._strengthen(k0, parts[0])
-        if why == "iletişim" and len(parts) > 1 and not part_cap:   # ilke 3, S3a: guclu kanitli adin parcalari da ayni etiketle
+        if why == "contact" and len(parts) > 1 and not part_cap:   # ilke 3, S3a: guclu kanitli adin parcalari da ayni etiketle
             for p in parts:
                 pk = _key(p)
                 if pk not in self.by_key and pk not in a and len(p) >= 3 and not _ordinary(pk):
@@ -2017,8 +2294,8 @@ class Anonymizer:
 
     def _special(self, line, toks, bases, keys):
         """Nakliye ilani kurallari -> (kararlar, ad kurallarinin atlayacagi sozcuk indeksleri). Karar bicimi _scan ile
-        ayni; karar: 'firma' (ticari adin ayirt edici sozcukleri -> [firma]), 'rx'/'ctx' (iletisim baglamindaki kisi adi,
-        neden 'iletişim'; ad testinden (sozluk adi ya da listede soyad) gecmeyen baglam bulgusu yalniz o geciste: 'ctx'),
+        ayni; karar: 'company' (ticari adin ayirt edici sozcukleri -> [firma]), 'rx'/'ctx' (iletisim baglamindaki kisi adi,
+        neden 'contact'; ad testinden (sozluk adi ya da listede soyad) gecmeyen baglam bulgusu yalniz o geciste: 'ctx'),
         'join' (katilimci etiketine komsu ad parcasi etikete katilir; anahtar yerine etiket), 'mark' (ilk taramada join
         adayi: satir yeniden taranir, maske yok). Ilan sozlugu (_ILAN: il, arac, birim, ilan sozcugu) ve dolgu/alan etiketi
         sozcukleri (_FILLER) hicbir kurala aday olmaz. _ad_ctx(): mesajda ilan imi (telefon ya da alan olarak iletisim
@@ -2100,6 +2377,8 @@ class Anonymizer:
             if not strong and not ((ck & _LEGAL_STRONG or any(_is_sector(k) for k in ck)) and ad()):
                 continue
             lowok = legal or None                      # kucuk harfli sozcukte sorulur (ilan imi: _ad_used yalniz gerekince)
+            if legal and hon and not _P.lower_case_context:   # English: before a capitalized legal form a lower-case
+                lowok = False                                   # word is an ordinary word ('with Redwood Holdings Inc.')
             el, pos = [], m.start()                    # el: (bas, son, tur: 'l' etiket/bilinen ad, 'd', 't', 'k'), sagdan sola
             while len(el) < 6:
                 lm = _LABEL_END.search(line, max(0, pos - 24), pos)    # kisa pencere: uzun satirda karesel arama yok
@@ -2147,7 +2426,7 @@ class Anonymizer:
                 el.pop(0)
             if any(e[2] == "d" for e in el) or (fam and any(e[2] != "l" for e in el)):
                 st, en = el[0][0], len(line[:m.start()].rstrip(" \t" + _DASH_CH))
-                out.append((st, en, "", line[st:en], "firma", "firma"))
+                out.append((st, en, "", line[st:en], "company", "company"))
                 skip.update(range(bisect.bisect_left(starts, st), bisect.bisect_left(starts, en)))
 
         # B (ilke 3): iletisim baglamindaki ad. GUCLU kanit: ayracli alanin (':', '-', '.', ok; '(Ofis)' gibi ekli de)
@@ -2191,8 +2470,8 @@ class Anonymizer:
             if not strong and not (clean and all(len(bases[x]) >= 4 for x in run if keys[x] not in g and keys[x] not in f)):
                 return
             disp = " ".join(line[st:en].split())
-            why = "imza" if sig and not strong else "iletişim"     # S7: zayif imza obegi buyuk harfli bicimiyle yayilir
-            out.append((st, en, _key(disp), disp, "rx" if strong and clean and not local or why == "imza" else "ctx", why))
+            why = "signature" if sig and not strong else "contact"     # S7: zayif imza obegi buyuk harfli bicimiyle yayilir
+            out.append((st, en, _key(disp), disp, "rx" if strong and clean and not local or why == "signature" else "ctx", why))
             skip.update(run)
 
         def fwd(j, low_ok=False):
@@ -2350,7 +2629,8 @@ class Anonymizer:
         bilinmeyen ad), 'ctx' yalniz bu geciste (sozcuk anlami da olan ad, baglam var), 'review' maskelenmez, supheli
         kalan sayilir. Yer/kurum adinin parcasi olan ad (Mimar Sinan Üniversitesi, Hz. Muhammed) hic karar almaz."""
         g, f, a = name_lists()
-        toks = _tokens(line)
+        dom_x = _LISTS["xo"].get(self._dom, ()) if self._dom else ()   # another pack's given names that are ordinary
+        toks = _tokens(line)                                            # words of the chat's dominant language
         bases = [_APOS.split(t[2], 1)[0] for t in toks]
         keys = [_key(b) for b in bases]
         spec, _ = self._special(line, toks, bases, keys)
@@ -2363,7 +2643,7 @@ class Anonymizer:
                 if lm:
                     return
                 if lm is None and self._counting:
-                    self.stats["yer/kurum belirsiz"] = self.stats.get("yer/kurum belirsiz", 0) + 1
+                    self.stats["place_unclear"] = self.stats.get("place_unclear", 0) + 1
             out.append((st, en, k, disp, act, why))
 
         def pfull(j, people=False):
@@ -2391,6 +2671,18 @@ class Anonymizer:
                 sec.append(any(_is_strong_sector(x) for x in keys))
             return sec[0]
 
+        tcl = []
+
+        def title_case_line():
+            """Most words of the line are capitalized (a heading or a shouted line: capitals mark nothing). The first word,
+            calendar words (capitalized in any sentence) and names (dictionary or known: 'Michael Thornbury and Laura
+            Vexley came' is no heading) are not counted."""
+            if not tcl:
+                ws = [t[2] for t, kk in zip(toks[1:], keys[1:]) if len(t[2]) >= 2 and t[2][:1].isalpha()
+                      and kk not in _TAKVIM and kk not in g and kk not in f and kk not in self.by_key]
+                tcl.append(len(ws) >= 4 and sum(w[:1].isupper() for w in ws) * 2 > len(ws))
+            return tcl[0]
+
         def surname_like(nb, nk, k, j):
             """toks[j] (gosterim nb, anahtar nk) k adinin soyadi olabilir mi -> 1: listede (soyad, sozcuk anlami olmayan
             ad, soyad eki; main'deki kural, guclu); 2: L4, zayif kanit (ilke 3): sozcuk anlami olmayan sozluk adinin
@@ -2403,16 +2695,23 @@ class Anonymizer:
                 return 0
             if nk in f or (nk in g and nk not in a) or _SURNAME_SFX.search(nk):
                 return 1
-            if not (k in g and k not in a and nb == toks[j][2]) or len(nb) < 4 or _ordinary(nk):
+            own = nb == toks[j][2] or not _P.lower_case_context      # English: "Tom Okonkwo's" (possessive)
+            if not (k in g and k not in a and own) or len(nb) < 4 or _ordinary(nk):
                 return 0
+            if not _P.lower_case_context:      # capitals mark names (English): a capitalized unknown word right after an
+                return 2 if not nb.isupper() and nk not in _LISTS["c"] and not title_case_line() else 0   # unambiguous
+                #                                                         given name is its surname (not a common word)
             e = toks[j][0] + len(nb)
             cnext = j + 1 < n and keys[j + 1] in _CONTACT and not line[e:toks[j + 1][0]].strip()   # 'AD SOYAD İRTİBAT'
             if not (cnext or _SURNAME_POS.match(line, e) or _PHONE_CTX.match(line, _HWS.match(line, e).end())):
                 return 0                               # soyad konumu degil
+            if k in _LISTS["gcap"] and not nb.isupper() and nk not in _LISTS["c"]:
+                return 2                               # merged set: a given name of a capitals language ('Call Emily
+                #                                        Zabrowski'): the surname position is enough
             # baglam: hemen ardinda iletisim sozcugu, ayni satirda guclu sektor sozcugu ('… NAKLİYAT AD SOYAD') ya da ilan imi
             return 2 if cnext or sector_line() or self._ad_ctx() else 0
 
-        def pair(i, st, nxt, nb, why="sözlük", weak=False):
+        def pair(i, st, nxt, nb, why="dictionary", weak=False):
             """Ad + Soyad; ardinda buyuk harfli ucuncu parca varsa o da (Mehmet Ali Xandor). weak: zayif kanitli ad-soyad
             (L4) yalniz o yerde ('ctx'; etiket adin etiketidir, _ctx_label). -> sonraki indeks."""
             end, disp, j = nxt[0] + len(nb), line[st:nxt[0] + len(nb)], i + 1
@@ -2426,18 +2725,29 @@ class Anonymizer:
             emit(st, end, _key(disp), " ".join(disp.split()), "ctx" if weak else "rx", why)
             return j
 
+        if n == 1 and _SIGN_OFF is not None and self._prev_line and _SIGN_ALONE.fullmatch(self._prev_line):
+            mo = _SIGN_LONE.fullmatch(line)                 # 'Cheers,' and then 'Gav' on the next line
+        elif 2 <= n <= 4 and _SIGN_OFF is not None:      # 'Cheers, Gav': a lone capitalized word after a closing phrase
+            mo = _SIGN_OFF.fullmatch(line)
+        else:
+            mo = None
+        if mo:
+            w, wk = mo.group("w"), _key(mo.group("w"))
+            if (not w.isupper() and (n > 1 or w[:1].isupper()) and wk not in self.by_key and wk not in _LISTS["c"]
+                    and not _ordinary(wk) and wk not in _SAYIN_STOP and wk not in _SAYIN and not _HON.fullmatch(wk)):
+                emit(mo.start("w"), mo.end("w"), wk, w, "ctx", "signature")
         i = 0
         while i < n:                          # ilke 2: ad kurallari (main) ozel kararlardan bagimsiz; birlesim _merge'de
             st, en, w, ini, men = toks[i]
             base, k = bases[i], keys[i]
             i += 1
             if k in self._lazy and (k not in self._capk or base[:1].isupper()):   # derlemeden sonra ogrenilen ad
-                emit(st - men, st + len(base), k, base, "rx", self.origin.get(self.by_key[k], "sözlük"))
+                emit(st - men, st + len(base), k, base, "rx", self.origin.get(self.by_key[k], "dictionary"))
                 continue
             cap = base[:1].isupper()
             if men:                           # @anma: katilimci degilse ad gibi duran sozcuk maskelenir
                 if not self._known(k) and len(base) >= 2 and (cap or k in g or k in f):
-                    emit(st - 1, st + len(base), k, base, "rx", "anma")
+                    emit(st - 1, st + len(base), k, base, "rx", "mention")
                 continue
             if k in _SAYIN:                   # 'Sayın Ad Soyad', 'Sn. Ad': ardindaki buyuk harfli 1-3 sozcuk
                 run, j, prev = [], i, en
@@ -2448,7 +2758,8 @@ class Anonymizer:
                     tb = _APOS.split(t[2], 1)[0]
                     tk = _key(tb)
                     if (not tb[:1].isupper() or tk in _HON_STOP or tk in _SAYIN_STOP or _HON.fullmatch(tk)
-                            or tk in _TAKVIM or _NOT_NAME_SFX.search(tk) or self._known(tk) or len(tb) < 2):
+                            or (tk in _TAKVIM and tk not in _CAL_NAMES) or _NOT_NAME_SFX.search(tk) or self._known(tk)
+                            or len(tb) < 2):
                         break
                     run.append(tb)
                     prev, j = t[0] + len(tb), j + 1
@@ -2457,7 +2768,7 @@ class Anonymizer:
                 if run:
                     s0 = toks[i][0]
                     disp = line[s0:prev]
-                    emit(s0, prev, _key(disp), disp, "rx", "hitap")
+                    emit(s0, prev, _key(disp), disp, "rx", "honorific")
                     i = j
                 continue
             if len(base) < 3 or (not cap and k not in g) or _HON.fullmatch(k):
@@ -2475,21 +2786,39 @@ class Anonymizer:
                 if self._known(k):            # bilinen tam ad (zayif imza da) rx'te tek etiket; ardindaki sozcuk main'deki
                     continue                  # gibi kendi kurallarindan gecer. Yalniz iletisimle bilinen ad (_contact_keys) asagidaki
                                               # ad kurallarindan da gecer (main'in kaniti onu guclendirir)
+            if (cap and k in g and k not in a and (not _P.lower_case_context or k in _LISTS["gcap"])
+                    and not base.isupper()):
+                mc = _COMPOUND_SURNAME.match(line, st + len(base))   # 'Mary Smith-Jones', 'Liam O'Brien', 'Al-Rashid'
+                if (mc and all(x[:1].isupper() for x in re.split(r"['’\-]", mc.group(1)))
+                        and not self._known(_key(mc.group(1)))):
+                    emit(st, mc.end(1), _key(line[st:mc.end(1)]), line[st:mc.end(1)], "ctx", "dictionary")
+                    while i < n and toks[i][0] < mc.end(1):
+                        i += 1
+                    continue
             sl = k in g and cap and k not in _TAKVIM | _CAPWORD and nxt and surname_like(nb, nk, k, i)
+            if sl and ini and k in a and nk in g and nk not in a and not _P.lower_case_context:
+                sl = 0                        # 'Tell Harvey': a word-name opening the sentence before a given name is a word
+            if not sl and k in _CAL_NAMES and cap and nxt and nk in f and surname_like(nb, nk, k, i) == 1:
+                sl = 1                        # 'June Carter': a calendar word is a name only before a listed surname
             if sl and not pfull(i):
                 i = pair(i, st, nxt, nb, weak=sl == 2)      # Ad + Soyad (+ ucuncu parca)
                 continue
             if nxt and _HON.fullmatch(nk):
                 if k in g:
-                    emit(st, st + len(base), k, base, "ctx" if k in a else "rx", "hitap")
+                    emit(st, st + len(base), k, base, "ctx" if k in a else "rx", "honorific")
                 elif cap and k not in _HON_STOP and k not in _TAKVIM and not _HON_ORG.fullmatch(nk):
                     if k in f:                # soyad + hitap (Karakoç Hoca, Şimşek abi): satir basinda da
                         act = "ctx" if k in a else "rx"
                     else:                     # satir basinda bilinmeyen sozcuk supheli; ogrenilmis adin parcasi (_capparts) o yerde
                         act = ("ctx" if k in self._capparts else "review") if ini else "rx"
-                    emit(st, st + len(base), k, base, act, "hitap")
+                    emit(st, st + len(base), k, base, act, "honorific")
                 continue
-            if k not in g or k in _TAKVIM:
+            if (cap and k in f and not _P.lower_case_context and not base.isupper() and st >= 3
+                    and _INITIAL_BEFORE.search(line, 0, st)):   # 'J. Smith': an initial before a listed surname
+                s0 = _INITIAL_BEFORE.search(line, 0, st).start(1)
+                emit(s0, st + len(base), _key(line[s0:st + len(base)]), line[s0:st + len(base)], "ctx", "dictionary")
+                continue
+            if k not in g or k in _TAKVIM or (w != base and _key(w[len(base) + 1:]) in _CONTRACTION):
                 continue
             prv = toks[i - 2] if i >= 2 and not line[toks[i - 2][1]:st].strip() else None
             titled = any(t and t[2][:1].isupper() and (_key(_APOS.split(t[2], 1)[0]) not in g
@@ -2497,14 +2826,17 @@ class Anonymizer:
                          for t in (prv, nxt))      # 'Temel Satranç Eğitimi', 'Türk Medeni Kanunu': baslik bicimi
             if k in _CAPWORD:
                 titled = True                      # hep buyuk harfle yazilan ad olmayan sozcuk (Türk, Ege, Kuzey)
-            if k not in a:
-                emit(st, st + len(base), k, base, "rx", "sözlük")
-            elif cap and not base.isupper() and (w != base or (not ini and not titled)):
-                emit(st, st + len(base), k, base, "ctx", "sözlük")
-            elif not cap and (w != base or any(t and _key(_APOS.split(t[2], 1)[0]) in self.by_key for t in (prv, nxt))):
-                emit(st, st + len(base), k, base, "ctx", "sözlük")   # kucuk harf: yalniz kesme eki / yaninda bilinen ad
+            if k not in a and not cap and k in _LISTS["c"] and (not _P.lower_case_context or k in _LISTS["lw"]):
+                emit(st, st + len(base), k, base, "review", "dictionary")    # lower case is the common word ('120 miles')
+            elif k not in a:
+                emit(st, st + len(base), k, base, "rx", "dictionary")
+            elif cap and not base.isupper() and (w != base or (not ini and not titled and k not in dom_x)):
+                emit(st, st + len(base), k, base, "ctx", "dictionary")    # dom_x: capitals alone are no evidence
+            elif not cap and (w != base or (_P.lower_case_context and k not in _LISTS["x"]
+                                            and any(t and _key(_APOS.split(t[2], 1)[0]) in self.by_key for t in (prv, nxt)))):
+                emit(st, st + len(base), k, base, "ctx", "dictionary")   # kucuk harf: yalniz kesme eki / yaninda bilinen ad
             else:
-                emit(st, st + len(base), k, base, "review", "sözlük")
+                emit(st, st + len(base), k, base, "review", "dictionary")
         return _merge(line, spec, out) if spec else out
 
     def _ctx(self, text, raw=None):
@@ -2519,6 +2851,7 @@ class Anonymizer:
         for n, line in enumerate(lines):
             if rlines is not None and (rlines[n] in self._quiet or (key, rlines[n]) in self._quiet_m):
                 continue
+            self._prev_line = rlines[n - 1] if rlines is not None and n else (lines[n - 1] if n else None)
             dec = self._scan(line)
             rev, subs = [], []
             for st, en, k, disp, act, why in reversed(dec):     # sagdan sola (etiket sirasi eskisi gibi)
@@ -2530,7 +2863,7 @@ class Anonymizer:
                         self._learn(disp, why)
                     continue
                 lab = (self._learn(disp, why) if act == "rx" else self._ctx_label(k, why, disp) if act == "ctx"
-                       else _FIRMA if act == "firma" else k)          # join: k katilimci etiketidir
+                       else _FIRMA if act == "company" else k)          # join: k katilimci etiketidir
                 if self._counting:
                     self.stats[self.origin.get(lab, why)] = self.stats.get(self.origin.get(lab, why), 0) + 1
                 subs.append((st, en, lab))
@@ -2543,7 +2876,7 @@ class Anonymizer:
             lines[n] = line
             if rev and self._counting:
                 for k, disp, why in reversed(rev):
-                    why = ("hitap" if why == "hitap" else "büyük" if disp[:1].isupper() else "küçük")
+                    why = ("honorific" if why == "honorific" else "capitalized" if disp[:1].isupper() else "lowercase")
                     r = self.review.setdefault(k, [disp, 0, why, []])
                     r[1] += 1
                     if len(r[3]) < 3:
@@ -2554,7 +2887,7 @@ class Anonymizer:
 
     def _pre_apply(self, text, key, rx):
         """Ilk taramada bir satir icin verilmis yerel kararlar ('ctx': zayif kanitli ad, imza, sozcuk anlami da olan ad;
-        'firma': ticari ad) ayni satirda rx'ten ONCE uygulanir: rx satirdaki bir adi (sozluk adi, katilimci parcasi)
+        'company': ticari ad) ayni satirda rx'ten ONCE uygulanir: rx satirdaki bir adi (sozluk adi, katilimci parcasi)
         etiketleyip yerel bulguyu bolmesin ('Ad Soyad' zayif ad-soyadda ad etiketlenir, soyad kalirdi). Karar ayni ham
         satir ve ayni ilan imi icin ayni oldugundan yeniden hesaplanmaz; satir degismisse (parola maskesi) cikti taramasi
         (_ctx) yine calisir."""
@@ -2569,7 +2902,7 @@ class Anonymizer:
             # da ticari ad) uygulanmaz; adi rx bolunmeden maskeler (main'de rx yerel karardan once calisir)
             spans = [mm.span(gn) for mm in rx.finditer(line) for g1, gn in (("name", "nm"), ("nsfx", "nn"))
                      if mm.groupdict().get(g1) and self._name_label(mm, gn, False)]
-            inner = {d for d in dec if d[4] in ("ctx", "firma")
+            inner = {d for d in dec if d[4] in ("ctx", "company")
                      and any(a <= d[0] and d[1] <= b and b - a > d[1] - d[0] for a, b in spans)}
             inner = {d for d in inner if not any(x not in inner and x[0] < b and a < x[1] for x in dec for a, b in spans
                                                      if a <= d[0] and d[1] <= b)}
@@ -2577,9 +2910,9 @@ class Anonymizer:
             for st, en, k, disp, act, why in dec:
                 if (st, en, k, disp, act, why) in inner:
                     continue
-                lab = _FIRMA if act == "firma" else self._ctx_label(k, why, disp)
+                lab = _FIRMA if act == "company" else self._ctx_label(k, why, disp)
                 if self._counting:
-                    cat = "firma" if act == "firma" else self.origin.get(lab, why)
+                    cat = "company" if act == "company" else self.origin.get(lab, why)
                     self.stats[cat] = self.stats.get(cat, 0) + 1
                 parts += [line[pos:st], lab]
                 pos = en
@@ -2660,7 +2993,7 @@ class Anonymizer:
         for c in hit:
             labels[c] = _FIRMA
         if self._counting:
-            self.stats["firma"] = self.stats.get("firma", 0) + 1
+            self.stats["company"] = self.stats.get("company", 0) + 1
         return m.group("wbp") + ".".join(labels) + m.group("wbt")
 
     def _url_rest(self, m):
@@ -2680,22 +3013,29 @@ class Anonymizer:
 
     def _handle(self, m):
         if self._counting:
-            self.stats["kullanıcı adı"] = self.stats.get("kullanıcı adı", 0) + 1
+            self.stats["username"] = self.stats.get("username", 0) + 1
         return _L.masks["user"]
 
     def _cat(self, lab):
-        return "sohbet adı" if lab == self.code else self.origin.get(lab, "gönderen")
+        return "chat_name" if lab == self.code else self.origin.get(lab, "sender")
 
     def _mask(self, m):
         """-> (yerine, kategori|None)."""
         if m.group("wame"):
-            return m.group("wp") + _TEL, "telefon"
+            return m.group("wp") + _TEL, "phone"
         if m.group("social"):
-            return m.group("sp") + _L.masks["user"], "kullanıcı adı"
+            return m.group("sp") + _L.masks["user"], "username"
         if m.group("iban"):
             return _L.masks["iban"], "iban"
+        if m.group("ibanx"):          # any country: only a valid check sum; otherwise the phone rule sees the text
+            if _iban_valid(m.group("ibanx")):
+                return _L.masks["iban"], "iban"
+            hit = []
+            txt = _PHONE_RX.sub(lambda p: (hit.append(1), _TEL)[1] if _phone_ok(p.string, *p.span()) else p.group(0),
+                                m.group("ibanx"))
+            return txt, ("phone" if hit else None)
         if m.group("email"):
-            return _L.masks["email"], "e-posta"
+            return _L.masks["email"], "email"
         if m.groupdict().get("cat"):
             lab = self.cat_keys.get(_key(re.sub(r"[._\-]", "", m.group("cat"))))
             if lab is None:
@@ -2717,14 +3057,16 @@ class Anonymizer:
                 return m.group("name"), None
             return lab + (m.group("suf") or ""), self._cat(lab)
         if m.group("tckn"):
-            return _L.masks["national_id"], "tckn"
+            return _L.masks["national_id"], "national_id"
         if m.group("plaka"):
-            return _L.masks["plate"], "plaka"
-        return _TEL, "telefon"
+            return _L.masks["plate"], "plate"
+        if not _phone_ok(m.string, m.start("phone"), m.end("phone")):
+            return m.group("phone"), None
+        return _TEL, "phone"
 
     def _name_label(self, m, grp, count=True):
         """rx ad eslesmesinin (grp: 'nm' ya da 'nn') etiketi; maskelenmeyecekse (yer/kurum adinin parcasi, kanitli
-        guzergahtaki yer adi) None. count=False: 'yer/kurum belirsiz' sayilmaz (yalniz yoklama: _pre_apply)."""
+        guzergahtaki yer adi) None. count=False: 'place_unclear' sayilmaz (yalniz yoklama: _pre_apply)."""
         lab = self.by_key.get(_key(" ".join(m.group(grp).split())))
         if lab is None or self._landmark_hit(m, grp, lab, count) or self._route_hit(m, grp):
             return None
@@ -2743,12 +3085,12 @@ class Anonymizer:
 
     def _landmark_hit(self, m, grp, lab, count=True):
         """Katilimci olmayan sozluk adi dar bicimli yer/kurum adinin parcasi mi (Mimar Sinan Üniversitesi, Hz. Muhammed).
-        Karar yoksa maskelenir ve 'yer/kurum belirsiz' sayilir."""
+        Karar yoksa maskelenir ve 'place_unclear' sayilir."""
         if self._participant(lab):
             return False
         lm = _landmark(m.string, m.start(grp), m.end(grp), m.end())
         if lm is None and self._counting and count:
-            self.stats["yer/kurum belirsiz"] = self.stats.get("yer/kurum belirsiz", 0) + 1
+            self.stats["place_unclear"] = self.stats.get("place_unclear", 0) + 1
         return bool(lm)
 
     def text(self, s, m=None, title=False, cred=True, count=False):
@@ -2798,14 +3140,14 @@ class Anonymizer:
         self._actx = (id(m), m) if m is not None else (("s", s), s)
         try:
             if count:
-                for tag, cat in ((_L.masks["password"], "parola"), (_L.masks["code"], "kod")):
+                for tag, cat in ((_L.masks["password"], "password"), (_L.masks["code"], "code")):
                     n = joined.count(tag) - s.count(tag)
                     if n > 0:
                         self.stats[cat] = self.stats.get(cat, 0) + n
             if title and _SUBJECT.search(joined):
                 joined = _QUOTED.sub(lambda q: q.group(1) + self.code + q.group(3), joined)
                 if count:
-                    self.stats["sohbet adı"] = self.stats.get("sohbet adı", 0) + 1
+                    self.stats["chat_name"] = self.stats.get("chat_name", 0) + 1
             if self._actx[0] in self._pre_keys:   # ilk taramanin yerel kararlari, rx bir parcasini etiketleyip bolmeden once
                 joined = self._pre_apply(joined, self._actx[0], self.rx_t if title else self.rx)
             if _WEB_Q.search(joined):     # nakliye isletmesi alan adi (yalniz ticari uzantili satirda: hiz)
@@ -3043,8 +3385,9 @@ def process(export, out_dir, args, chat_no=1, ref=None):
 
 
 REVIEW_DIR = "_inceleme"      # eski konum (<out>/_inceleme); artik varsayilan kullanici durum klasoru, bkz. default_review_dir
-_STAT_ORDER = ["gönderen", "sistem satırı", "ek ad", "sözlük", "hitap", "anma", "sohbet adı", "telefon", "e-posta",
-               "kullanıcı adı", "iban", "tckn", "plaka", "parola", "kod", "yer/kurum belirsiz"]
+_STAT_ORDER = ["sender", "system_line", "extra_name", "dictionary", "honorific", "mention", "chat_name", "phone",
+               "email", "username", "iban", "national_id", "plate", "password", "code", "place_unclear",
+               "company", "contact", "signature"]      # the last three: former alphabetical tail, order kept
 _RUN_STAMP = []
 
 
@@ -3158,12 +3501,13 @@ def write_review(review_dir, shown, review):
             os.remove(path)
         return None
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    prio = {"hitap": 0, "büyük": 1, "küçük": 2}
+    prio = {"honorific": 0, "capitalized": 1, "lowercase": 2}
     rows = sorted(review.values(), key=lambda r: (prio.get(r[2], 3), -r[1], _key(r[0])))
+    shown_why = {"honorific": t("why_honorific"), "capitalized": t("why_capitalized"), "lowercase": t("why_lowercase")}
     with open(path, "w", encoding="utf-8", newline="\n") as f:
         f.write(t("review_head", shown=shown))
         for word, n, why, ex in rows:
-            reason = t("why_" + why) if why in prio else why
+            reason = shown_why.get(why, why)
             f.write(f"{word}\t{n}\t{reason}\t" + " | ".join(e.replace("\t", " ") for e in ex) + "\n")
     return path
 
@@ -3177,6 +3521,7 @@ def write_chat(chat, msgs, export, out_dir, anonim=False, chat_no=1, label=None,
     kullanici durum klasoru, cikti klasorunun disi) yazilir. Ad sozlugu (adlar/) yoksa no_dict olmadan hata.
     group: grup sohbeti mi (None: msgs'ten). -> (md_path, mesaj_sayisi, kopyalanan_medya, eksik_medya)"""
     msgs = mark_system_lines(chat, msgs, group)
+    select_packs(msgs)
     if anonim and missing_name_lists() and not no_dict:
         raise RuntimeError(t("dict_missing_exc"))
     anon = Anonymizer(chat, msgs, chat_no, label, extra=extra_names, group=group) if anonim else None
@@ -3191,6 +3536,9 @@ def write_chat(chat, msgs, export, out_dir, anonim=False, chat_no=1, label=None,
         f.write(md)
     real = sum(1 for m in msgs if m["sender"])
     print(t("summary", shown=shown, real=real, copied=copied, missing=missing, path=md_path))
+    if not _PINNED[0] and current_packs() == "auto":      # an explicit --packs / WA2MD_PACKS needs no report
+        codes = _P.code.split("+")
+        print(t("packs_auto", codes=", ".join(codes), n=len(codes), total=len(wa2md_lang.PACKS)))
     if manifest:
         c, sk = write_manifest(folder, manifest)
         fmt = lambda d: ", ".join(f"{k} {v}" for k, v in sorted(d.items(), key=lambda x: -x[1])) or "-"
@@ -3204,7 +3552,7 @@ def write_chat(chat, msgs, export, out_dir, anonim=False, chat_no=1, label=None,
             print(t("no_dict_warn"))
         path = write_review(review_dir or default_review_dir(out_dir), shown, anon.review)
         if path:
-            first = sum(1 for r in anon.review.values() if r[2] != "küçük")
+            first = sum(1 for r in anon.review.values() if r[2] != "lowercase")
             print(t("review_summary", n=len(anon.review), first=first,
                     passes=sum(r[1] for r in anon.review.values()), path=path))
         else:
@@ -3273,6 +3621,7 @@ def _main(argv):
     init_lang(argv)
     ap = build_parser()
     args = ap.parse_args(argv)
+    check_packs_env(ap)
     if args.anonim:
         rc = anonim_preflight(args, args.out)
         if rc:
