@@ -43,7 +43,7 @@ The project is going global: **English is the primary language and Turkish is a 
   - one-time codes tied to the word `OTP`;
   - the parser reads Android and iOS export formats, 24-hour and 12-hour clocks (AM/PM and the Turkish `ÖÖ/ÖS`), and recognizes English and Turkish attachment and media-omitted markers.
 - **Turkish-specific today** (does not work, or behaves wrongly, in English or other-language chats):
-  - given-name and surname dictionaries (`adlar/tr-*.txt`): English names are found only when they happen to be in the Turkish dictionary (in a trial run `John` and `Henry` were masked; `Sarah`, `Mark`, `Mary` and `Wendell` were not);
+  - given-name and surname dictionaries (`adlar/tr-*.txt`): English names are found only when they happen to be in the Turkish dictionary (in a trial run `John` and `Henry` were masked; `Sarah`, `Mark`, `Mary` and `Wendell` were not); the reverse also happens: Turkish names that are ordinary English words are masked even in lower case (`hare`, `violet`, `lee` and `jack` in `a hare ran past the violet flowers`);
   - honorifics (`bey`, `hanım`, `abi`, `Sayın`, ...; `Mr`, `Mrs`, `Dr` are not recognized);
   - contact context words (`irtibat`, `tel`, `yetkili`, ...; `contact`, `call`, `reach` are not recognized);
   - trade names (sector words such as `nakliyat` and `lojistik` and legal forms such as `Ltd. Şti.`, `A.Ş.`; the English `Ltd.` also triggers the company rule);
