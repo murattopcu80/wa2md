@@ -1141,7 +1141,7 @@ def _build_suffix():
 def _build_secrets():
     """Password keywords, one-time-code words and units of the pack."""
     global _KW_SUF, _KW_EXACT, _KW, _KW_RX, _KW_END, _KW_ANY, _OTP_KW, _OTP_NUM, _OTP_SHORT, _KW_SEP
-    link = "" if _P.secret_link == wa2md_lang.NEVER else r"[ \t]+(?:" + _P.secret_link + r")[ \t]+|"   # "PIN is 4321"
+    link = "" if _P.secret_link == wa2md_lang.NEVER else r"[ \t]+(?:" + _P.secret_link + r")[ \t]+|"   # "PIN is 4321"  # gitleaks:allow (compares a pack field with the never-matching regex; no secret)
     _KW_SEP = r"(?P<sep>[ \t]*[:=][ \t]*|[ \t]+[-–—][ \t]+|" + link + r"[ \t]+)"
     _KW_SUF, _KW_EXACT = list(_P.secret_keywords), list(_P.secret_keywords_exact)
     _KW = (r"(?<!\w)(?:" + _alt(_KW_SUF) + r"(?:['’]?\w*)|" + _alt(_KW_EXACT) + r"s?)(?!\w)")
