@@ -24,9 +24,16 @@ import re
 import shutil
 import sys
 import tempfile
+import types
 import unicodedata
 import zipfile
 from urllib.parse import quote
+
+try:
+    import wa2md_lang
+except ImportError:     # run as a script in isolated mode (python -I wa2md.py): the package sits next to this file
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import wa2md_lang
 
 # ---------------------------------------------------------------- message language (command line, help, console)
 # ONE table for every user-facing command-line string of wa2md.py and wa_web.py. Selection order: --lang, then the
@@ -349,21 +356,70 @@ MSG = {
 }
 
 
+# ---------------------------------------------------------------- language pack
+# wa2md_lang is the ONE source of words, language-specific patterns and output labels (see docs/language-packs.md).
+# Every module-level value derived from the pack is built by a function registered with @_on_pack: it runs once at
+# import with the default pack, and use_pack() re-runs all of them in registration order (the same code both times).
+_P = wa2md_lang.load_pack(wa2md_lang.DEFAULT_PACK)     # active pack
+_L = _P.labels                                         # its output labels
+_BUILDERS = []
+
+
+def _on_pack(fn):
+    _BUILDERS.append(fn)
+    fn()
+    return fn
+
+
+def active_pack():
+    """The language pack in use (wa_web reads its export words and labels here)."""
+    return _P
+
+
+def use_pack(pack):
+    """Select the language pack (code or LanguagePack) for the following runs: rebuilds every pack-derived pattern,
+    reloads the dictionaries and clears the caches that depend on the pack."""
+    global _P, _L
+    new = wa2md_lang.load_pack(pack) if isinstance(pack, str) else pack
+    wa2md_lang.check_pack(new)
+    old = _P
+    _P, _L = new, new.labels
+    _LISTS.clear()
+    try:
+        for fn in _BUILDERS:
+            fn()
+    except Exception:                 # a pattern of the new pack does not compile: keep the previous pack
+        _P, _L = old, old.labels
+        for fn in _BUILDERS:
+            fn()
+        raise
+    for f in (_key, _is_sector, _is_strong_sector, title_event_line, _loose, _ordinary):
+        f.cache_clear()
+    return _P
+
+
 IMAGE_EXT = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 # yon isaretleri ve BOM silinir. Sifir genislikli karakterler ve yumusak tire metinde kalir (main gibi; ad
 # eslesmesinde sozcuk siniridir); telefon kalibi rakamlar arasindakileri atlar (_ZWP). Bolunmus adlar kapsam disi.
 INVISIBLE = re.compile("[\u200e\u200f\u202a-\u202e\ufeff]")
 
 DATE = r"(\d{1,2})[./](\d{1,2})[./](\d{2,4})"
-TIME = r"(\d{1,2})[:.](\d{2})(?:[:.](\d{2}))?(?:\s*([AaPp]\.?\s?[Mm]\.?|ÖÖ|ÖS|öö|ös))?"
-ANDROID_RE = re.compile(r"^" + DATE + r",?\s+" + TIME + r"\s+-\s+(.*)$")
-IOS_RE = re.compile(r"^\[" + DATE + r",?\s+" + TIME + r"\]\s*(.*)$")
-ATTACH_ANDROID = re.compile(r"^(.+?)\s+\((?:dosya ekli|file attached)\)\s*$", re.I)
-ATTACH_IOS = re.compile(r"<(?:ek|attached):\s*([^>]+?)\s*>", re.I)
-OMITTED = re.compile(r"^<?[^<>]{0,30}(?:dahil edilmedi|omitted)>?$", re.I)
 
-STRIP_NAME = [r"^WhatsApp Chat with\s+", r"\s+ile WhatsApp Sohbeti$", r"^WhatsApp Chat\s*-\s*",
-              r"^WhatsApp Sohbeti\s*-\s*"]
+
+@_on_pack
+def _build_export():
+    """Export locale of the pack: time markers, attachment / omitted tokens, chat-name strip patterns."""
+    global TIME, ANDROID_RE, IOS_RE, ATTACH_ANDROID, ATTACH_IOS, OMITTED, STRIP_NAME, _PM
+    TIME = r"(\d{1,2})[:.](\d{2})(?:[:.](\d{2}))?(?:\s*(" + _P.ampm + "))?"
+    ANDROID_RE = re.compile(r"^" + DATE + r",?\s+" + TIME + r"\s+-\s+(.*)$")
+    IOS_RE = re.compile(r"^\[" + DATE + r",?\s+" + TIME + r"\]\s*(.*)$")
+    ATTACH_ANDROID = re.compile(r"^(.+?)\s+\((?:" + _P.attach_android + r")\)\s*$", re.I)
+    ATTACH_IOS = re.compile(r"<(?:" + _P.attach_ios + r"):\s*([^>]+?)\s*>", re.I)
+    OMITTED = re.compile(r"^<?[^<>]{0,30}(?:" + _P.omitted + r")>?$", re.I)
+    STRIP_NAME = list(_P.strip_name)
+    _PM = re.compile(_P.pm)
+
+
 RESERVED = {"CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)), *(f"LPT{i}" for i in range(1, 10))}
 
 
@@ -381,7 +437,7 @@ def derive_name(stem):
 def sanitize(name):
     name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", name).strip().rstrip(". ")
     if not name:
-        name = "sohbet"
+        name = _L.chat_fallback
     if name.split(".")[0].upper() in RESERVED:
         name = "_" + name
     return name
@@ -549,7 +605,7 @@ def to_datetime(raw, mdy):
     if y < 100:
         y += 2000
     if ap:
-        pm = ap.lower().startswith("p") or ap.lower() == "ös"
+        pm = bool(_PM.match(ap.lower()))
         H = H % 12 + (12 if pm else 0)
     try:
         return dt.datetime(y, mon, day, H, M, S)
@@ -627,37 +683,36 @@ _GS = "(?:" + _ZWP + _GS0 + ")"
 _GS_T = (r"(?:" + _ZWP + r"(?:[^\S\n]{0,2}[" + _DASH + r"./\uff0e\uff0f][^\S\n]{0,2}"
          r"|[^\S\n]{1,2}|\)[^\S\n]{0,2}|[^\S\n]{0,2}\())")
 _DATE_AHEAD = rf"(?!{_DG0}{{1,2}}[./]{_DG0}{{1,2}}[./]{_DG0}{{2,4}}(?!{_DG0}))"   # '05.11.2026 150 km': tarih, telefon degil
-_TRUNK = rf"\(?(?:(?:(?:\+|{_dl(0)}{{2}}){_GS_T}?)?{_dl(9)}{_dl(0)}{_GS_T}?(?:{_dl(0)}{_GS_T}?)?|(?:{_dl(0)}{_GS_T}?){{1,2}})"   # +90 0090 90 0
-# Telefon: (1) onekli (0/90/+90) TR numarasi, gruplama ve ayractan bagimsiz, BUTUN rakam dizisi: cep 9-10 ulusal hane
-# (4-2-4 gibi bir hanesi eksik yazim dahil), sabit hat 10; dizi orada biter (ardinda ayrac + rakam yok). Ondeki
-# yinelenen cep oneki ('0500 0500 000 00 00') ve ayrik santral/ulke oneki ('0 - 500...', '00 500...') diziyle birlikte
-# maskelenir. A3 kismi maskesinin nedeni: sabit 3-3-2-2 kalibi uzun dizinin yalniz SONUNU esliyordu, onek acikta
-# kaliyordu. (2) sabit kaliplar (dizi bitmese de: '0500 000 00 00 2 araç'). (3) +<8-15 hane> ve 00 + 1-3 haneli ulke
-# kodu + ayrac + 6-12 hane ('0049 151 ...', butun dizi; ayracsiz '0012345678' referans numarasi olabilir, degil). Onekli bicimler bir rakam + tireden sonra da baslar ('...00-0500 ...' ikinci
-# numara) ve sozcuge yapisik da ('Tel0500...', 'ara0500...'); ondalik ('1.5...') ve tarih ('05.11.2026') degil.
+# Telefon: ulusal bicimler dil paketinden (_P.phone_national: TR'de onekli 0/90/+90 numara, sabit kaliplar, sozcuge
+# yapisik oneksiz cep, parantezli alan kodu); evrensel bicimler burada: 00 + 1-3 haneli ulke kodu + ayrac + 6-12 hane
+# ('0049 151 ...', butun dizi; ayracsiz '0012345678' referans numarasi olabilir, degil) ve +<8-15 hane>. Onekli bicimler bir
+# rakam + tireden sonra da baslar ('...00-0500 ...' ikinci numara); ondalik ('1.5...') ve tarih ('05.11.2026') degil.
 # Oneksiz bicimler (5xx..., (212)..., +...) harften sonra baslamaz.
 # ilke 5: butun obekleri iki haneli dizi telefon degildir ('05-06-07-08-09', '00.30, 01.30'); virgul, alt cizgi, orta nokta
 # yalniz telefon bicimli gruplamada ayractir (binlik gruplama '05,000,000,000' degil)
 # (sinirli tekrar: telefon en cok ~15 hanedir; sinirsiz ileri bakis uzun rakam dizisinde her konumda sona kadar tarar)
 _TWO_GROUPS = r"(?:\d{2}(?:[^\w\n]|_){1,4}){2,8}\d{2}(?!\w)"
 _THOUSANDS = r"\d{1,3}(?:[,_\u00b7\u2022\u2219\u30fb]\d{3}){2,5}(?!\d)"
-# sozcuge yapisik oneksiz cep numarasi yalniz iletisim sozcugunden sonra ('TEL500 000 00 00', 'GSM5000000000')
-_GLUED = "".join(f"|(?<={''.join(f'[{c.upper()}{c}]' for c in w)})" for w in "tel tlf gsm cep telefon whatsapp wp".split())
-_PHONE = (rf"(?=[\d+(])(?<![\d+])(?!{_TWO_GROUPS})(?!{_THOUSANDS})(?:"
-          rf"(?=[(+]|{_dl(0, 5, 9)})(?<!\d[.,]){_DATE_AHEAD}(?:\(?{_dl(0)}?{_dl(5)}{_DG}{{2}}\)?{_GS})?{_TRUNK}\(?"
-          rf"(?:{_dl(5)}(?:{_GS}?{_DG}){{8,9}}|{_dl(2, 3, 4, 8)}(?:{_GS}?{_DG}){{9}})(?!{_GS0}?{_DG0})"   # 8: 0850/0800
-          rf"|(?=[(+]|{_dl(0, 9)})(?<!\d[.,]){_TRUNK}\(?{_dl(2, 3, 4, 5, 8)}{_DG}{{2}}\)?{_SEP}?{_DG}{{3}}{_SEP}?{_DG}{{2}}{_SEP}?{_DG}{{2}}"
-          rf"|(?<!\d[.,]){_dl(0)}{{2}}{_GS_T}?(?!{_dl(0)}){_DG}{{1,3}}{_GS}{_DG}(?:{_GS}?{_DG}){{5,11}}(?!{_GS0}?{_DG0})"   # 00 49 ...
-          rf"|(?:(?<!\w){_GLUED})(?<!\d[.,\-]){_dl(5)}{_DG}{{2}}{_SEP}?{_DG}{{3}}{_SEP}?{_DG}{{2}}{_SEP}?{_DG}{{2}}"   # oneksiz TR cep
-          rf"|(?<!\w)(?<!\d[.,\-])\({_dl(2, 3, 4, 5)}{_DG}{{2}}\){_SEP}?{_DG}{{3}}{_SEP}?{_DG}{{2}}{_SEP}?{_DG}{{2}}"  # (322) 000 00 01
-          rf"|(?<!\w)(?<!\d[.,\-])\+{_DG}(?:[ \-.() ]{{0,2}}{_DG}){{7,14}}"                              # +<8-15 hane>
-          rf")(?!{_DG0})(?![.,]\d)")
-_IBAN = r"(?<![\w])[Tt][Rr]\d{2}(?: ?\d){22}(?!\d)"
-_TCKN = r"(?<![\w.,+\-])[1-9]\d{10}(?!\d)(?![.,]\d)"
-# plaka: main'deki kalip; yalniz 0 ile baslayan rakam obegi (plakada olmaz, telefon basidir: '08:30 TEL 0500 000 00 00')
-# bir rakam dizisinin ortasinda bitmez (telefonun basini yutup kuyrugunu acikta birakiyordu)
-_PLAKA = (r"(?<!\w)(?:0[1-9]|[1-7]\d|8[01]) ?(?!(?:TL|TRY|KG|TON|KDV|ADET|LT|GR|CM|MM|USD|EUR)\b)[A-Z]{1,3} ?"
-          r"(?:[1-9]\d{1,3}(?!\w)|0\d{1,3}(?!\w)(?![ \-.]\d))")
+_PHONE_UNIVERSAL = [
+    rf"(?<!\d[.,]){_dl(0)}{{2}}{_GS_T}?(?!{_dl(0)}){_DG}{{1,3}}{_GS}{_DG}(?:{_GS}?{_DG}){{5,11}}(?!{_GS0}?{_DG0})",   # 00 49 ...
+    rf"(?<!\w)(?<!\d[.,\-])\+{_DG}(?:[ \-.() ]{{0,2}}{_DG}){{7,14}}",                                  # +<8-15 hane>
+]
+
+
+@_on_pack
+def _build_phone_ids():
+    """Phone pattern (national shapes of the pack + universal shapes) and the pack's identifiers (IBAN, national id,
+    plate). The universal alternatives start with '00' or '+', a national one that can start there comes first."""
+    global _GLUED, _PHONE, _IBAN, _TCKN, _PLAKA
+    # sozcuge yapisik oneksiz cep numarasi yalniz iletisim sozcugunden sonra ('TEL500 000 00 00', 'GSM5000000000')
+    _GLUED = "".join(f"|(?<={''.join(f'[{c.upper()}{c}]' for c in w)})" for w in _P.phone_glued_words)
+    b = types.SimpleNamespace(dl=_dl, DG=_DG, DG0=_DG0, GS=_GS, GS0=_GS0, GS_T=_GS_T, SEP=_SEP, DATE_AHEAD=_DATE_AHEAD,
+                              GLUED=_GLUED)
+    _PHONE = (rf"(?=[\d+(])(?<![\d+])(?!{_TWO_GROUPS})(?!{_THOUSANDS})(?:"
+              + "|".join([*_P.phone_national(b), *_PHONE_UNIVERSAL]) + rf")(?!{_DG0})(?![.,]\d)")
+    _IBAN, _TCKN, _PLAKA = _P.iban, _P.national_id, _P.plate
+
+
 _EMAIL = r"(?<![\w.+\-])[\w.+\-]+@[\w\-]+(?:\.[\w\-]+)+"   # basta sinir: uzun sozcukte karesel tarama yok
 # sosyal profil adresindeki kullanici adi, WhatsApp kanal kimligi ve grup davet kodu, wa.me numarasi (alan adi ve
 # yol kalir, kisisel parca maskelenir). Yol ayraci URL kodlu da olur ('%2Fchannel%2F<kimlik>', yonlendirme baglantisinda)
@@ -673,18 +728,23 @@ _WAME = r"(?i:(?<![\w\-.])(?P<wp>(?:https?://)?(?:api\.)?wa\.me/)\+?(?P<wn>\d{6,
 # metinde tek basina sosyal kullanici adi: '@' + harf/rakam, icinde '.' ya da '_' (@xandor.plimm). '@' + rakam telefon,
 # '@Ad' anma kurali ayri; e-posta (onunde harf) degil
 _HANDLE = re.compile(r"@(?<![\w.+\-@/]@)(?=[\w.]*(?:\.\w|_))\w[\w.]*\w")   # Anonymizer.text: '@' varsa, rx'ten once
-_TR_I = "iIıİ"
 
 
-_TR_PAIRS = {"c": "çÇ", "g": "ğĞ", "o": "öÖ", "s": "şŞ", "u": "üÜ"}
-_TO_BASE = {x: b for b, xs in _TR_PAIRS.items() for x in xs}
-_KEY_TR = str.maketrans({**{c: "i" for c in _TR_I}, **_TO_BASE})
+@_on_pack
+def _build_fold():
+    """Letter folding of the pack: keys (_key) and the per-letter classes of name patterns (_name_regex)."""
+    global _FOLD_I, _FOLD_PAIRS, _TO_BASE, _KEY_TABLE, _I_ANY, _I_CAP
+    _FOLD_I, _FOLD_PAIRS = _P.fold_i, dict(_P.fold_pairs)
+    _TO_BASE = {x: b for b, xs in _FOLD_PAIRS.items() for x in xs}
+    _KEY_TABLE = str.maketrans({**{c: "i" for c in _FOLD_I}, **_TO_BASE})
+    _I_ANY = f"[{_FOLD_I}]"
+    _I_CAP = "[" + "".join(c for c in _FOLD_I if c.isupper()) + "]"
 
 
 @functools.lru_cache(maxsize=1 << 16)
 def _key(s):
     """Buyuk/kucuk harf, Turkce i/I/ı/İ ve ASCII-katlama (ç->c, ğ->g, ö->o, ş->s, ü->u) duyarsiz anahtar."""
-    return nfc(s).translate(_KEY_TR).lower()
+    return nfc(s).translate(_KEY_TABLE).lower()
 
 
 def _name_regex(name, cap=False):
@@ -692,15 +752,15 @@ def _name_regex(name, cap=False):
     buyuk harfli bicimiyle yayilan ad; 'Sıcak Çorba' eslesir, 'sıcak çorba' eslesmez)."""
     out, head = [], True
     for c in nfc(name):
-        if c in _TR_I:
-            out.append("[Iİ]" if cap and head else f"[{_TR_I}]")
+        if c in _FOLD_I:
+            out.append(_I_CAP if cap and head else _I_ANY)
         elif c.isspace():
             out.append(r"\s+")
             head = True
             continue
         elif c.isalpha():
             b = _TO_BASE.get(c, c.lower())
-            cls = {b, b.upper(), *_TR_PAIRS.get(b, "")} if b in _TR_PAIRS else {c, c.lower(), c.upper()}
+            cls = {b, b.upper(), *_FOLD_PAIRS.get(b, "")} if b in _FOLD_PAIRS else {c, c.lower(), c.upper()}
             if cap and head:
                 cls = {x for x in cls if x.isupper()} or cls
             out.append("[" + "".join(re.escape(x) for x in sorted(cls) if len(x) == 1) + "]")    # sirali: ayni harf, ayni ifade
@@ -713,13 +773,35 @@ def _name_regex(name, cap=False):
 # Nakliye sektor sozcukleri: TEK liste. Ticari adda (_FIRM_TAIL, Anonymizer._special) ve ciplak alan adinda
 # (Anonymizer._web) ayni sozcukler; _SECTOR_GENERIC'tekiler genel ya da kisa oldugu icin alan adinda aranmaz (buyuk kargo
 # firmalari, 'translate', 'nakit'). Ekli bicimler (Nakliyattan, Nakliyatın, Lojistiği) _SECTOR_SFX ile.
-_SECTOR_W = ("nakliyat nakliye nakliyeci nakliyecilik lojistik taşımacılık taşıma transport trans kargo logistics logistic "
-             "nak nakl nakliyatı nakliyesi lojistiği taşımacılığı").split()
-_SECTOR_GENERIC = set("taşıma trans kargo nak nakl".split())
-_SECTOR_SFX_W = ("ı i sı si ın in nın nin a e ya ye da de ta te dan den tan ten la le yla yle lar ler ları leri cı ci "
-                 "cılar ciler cılık cilik ımız imiz").split()
-_SECTOR_KEY = re.compile("(?:" + "|".join(sorted({_key(w) for w in _SECTOR_W}, key=len, reverse=True)) + ")(?:"
-                         + "|".join(sorted({_key(w) for w in _SECTOR_SFX_W}, key=len, reverse=True)) + ")?")
+@_on_pack
+def _build_trade():
+    """Sector words, their suffixes and the business-domain rule of the pack (one list for trade names and domains)."""
+    global _SECTOR_W, _SECTOR_GENERIC, _SECTOR_SFX_W, _SECTOR_KEY, _SECTOR_WEAK, _SECTOR_STRONG_KEY, _WEB_KEYS, _WEB_AFFIX
+    global _WEB_PRE, _WEB_SQ, _WEB_STRONG, _TR_SLD_NC, _WEB, _WEB_RX, _WEB_Q
+    _SECTOR_W, _SECTOR_GENERIC, _SECTOR_SFX_W = list(_P.sector_words), set(_P.sector_generic), list(_P.sector_suffixes)
+    sfx = "|".join(sorted({_key(w) for w in _SECTOR_SFX_W}, key=len, reverse=True))
+    _SECTOR_KEY = re.compile("(?:" + "|".join(sorted({_key(w) for w in _SECTOR_W}, key=len, reverse=True)) + ")(?:"
+                             + sfx + ")?")
+    # ilke 4: GUCLU sektor sozcugu (ticari ad ilan imi olmadan da maskelenir); zayif tetikleyiciler (genel sektor
+    # sozcukleri ve sector_weak_extra) ilan imi ister ('HTTP Transport ayarı', 'Annem Kargo'dan aldı').
+    _SECTOR_WEAK = _SECTOR_GENERIC | set(_P.sector_weak_extra)
+    _SECTOR_STRONG_KEY = re.compile("(?:" + "|".join(sorted({_key(w) for w in _SECTOR_W if w not in _SECTOR_WEAK},
+                                                              key=len, reverse=True)) + ")(?:" + sfx + ")?")
+    # F: ciplak isletme alan adi ('www.ornekfirmaNakliyat.com.tr', 'nakliyat.ornekfirma.com.tr'). Dar kural: yalniz
+    # ticari uzantilar (_P.web_tld); yalniz kayitli ad ve hemen ustundeki alt alan (www/m on ekleri sayilmaz) bakilir;
+    # bunlardan birinde genel olmayan sektor sozcugu varsa, bu iki etiketten AYIRT EDICI olan(lar) [firma] olur. Sektor
+    # sozcugunu cikarinca yalniz ek kalan etiket ('nakliyat', 'transportation') genel sozcuktur, firma degildir. Ana
+    # makine dogrusal eslesir ([\w-]+ etiketleri); sektor sozcugu _web()'de aranir. Buyuk/kucuk harf duyarsiz.
+    _WEB_KEYS = tuple(sorted({_key(w) for w in _SECTOR_W if w not in _SECTOR_GENERIC}, key=len, reverse=True))
+    _WEB_AFFIX = set(_P.web_affixes)
+    _WEB_PRE = set(_P.web_prefixes)
+    _WEB_SQ = re.compile("|".join(_WEB_KEYS))
+    _WEB_STRONG = re.compile("|".join(w for w in _WEB_KEYS if w not in {_key(x) for x in _SECTOR_WEAK}))   # S9
+    _TR_SLD_NC = set(_P.web_noncommercial)   # ulke uzantisi altinda ticari olmayan ikinci duzey etiketler
+    _WEB = (r"(?i:(?<![\w\-.@/%])(?P<wbp>(?:https?://)?)(?P<wbh>(?:[\w\-]+\.)*?[\w\-]+)"
+            r"(?P<wbt>" + _P.web_tld + r")(?![\w\-]|\.\w))")
+    _WEB_RX = re.compile(_WEB)
+    _WEB_Q = re.compile(r"(?i:" + _P.web_tld_quick + r"(?![\w\-]))")   # on suzgec: ticari uzanti yoksa kural calismaz
 
 
 @functools.lru_cache(maxsize=1 << 14)
@@ -728,38 +810,9 @@ def _is_sector(k):
     return bool(_SECTOR_KEY.fullmatch(k))
 
 
-# ilke 4: GUCLU sektor sozcugu (ticari ad ilan imi olmadan da maskelenir): nakliyat, nakliye, nakliyeci(lik), lojistik,
-# taşımacılık, logistic(s) ve ekli bicimleri. Zayif tetikleyiciler (taşıma, trans, transport, kargo, Nak., şirketi,
-# firması) ilan imi ister ('HTTP Transport ayarı', 'Annem Kargo'dan aldı', 'Elektrik Şirketi aradı').
-_SECTOR_WEAK = _SECTOR_GENERIC | {"transport"}
-_SECTOR_STRONG_KEY = re.compile("(?:" + "|".join(sorted({_key(w) for w in _SECTOR_W if w not in _SECTOR_WEAK}, key=len,
-                                                          reverse=True)) + ")(?:"
-                                + "|".join(sorted({_key(w) for w in _SECTOR_SFX_W}, key=len, reverse=True)) + ")?")
-
-
 @functools.lru_cache(maxsize=1 << 14)
 def _is_strong_sector(k):
     return bool(_SECTOR_STRONG_KEY.fullmatch(k))
-
-
-# F: ciplak isletme alan adi ('www.ornekfirmaNakliyat.com.tr', 'nakliyat.ornekfirma.com.tr', 'www.ornekfirma.nakliyat.com'). Dar kural:
-# yalniz ticari uzantilar (.com/.net/.biz/.info/.tr, .com.tr...; .org/.gov/.edu degil); yalniz kayitli ad ve hemen ustundeki
-# alt alan (www/m on ekleri sayilmaz) bakilir; bunlardan birinde genel olmayan sektor sozcugu varsa, bu iki etiketten AYIRT
-# EDICI olan(lar) [firma] olur. Sektor sozcugunu cikarinca yalniz ek kalan etiket ('nakliyat', 'transportation') genel
-# sozcuktur, firma degildir. Yazilim sohbetindeki baglantilar (github.com, belgeler, urunun kendi alan adlari) bu sozcukleri
-# icermez, okunur kalir. Ana makine dogrusal eslesir ([\w-]+ etiketleri); sektor sozcugu _web()'de aranir (eski kalip
-# '[\w-]*(sozcuk)[\w-]*' uzun sozcukte karesel taraniyordu). Buyuk/kucuk harf duyarsiz (KAPLONAKLİYAT.COM).
-_WEB_KEYS = tuple(sorted({_key(w) for w in _SECTOR_W if w not in _SECTOR_GENERIC}, key=len, reverse=True))
-_WEB_AFFIX = set("ation ations s er ers ci cilik i si in tr turk online net web app api mail portal panel blog shop "
-                 "store admin destek".split()) | {""}
-_WEB_PRE = {"www", "m", "mobile", "tr", "en", "web"}
-_WEB_SQ = re.compile("|".join(_WEB_KEYS))
-_WEB_STRONG = re.compile("|".join(w for w in _WEB_KEYS if w not in {_key(x) for x in _SECTOR_WEAK}))   # S9
-_TR_SLD_NC = {"org", "gov", "edu", "k12", "bel", "pol", "tsk", "av", "dr", "name", "tv", "bbs", "tel", "mil"}   # ticari degil
-_WEB = (r"(?i:(?<![\w\-.@/%])(?P<wbp>(?:https?://)?)(?P<wbh>(?:[\w\-]+\.)*?[\w\-]+)"
-        r"(?P<wbt>\.(?:com|net|biz|info)(?:\.tr)?|\.(?:web|gen|biz)\.tr|\.tr)(?![\w\-]|\.\w))")
-_WEB_RX = re.compile(_WEB)
-_WEB_Q = re.compile(r"(?i:\.(?:com|net|biz|info|tr)(?![\w\-]))")   # on suzgec: ticari uzanti yoksa alan adi kurali calismaz
 
 
 def _web_distinct(k):
@@ -855,25 +908,32 @@ def _first_alt(names):
 
 
 # Kapali ek listesi (tek parca adlara apostrofsuz eklenebilen): kucultme/sevgi + cogul + iyelik + hal ekleri.
-_SFX_DIM = [c + v + g + w + m for c in "cç" for v in "ıiuü" for g in ("ğ",) for w in "ıiuü" for m in ("m",)] + [
-    c + v + k for c in "cç" for v in "ıiuü" for k in "mk"]
-_SFX_PL = ["lar", "ler"]
-_SFX_POSS = ["ım", "im", "um", "üm", "ın", "in", "un", "ün"]
-_SFX_CASE = ["a", "e", "ya", "ye", "ı", "i", "u", "ü", "yı", "yi", "yu", "yü", "da", "de", "ta", "te", "dan", "den",
-             "tan", "ten", "la", "le", "yla", "yle", "nın", "nin", "nun", "nün", "ca", "ce", "çe", "ça"]
-_SFX_RX = (f"(?:{_alt(_SFX_DIM)}?{_alt(_SFX_PL)}?{_alt(_SFX_POSS)}?{_alt(_SFX_CASE)}?)")
+@_on_pack
+def _build_suffix():
+    """Closed suffix list of the pack (groups in order, each optional); a pack without suffixes gives an empty group."""
+    global _SFX_RX
+    _SFX_RX = "(?:" + "".join(f"{_alt(g)}?" for g in _P.name_suffixes) + ")"
 
 
 # ---- parola / gizli anahtar maskeleme (sezgisel; ayni tek Anonymizer yolu)
-_KW_SUF = ["şifre", "parola", "token", "login", "anahtar", "api key", "apikey", "api-key", "api_key", "giriş bilgi"]
-_KW_EXACT = ["passwd", "password", "pass", "pwd", "pw", "pin"]
-_KW = (r"(?<!\w)(?:" + _alt(_KW_SUF) + r"(?:['’]?\w*)|" + _alt(_KW_EXACT) + r"s?)(?!\w)")
 _KW_SEP = r"(?P<sep>[ \t]*[:=][ \t]*|[ \t]+[-–—][ \t]+|[ \t]+)"
-_KW_RX = re.compile(_KW + _KW_SEP)
-_KW_END = re.compile(_KW + r"[ \t]*[:=\-–—]?[ \t]*$")
-_KW_ANY = re.compile(_KW)
-_OTP_KW = re.compile(r"(?<!\w)(?:" + "|".join(_name_regex(x) + r"\w*" for x in ("kod", "doğrulama", "onay")) + r"|[Oo][Tt][Pp])(?!\w)")
-_OTP_NUM = re.compile(r"(?<![\w.,:/\-+])\d{4,8}(?!\w|[.,:/]\d|\s?(?:TL|₺|TRY|KG|TON|ADET|KDV|USD|EUR)\b)")
+
+
+@_on_pack
+def _build_secrets():
+    """Password keywords, one-time-code words and units of the pack."""
+    global _KW_SUF, _KW_EXACT, _KW, _KW_RX, _KW_END, _KW_ANY, _OTP_KW, _OTP_NUM, _OTP_SHORT
+    _KW_SUF, _KW_EXACT = list(_P.secret_keywords), list(_P.secret_keywords_exact)
+    _KW = (r"(?<!\w)(?:" + _alt(_KW_SUF) + r"(?:['’]?\w*)|" + _alt(_KW_EXACT) + r"s?)(?!\w)")
+    _KW_RX = re.compile(_KW + _KW_SEP)
+    _KW_END = re.compile(_KW + r"[ \t]*[:=\-–—]?[ \t]*$")
+    _KW_ANY = re.compile(_KW)
+    _OTP_KW = re.compile(r"(?<!\w)(?:" + "|".join(_name_regex(x) + r"\w*" for x in _P.otp_words) + "|" + _P.otp_extra
+                         + r")(?!\w)")
+    _OTP_NUM = re.compile(r"(?<![\w.,:/\-+])\d{4,8}(?!\w|[.,:/]\d|\s?(?:" + _P.otp_units + r")\b)")
+    _OTP_SHORT = re.compile(r"(?<!\w)(?:" + _P.otp_short + ")")
+
+
 _SECRET = re.compile("|".join([
     r"(?<!\w)gh[pousr]_[A-Za-z0-9]{20,}",
     r"(?<!\w)github_pat_[A-Za-z0-9_]{20,}",
@@ -887,11 +947,17 @@ _RANDOM = re.compile(
     r"(?<![\w.\-/+=@:#%])(?=[A-Za-z0-9_\-+=]*[a-z])(?=[A-Za-z0-9_\-+=]*[A-Z])(?=[A-Za-z0-9_\-+=]*\d)"
     r"[A-Za-z0-9_\-+=]{16,}(?!\w|[\-/@:]|\.\w)")   # >=16 karakter, kucuk+buyuk+rakam; dosya adi/URL/e-posta degil
 _BEARER = re.compile(r"(?<!\w)([Bb]earer\s+)[A-Za-z0-9._\-+/=]{12,}")
-_UNITS = r"(?:TL|TRY|KDV|KG|TON|ADET|LT|GR|CM|MM|USD|EUR|M2|M3|KM|SA|DK|SN|MT|GUN|GÜN|SAAT)"
-_NOT_SECRET = re.compile(r"(?i:\d[\d.,]*\+?" + _UNITS + r"|[\d.,:/\-+]+|\d{1,2}[./-]\d{1,2}[./-]\d{2,4}|#\d+)|[0-9a-f]{7,12}")
-_STOP = {_key(x) for x in ("yok", "var", "ne", "neydi", "nedir", "bu", "şu", "su", "aynı", "değişti", "degisti", "unuttum",
-                          "bilmiyorum", "gönderdim", "yeni", "eski", "tamam", "evet", "hayır", "hayir", "ve", "ile")}
-_CODE_CTX = re.compile(r"whatsapp|(?<!%sw)web(?!%sw)|bagla|esle|qr" % (chr(92), chr(92)))
+
+
+@_on_pack
+def _build_units():
+    global _UNITS, _NOT_SECRET, _STOP, _CODE_CTX
+    _UNITS = r"(?:" + _P.units + ")"
+    _NOT_SECRET = re.compile(r"(?i:\d[\d.,]*\+?" + _UNITS + r"|[\d.,:/\-+]+|\d{1,2}[./-]\d{1,2}[./-]\d{2,4}|#\d+)|[0-9a-f]{7,12}")
+    _STOP = {_key(x) for x in _P.secret_stop}
+    _CODE_CTX = re.compile(_P.code_context)
+
+
 _EDGE = "\"'`()[]<>.,;:!?"
 _WA_MEDIA = re.compile(r"(?:IMG|VID|PTT|DOC|STK|AUD)-\d{8}-WA\d{4,}(?:\.[A-Za-z0-9]{1,5})?")   # WhatsApp medya adi
 
@@ -923,7 +989,7 @@ def _mask_tok(tok, sink=None):
     core = tok.rstrip(".,;")
     if sink is not None and _cred_like(core, 4):
         sink.add(core.strip(_EDGE))
-    return "[parola]" + tok[len(core):]
+    return _L.masks["password"] + tok[len(core):]
 
 
 def _next_line_value(line):
@@ -949,43 +1015,45 @@ def _cred_line(line, sink=None):
         core = tok.strip(_EDGE)
         if _KW_ANY.fullmatch(core) or "://" in tok or tok.startswith("[") or _key(core) in _STOP or _WA_MEDIA.fullmatch(core):
             continue
-        digits = 4 if _key(m.group(0)).startswith("pin") else 0
+        digits = 4 if _key(m.group(0)).startswith(_P.pin_word) else 0
         if (len(core) >= 3 if loose else _cred_like(tok, digits)):
             spans.append((m.end(), m.end() + len(tok), tok))
             pos = m.end() + len(tok)
     for a, b, tok in reversed(spans):
         line = line[:a] + _mask_tok(tok, sink) + line[b:]
     if _OTP_KW.search(line):
-        line = _OTP_NUM.sub("[kod]", line)
+        line = _OTP_NUM.sub(_L.masks["code"], line)
     pending = (not spans) and bool(_KW_END.search(line))
     return line, pending
 
 
 # ---- sistem satirlarindaki kisiler (eklendi/katildi/ayrildi/...): Ingilizce ve Turkce yerel
-_SYS_PATTERNS = [re.compile(p, re.I) for p in (
-    r"^your security code with (?P<s>.+?) changed\b",
-    r"^(?P<s>.+?) changed to (?P<same>\+?\d[\d ()\-]{6,}\d)\b",
-    r"^(?P<s>.+?) made (?P<o>.+?) an? admin\b",
-    r"^(?P<s>.+?) (?:added|removed) (?P<o>.+?)\.?$",
-    r"^(?P<s>.+?) (?:created group|created this group|changed the subject|changed the group|changed this group|"
-    r"deleted this group|reset this group|joined using|joined from|joined via|left\b|was added|was removed|"
-    r"is now an admin|requested to join|changed their phone number|changed the settings|pinned a message|"
-    r"started a (?:video |voice )?call|turned (?:on|off))",
-    r"^(?P<s>.+?) ile güvenlik kodunuz değişti",
-    r"^(?P<s>.+?),? (?P<same>\+?\d[\d ()\-]{6,}\d) numaras[ıi]na geçti",
-    r"^(?P<s>[^,]+?), (?P<o>.+?)(?: adlı kişiyi| adlı kişileri| kişisini| kişilerini)? (?:ekledi|çıkardı|yönetici yaptı)\.?$",
-    r"^(?P<s>.+?) (?:sizi|seni) (?:ekledi|çıkardı)",
-    r"^(?P<s>.+?),? (?:[\"“].*[\"”] )?(?:grubunu|grubu) oluşturdu",
-    r"^(?P<s>.+?) (?:bu grubun|grubun|grup |konuyu|telefon numarasını|numarasını|davet bağlantısı|bu grubu|topluluktan|"
-    r"gruptan|bir mesajı sabitledi|aramayı başlattı|artık yönetici)",
-    r"^(?P<s>.+?) (?:katıldı|ayrıldı|eklendi|çıkarıldı)\.?$",
-)]
-_SUBJECT = re.compile(r"created group|changed the subject|changed the group name|changed this group's name|"
-                      r"grubunu oluşturdu|konuyu|grup adını|grubun adını|olarak değiştirdi", re.I)
 _QUOTED = re.compile(r"([\"“])([^\"“”\n]{1,200})([\"”])")
-_SYS_SPLIT = re.compile(r",\s*(?:and\s+|ve\s+)?|\s+(?:and|ve)\s+")
-_SYS_NOT = {"you", "your", "siz", "sizi", "seni", "sen", "ben", "beni", "biz"}
-_SYS_BAD = re.compile(r"[\"“”:/@]|https?|\b(?:messages?|mesaj\w*|group|grub?\w*|this|bu)\b", re.I)
+
+
+@_on_pack
+def _build_system():
+    """System-line, group-event and notice patterns of the export locale (Android and iOS)."""
+    global _SYS_PATTERNS, _SUBJECT, _SYS_SPLIT, _SYS_NOT, _SYS_BAD, _SYS_NOTICE, _GROUP_EVT, _GRP_ONLY, _GRP_WEAK
+    global _EVT_WORDS, _SELF_REFS, _NAME_SFX_STRIP
+    _SYS_PATTERNS = [re.compile(p, re.I) for p in _P.system_patterns]
+    _SUBJECT = re.compile(_P.subject_change, re.I)
+    _SYS_SPLIT = re.compile(_P.system_split)
+    _SYS_NOT = set(_P.system_not_person)
+    _SYS_BAD = re.compile(_P.system_bad, re.I)
+    # iOS sistem satirlari gonderen yerinde grup adiyla gelir ('[..] Grup: Ali added Veli'); kisisiz bildirimler de oyle
+    _SYS_NOTICE = re.compile(_P.system_notice, re.I)
+    _GROUP_EVT = re.compile(_P.group_event, re.I)
+    # Yalniz grupta olan olaylar (tam satir): sohbetin grup oldugunu ve iOS'ta grup adiyla gelen satirin sistem satiri
+    # oldugunu yalniz bunlar soyler. Siradan mesajda da gecen sozcukler ('Kardeşim de katıldı.') sayilmaz.
+    _GRP_ONLY = [re.compile(p, re.I) for p in _P.group_only_patterns]
+    # grupta, grup adiyla gelen ad bicimli olay satiri ('Jorvik Plimm left'): yalniz donusturmede
+    _GRP_WEAK = re.compile(_P.group_weak, re.I)
+    # on eleme: olay, sistem satiri ve bildirim desenlerinin anahtar sozcuklerinden biri yoksa satir olay/bildirim degildir
+    # (duz alt dize aramasi: buyuk mesaj akisinda hizli)
+    _EVT_WORDS = tuple(_P.event_words)
+    _SELF_REFS = set(_P.self_refs)
+    _NAME_SFX_STRIP = re.compile(_P.name_suffix_strip)
 
 
 def system_people(body):
@@ -994,7 +1062,7 @@ def system_people(body):
     out = []
 
     def add(x, same=None):
-        x = re.sub(r"['’][a-zçğıöşü]+$", "", " ".join(x.split()).lstrip("~ ").strip(" .,;"))   # Naime'yi -> Naime
+        x = _NAME_SFX_STRIP.sub("", " ".join(x.split()).lstrip("~ ").strip(" .,;"))   # Naime'yi -> Naime
         if not x or x.lower() in _SYS_NOT or len(x) > 40 or len(x.split()) > 5 or _SYS_BAD.search(x):
             return
         if not any(c.isalpha() for c in x) and sum(c.isdigit() for c in x) < 7:
@@ -1015,15 +1083,6 @@ def system_people(body):
     return out
 
 
-# iOS sistem satirlari gonderen yerinde grup adiyla gelir ('[..] Grup: Ali added Veli'); kisisiz bildirimler de oyle
-_SYS_NOTICE = re.compile(r"end-to-end encrypted|uçtan uca şifreli|disappearing messages|süreli mesaj|security code|"
-                         r"güvenlik kod|group description|grup açıklama|admin approval|only admins|yalnızca yönetici|"
-                         r"changed (?:the|this) group|group icon|grup simgesi|grup resmi", re.I)
-_GROUP_EVT = re.compile(r"\b(?:added|removed|joined|left|created (?:this )?group|changed the subject|changed (?:the|this) "
-                        r"group|is now an admin|made .+ admin)\b|\b(?:ekledi|çıkardı|katıldı|ayrıldı|oluşturdu|gruptan|"
-                        r"grubun|bu grubu|konuyu|yönetici)", re.I)
-
-
 def _body(m):
     return " ".join(v for k, v in message_parts(m) if k == "text" and v) if ("parts" in m or "lines" in m) else ""
 
@@ -1032,38 +1091,7 @@ def _system_shaped(body):
     return bool(system_people(body) or _SUBJECT.search(body) or _SYS_NOTICE.search(body))
 
 
-# Yalniz grupta olan olaylar (tam satir): sohbetin grup oldugunu ve iOS'ta grup adiyla gelen satirin sistem satiri
-# oldugunu yalniz bunlar soyler. Siradan mesajda da gecen sozcukler ('Kardeşim de katıldı.', 'Ali ayrıldı') sayilmaz.
-_GRP_ONLY = [re.compile(p, re.I) for p in (
-    r'^(?P<s>.+?) created (?:group [\"“].*[\"”]|this group)\.?$',
-    r"^(?P<s>.+?) (?:added|removed) (?P<o>.+?)\.?$",
-    r"^(?P<s>.+?) joined (?:using this group's invite link|using an invite link|from the community|via invite link)",
-    r"^(?P<s>.+?) changed (?:the subject|this group's icon|the group description|this group's settings|the group name|"
-    r"this group's name|the group icon)\b",
-    r"^(?P<s>.+?) (?:is now an admin|made .+ an? admin)\b",
-    r"^you(?:'re| are) now an admin\b|^you were added\b",
-    r'^(?P<s>.+?),? (?:[\"“].*[\"”] )?(?:grubunu|grubu) oluşturdu\.?$',
-    r"^(?P<s>[^,]+?), (?P<o>.+?)(?: adlı kişiyi| adlı kişileri| kişisini| kişilerini)? (?:ekledi|çıkardı)\.?$",
-    r"^(?P<s>.+?) (?:sizi|seni) (?:ekledi|çıkardı)\b",
-    r"^(?P<s>.+?),? (?:bu grubun |grubun )?davet bağlantısı(?:yla| ile|nı kullanarak) katıldı",
-    r"^(?P<s>.+?) (?:konuyu|grup adını|grubun adını|grup simgesini|grubun simgesini|bu grubun simgesini|grup açıklamasını|"
-    r"grubun açıklamasını|grubun ayarlarını|bu grubun ayarlarını) ",
-    r"^(?P<s>.+?),? gruptan ayrıldı\.?$",
-    r"^(?P<s>.+?),? (?:artık yönetici|(?P<o>.+?) adlı kişiyi yönetici yaptı)",
-)]
-# grupta, grup adiyla gelen ad bicimli olay satiri ('Jorvik Plimm left', '+90 500 ... katıldı'): yalniz donusturmede
-_GRP_WEAK = re.compile(r"^(?P<s>.+?),? (?:left|joined|was added|was removed|ayrıldı|katıldı|eklendi|çıkarıldı)\.?$", re.I)
-
-
 _EVT_MAX = 1000     # bundan uzun satir olay/sistem satiri sayilmaz (gercek olay satirlari birkac yuz karakter)
-# on eleme: olay, sistem satiri ve bildirim desenlerinin (_GRP_ONLY, _GRP_WEAK, _SYS_PATTERNS, _SYS_NOTICE) anahtar
-# sozcuklerinden biri yoksa satir olay/bildirim degildir (duz alt dize aramasi: buyuk mesaj akisinda hizli)
-_EVT_WORDS = (
-    "added", "removed", "changed", "made", "created", "deleted", "reset", "joined", "left", "was ", "is now", "now an",
-    "requested", "pinned", "started", "turned", "security", "you were", "encrypted", "disappearing", "description",
-    "admin", "icon", "ekledi", "çıkardı", "çıkarıldı", "eklendi", "katıldı", "ayrıldı", "oluşturdu", "yönetici", "grubun",
-    "grup ", "grubu", "gruptan", "konuyu", "numaras", "güvenlik", "davet", "topluluktan", "sabitledi", "aramayı",
-    "şifreli", "süreli", "açıklama", "simgesi", "resmi")
 
 
 def _evt_quick(body):
@@ -1073,8 +1101,8 @@ def _evt_quick(body):
 
 def _name_shaped(x):
     """Sistem satirindaki kisi gibi mi: 1-5 sozcuk, harf iceren her sozcuk buyuk harfle (ya da numara, 'you/sizi')."""
-    x = re.sub(r"['’][a-zçğıöşü]+$", "", " ".join(x.split()).lstrip("~ ").strip(" .,;"))
-    if _key(x) in {"you", "sizi", "seni", "siz"} or re.fullmatch(r"\+?\d[\d ()\-]{6,}\d", x):
+    x = _NAME_SFX_STRIP.sub("", " ".join(x.split()).lstrip("~ ").strip(" .,;"))
+    if _key(x) in _SELF_REFS or re.fullmatch(r"\+?\d[\d ()\-]{6,}\d", x):
         return True
     toks = x.split()
     return 1 <= len(toks) <= 5 and all(t[:1].isupper() or not any(c.isalpha() for c in t) for t in toks)
@@ -1163,196 +1191,158 @@ def mark_system_lines(chat, msgs, group=None):
 # ---- ad sozlugu (adlar/*.txt; Wikidata CC0) ve baglam kurallari
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _LISTS = {}
-_TAKVIM = {_key(x) for x in ("ocak şubat mart nisan mayıs haziran temmuz ağustos eylül ekim kasım aralık pazartesi salı "
-                             "çarşamba perşembe cuma cumartesi pazar").split()}
-_CAPWORD = {_key(x) for x in "türk ege asya medine islam kuzey güney doğu akdeniz karadeniz".split()}
-_HON = re.compile(r"(?:bey|beyefendi|hanim|hanimefendi|abi|abla|hoca|baskan|kardes|amca|teyze|usta|agabey|abey|reis|dayi)"
-                  r"(?:ler|lar)?(?:imiz|umuz|miz|muz|im|um|m)?(?:cigim|cugum|cim|cum)?"
-                  r"(?:['\u2019]?(?:yle|yla|nin|nun|den|dan|ye|ya|yi|yu|in|un|de|da|le|la|si|e|a|i|u))?")   # _key bicimi
-_HON_ORG = re.compile(r"baskani(?!m)[a-z]*|baskanlig[a-z]*")       # Dernek Başkanı: onundeki sozcuk kurum adidir
-_HON_STOP = {_key(x) for x in (
-    "tamam selam merhaba merhabalar günaydın iyi evet hayır sağol sağolun teşekkürler teşekkür aynen peki tabi tabii olur "
-    "hadi haydi hayırlı kolay rica estağfurullah eyvallah valla vallahi allah sayın değerli kıymetli sevgili muhterem "
-    "saygıdeğer canım ben sen siz biz onlar bu şu o ve ile ya yok var ne nasıl kusura geçmiş hoş hoşgeldin hoşgeldiniz "
-    "lütfen bence genel yönetim kurulu kurul bölge şube il ilçe dernek derneği grup grubu ekip ekibi takım merkez müdür "
-    "müdürlük daire belediye belediyesi oda odası vakıf vakfı federasyon kulüp kulübü birlik birliği komisyon meclis "
-    "onursal eski yeni sağ baş başkan abi abla hocam hoca usta amca teyze kardeş bey hanım reis dayı ağabey "
-    "selamlar selamün aleyküm aleykümselam teşekkürlerim kardeşim abim başkanım hocamız ustam hayırdır günler geceler "
-    "akşamlar iyiyim tebrikler tebrik bravo süper harika güzel aferin maşallah inşallah amin hakkınızda hakkın "
-    "doktor dr av müh öğretmen kaptan komutan şef ekibimiz arkadaşlar arkadaşım dostum kanka reisim").split()}
 _WORD = re.compile(r"[^\W\d_]+(?:['’][^\W\d_]+)?")
 _APOS = re.compile("['’]")
 _GAP_INI = re.compile(r"[.!?…:;]")
-_LABEL_AFTER = re.compile(r" (?:\d|\?)")               # 'Kişi 3', 'Kişi ?': etiketin kendisi ad sanilmaz
-# yer/kurum adi: ad + bu sozcuk (ya da araya buyuk harfli sozcukler) -> dokunulmaz (Mimar Sinan Üniversitesi, Hz. Muhammed)
-_INST_ANY_W = ("üniversitesi lisesi hastanesi köprüsü caddesi bulvarı mahallesi camii stadı stadyumu ilkokulu ortaokulu "
-               "havalimanı havaalanı fakültesi enstitüsü müzesi kütüphanesi istasyonu otogarı kampüsü").split()
-_INST_CAP_W = ("sokağı sokak cad sok mah cami parkı meydanı okulu koleji barajı vakfı kışlası tüneli kulesi çarşısı pazarı "
-               "köyü ilçesi apartmanı sitesi hanı oteli limanı yolu terminali yurdu salonu merkezi gölü dağı çayı ırmağı "
-               "nehri tepesi kalesi türbesi").split()
-_INST_ANY = re.compile("^(?:" + "|".join(_key(x) for x in _INST_ANY_W) + ")")
-_INST_CAP = re.compile("^(?:" + "|".join(_key(x) for x in _INST_CAP_W) + ")$")
-_INST_ANY_K = tuple(_key(x) for x in _INST_ANY_W)      # onek (Hastanesinde)
-_INST_CAP_K = frozenset(_key(x) for x in _INST_CAP_W)   # tam sozcuk
 _LM_NEXT = re.compile(r" ([^\W\d_]\w*)")            # tek bosluk + sozcuk (ozel ad obegi: araya noktalama girmez)
-_LM_HZ = re.compile(r"(?:^|[^\w])(?:[Hh][Zz]|Hazreti|Hazret|HAZRETİ)\.?[ \t]*$")
-_SURNAME_SFX = re.compile(r"..(?:oglu|ogullari|gil|soy|turk|demir|kaya|tas|yildiz|aslan|arslan|dogan)$")   # Öztürkoğlu
-_FAMILY = {_key(x) for x in "aile ailesi ailemiz family kuzenler akrabalar sülale sülalesi".split()}
-_TITLE_STOP = {_key(x) for x in "bizim benim sizin onların büyük küçük geniş mutlu canım güzel tatlı yeni eski".split()}
-_SAYIN = {"sayin", "sn"}
-_NOT_NAME_SFX = re.compile(r"(?:imiz|umuz|miz|muz|lar|ler|larimiz|lerimiz)$")   # Sayın Üyelerimiz, Sayın Yetkililer
-_SAYIN_STOP = {_key(x) for x in (
-    "yetkili ilgili müşteri katılımcı arkadaş meslektaş hocam başkanım müdürüm bakanım valim vekilim kaymakamım dekanım "
-    "rektörüm hakim savcı avukat doktor dr av müh prof doç yrd öğretmen veli üye vatandaş okuyucu yolcu "
-    "komutanım amirim kurul heyet").split()}
-
-# ---- nakliye ilanlari: iletisim baglami, ticari ad, ilan sozlugu (anahtar bicimi; tek kod yolu: Anonymizer._scan)
-# iletisim sozcugu: ardindaki (ayrac ya da satirda telefon varsa), onundeki ya da maskelenen telefonun yanindaki buyuk
-# harfli 1-3 sozcuk kisi adidir
-# S6: iletisim kanali sozcukleri ve sik yanlis yazimlari da (alan etiketidir, ad olarak ogrenilmez)
-_CONTACT_W = ("irtibat irt iletişim ilt tel tlf telefon gsm cep yetkili sorumlu whatsapp wp whatsap watsap watsapp vatsap "
-              "vatsapp wtsp wsp telegram").split()
-# S3c: birim adi ('Muhasebe Birimi', 'Satış Departmanı', 'Gündüz Ekibi') kisi degildir: iletisim adi olarak alinmaz. Anahtar
-# bicimi; iyelik eki sart, hal eki olabilir ('Biriminden'). Ticari ad kuralinda dislama yalniz durdurma listesidir (5. tur).
-_ORG_UNIT = re.compile(r"(?:birim|departman|ekib|bolum|mudurlug|sube|ofis|servis|depo|merkez|grub|takim|kalem|sekreterlig)"
-                       r"(?:i|u|si|su)(?:n|ne|na|nde|nda|nden|ndan|nin|nun|yle|yla)?")
-_CONTACT = {_key(x) for x in _CONTACT_W}
-# dolgu ve alan etiketi sozcukleri: iletisim baglaminda hicbir zaman ad degildir ('İRTİBAT İÇİN:', 'Tel No:',
-# 'Hafta İçi Arayınız', '[telefon] Sadece WhatsApp', 'Yetkili Servis'); numara*/telefon*/iletişim*/irtibat* ekli bicimleri de
-_FILLER_W = ("no nu nr numara için icin sadece yalnız yalnızca lütfen arayınız arayın ara arama arayabilirsiniz ulaşın "
-             "ulaşınız ulaşabilirsiniz bilgi bilgileri bilgisi bilgilendirme kişi kişisi hat hattı hattımız hafta içi sonu "
-             "mesai saat saatleri saatlerinde servis servisi destek müşteri hizmet hizmeti hizmetleri fatura faturası web "
-             "mesaj mesajı sms adres adresi mail eposta email faks fax sabit mobil ev iş işyeri satış muhasebe operasyon "
-             "randevu rezervasyon business api phone contact call mobile number info only büro "
-             "ad adı soyad soyadı isim ismi unvan unvanı ünvan ünvanı diğer ikinci birinci alternatif yedek santral "
-             "dahili ofis").split()
-_FILLER = {_key(x) for x in _FILLER_W}
-# ilke 3: siradan sozcuk testi (zayif kanit yalniz bundan gecerse maskelenir; guclu bulgu gecmezse yalniz o yerde kalir).
-# Anahtar bicimi (_key: ı->i, ü->u, ş->s, ç->c, ğ->g, ö->o). Cekim ekleri: simdiki/gecmis/gelecek zaman, emir, gereklilik,
-# mastar, yeterlilik, -ArIm/-ArIz, cogul (+iyelik, hal), iyelik, -deki, ulac. Soyadlarinda sik olan '-an/-en' (Doğan,
-# Gülen), '-ar/-er' (Uçar), '-maz' (Yılmaz), '-li' (Erdemli) bilerek YOK; listedeki ad/soyad hic sayilmaz.
-_ORD_SFX = re.compile(
-    r"(?:[iu]?yor(?:um|sun|uz|sunuz|lar|ler|du|dum|duk|dunuz|mus|sa)?|s[iu]n(?:lar|ler)?"
-    r"|[dt][iu](?:m|n|k|niz|nuz|lar|ler)?|m[iu]s(?:im|sin|iz|siniz|lar|ler|tir)?"
-    r"|[ae]c[ae]k(?:sin|im|iz|siniz|lar|ler|tir)?|[ae]c[ae]g[iu][mz]|m[ae]l[iu](?:yim|sin|yiz|siniz|lar|ler|dir|ydi)?"
-    r"|m[ae]k|[ae]bil[iu]r(?:im|sin|iz|siniz|ler|lar)?|[aeiu]r[iu][mz]"
-    r"|l[ae]r[iu]?(?:m|n|miz|niz|n[iu]n)?(?:l[ae]|[ae]|d[ae]|d[ae]n)?|[iu]ml[ae]|[iu]n[iu]z(?:l[ae])?|[iu]m[iu]z"
-    r"|[aeiou]s[iu]|[dt][ae]ki|[iu]nc[ae]|[ae]r[ae]k)$")
-_ORD_W = {_key(x) for x in (
-    "ola olsun olur gele kolaylıklar bereketli uğurlu geçmiş sevgiler saygılar selamlar teşekkürler rica ederim "
-    "bilginize bilgilerinize duyurulur önemle aşağıda yukarıda burada orada şurada içeride dışarıda dostlar cepten "
-    "cebimden numaradan").split()}
-_FILLER_PFX = tuple(_key(x) for x in "numara telefon iletişim irtibat whatsapp".split())
 # iletisim sozcugu alan olarak: ardinda (dolgu etiketi sozcukleriyle) ':', '-', '.' ('Tel: ...', 'İRT. ...',
 # 'Yetkili Kişi: ...'). Ilan imi: bu ya da satirda telefon (_ad_line); 'WhatsApp Web açılmıyor' alan degildir.
 # ayrac: ':', '-', '.', ok ('İRTİBAT ⇒ AD'); sozcukle ayrac arasinda parantezli ek olabilir ('Tel (Ofis): Ad Soyad')
 _FIELD_SEP = r"(?:=>|->|[:\-\u2013\u2014]|\.(?!\w)|[\u21d2\u2192\u279c\u2794]|\u27a1\ufe0f?)"
-_CONTACT_FIELD = re.compile(r"(?<![\w.\-/@])" + _alt(_CONTACT_W) + r"(?!\w)(?:[ \t]+" + _alt(_FILLER_W)
-                            + r"(?!\w)){0,2}(?:[ \t]*\([^()\n]{1,24}\))?[ \t]*" + _FIELD_SEP)
-# sektor sozcugu ve hukuki bicim: onlerindeki buyuk harfli sozcukler firma adinin ayirt edici kismidir -> [firma].
-# Hizmet sozcukleri zincirin parcasidir ('Kaplo Lojistik Hizmetleri Ltd. Şti.': tek maske).
-_LEGAL_W = ("ltd limited şti şirketi firması san sanayi tic ticaret inş inşaat paz pazarlama ith ihr ithalat ihracat ve "
-            "hizmetleri hizmet hizmetler").split()
-_LEGAL_K = {_key(x) for x in _LEGAL_W}
-_LEGAL_STRONG = {_key(x) for x in "ltd limited şti şirketi firması".split()}
-# hukuki bicim (ikinci ilan imi gerekmez): Ltd, Şti, A.Ş., San.+Tic., Limited+Şirketi. Tek 'Şirketi' siradan sozcuktur
-# ('Elektrik Şirketi aradı').
-_LEGAL_FORM = {_key(x) for x in "ltd şti".split()}
-_SAN, _TIC = {_key(x) for x in "san sanayi".split()}, {_key(x) for x in "tic ticaret".split()}
-_LEGAL_GLUED = re.compile(r"(?i:ltd\.|\.[şs]t[iİıI])")                          # 'Ltd.Şti.' tek parca yazimi
-_AS = re.compile(r"(?<!\w)[Aa]\.?[ ]?[Şş]\.?(?!\w)")                         # A.Ş.
-_FIRM_ITEM = (r"(?:(?:" + _alt(_SECTOR_W) + r")(?:['\u2019]\w+|" + _alt(_SECTOR_SFX_W) + r")?|" + _alt(_LEGAL_W)
-              + r"|[Aa]\.?[ ]?[Şş])\.?(?!\w)")
-_FIRM_TAIL = re.compile(r"(?<!\w)" + _FIRM_ITEM + r"(?:[ \t.]*" + _FIRM_ITEM + r")*")     # 'Lojistik San. Tic. Ltd. Şti.'
-# ilan sozlugu: il adlarinin gayriresmi bicimleri, yuk merkezi semtleri, ulke/bolge, arac/dorse, birim, sik ilan sozcukleri.
-# Bunlar kisi ya da firma adi sayilmaz. Il ve ilce adlarinin TEK kaynagi yer listesidir (adlar/tr-yerler.txt, places());
-# il adlari yuklenince bu sozluge katilir (_LISTS['ilan']).
-_ILAN_PLACE_W = ("afyon antep maraş urfa içel hadımköy ambarlı "
-                 "türkiye irak iran suriye gürcistan azerbaycan nahçıvan bulgaristan yunanistan romanya rusya ukrayna "
-                 "almanya avrupa asya trakya anadolu marmara doğu batı orta").split()
-_ILAN_PLACE = {_key(x) for x in _ILAN_PLACE_W}
-_ILAN_W = (
-    " ".join(_ILAN_PLACE_W) + " "
-    "tır tir kamyon kamyonet kırkayak onteker teker lowbed lowbet tenteli tente damper frigo frigorifik dorse çekici "
-    "panelvan pikap kasa açık kapalı sal sallı platform konteyner tanker silobas flatbed mega jumbo minivan vinç "
-    "ton kg kilo palet paletli metre km tl lira euro dolar adet desi "
-    "acil yük yükü yükler araç aracı araçlar aranıyor aranır lazım gerekli var yok boş dolu müsait fiyat fiyatı ücret "
-    "navlun peşin nakit havale komisyon yükleme boşaltma indirme teslim teslimat çıkış çıkışlı varış dönüş gidiş "
-    "parsiyel komple günlük haftalık aylık sefer sevkiyat ilan bilgi detay detaylı not uygun ucuz hızlı güvenli "
-    "sigortalı sahibinden firma firması şirket merkez şube depo antrepo liman gümrük fabrika ofis sabah akşam gece "
-    "bugün yarın hemen şimdi evden eve şehirlerarası şehiriçi uluslararası yurtiçi yurtdışı ithalat ihracat parça eşya "
-    "mobilya hurda malzeme gıda çimento kum tuğla kereste hububat buğday arpa mısır saman meyve sebze mimar mühendis "
-    "şoför sürücü dikkat duyuru önemli").split()
-_ILAN = {_key(x) for x in _ILAN_W}
-_KIN = {_key(x) for x in "kardeşler kardeşleri oğulları oğlu ve &".split()}   # ticari adin icindeki akrabalik/baglac
-# ilke 4a: ticari ad kuralinin durdurma listesi: nakliye ilanlarinda ve gunluk konusmada sik genel nitelemeler (bunlar
-# ayirt edici sozcuk degildir: 'Şehirler Arası Nakliyat', 'Uygun Fiyatlı Taşımacılık', 'Güvenilir Nakliye Hizmeti',
-# 'Proje Lojistiği'). Il, ilan, hitap ve dolgu sozlukleri ayrica dislanir. Ad kurallari (main) bunlara yine uygulanir.
-# S4: dilbilgisi sozcukleri (belirtec, sayi, baglac, zamir, iyelikli akrabalik) hukuki bicimli zincirde de ad degildir;
-# listenin geri kalani (nitelemeler) ve yer adlari hukuki bicim varken ayirt edici sozcuktur ('Ekspres Lojistik A.Ş.')
-_FIRM_FUNC = {_key(x) for x in (
-    "her türlü bütün tüm bir iki üç dört beş altı yedi sekiz dokuz on yüz bin hangi bazı birçok başka aynı kendi dün "
-    "sonra önce ama fakat ancak çünkü yani belki sanırım galiba ayrıca hatta zaten yine gene hep artık henüz biraz çok az "
-    "en daha benim senin onun bizim sizin onların annem babam eşim oğlum kızım ailem").split()}
-_FIRM_STOP = _FIRM_FUNC | {_key(x) for x in (
-    "şehirler arası şehir içi ulusal yerel bölgesel global kaliteli güvenilir profesyonel ekonomik fiyatlı garantili "
-    "asansörlü ambalajlı paketli ekspres express özel kurumsal bireysel ticari ağır hafif proje soğuk zincir kombine "
-    "karayolu denizyolu havayolu demiryolu büro piyano oto otomobil makine hayvan canlı kötü büyük küçük ürün tedarik "
-    "zinciri satın alma tersine iç dış askeri sağlık dijital entegre festival kermes mahalle").split()}
-# ilke 4c: yalin hitap firma adi olabilir ('ABLA NAKLİYAT'); cogul/iyelik/hal ekli hitap hitap obegidir ('Değerli Abilerim
-# Nakliye', 'Hocam Nakliyat'), firma adi degil
-_HON_BASE = {_key(x) for x in "bey beyefendi hanım hanımefendi abi abla hoca başkan kardeş amca teyze usta ağabey abey reis "
-             "dayı".split()}
-# S5: tekil iyelik ekli hitap ('DAYIM NAKLİYAT', 'Ustam Nakliyat') firma adi olabilir; hitap sifatindan sonra ('Değerli Dayım
-# Nakliye') ya da cogul bicimde ('Abilerim') hitap obegidir. Anahtar bicimi.
-_HON_SG = re.compile(r"(?:bey|beyefendi|hanim|hanimefendi|abi|abla|hoca|baskan|kardes|amca|teyze|usta|agabey|abey|reis"
-                     r"|dayi)(?:im|um|m)")
-_ADDR_ADJ = {_key(x) for x in "sayın sn değerli kıymetli sevgili muhterem saygıdeğer aziz canım".split()}
 # ticari adin ayirt edici sozcugu (sagdan sola): kesme ekli ve tireli bicim de ('Kaplo-Tavro Nakliyat'); sektor
 # sozcugune tireyle bagli ad da ('Tavro-Nakliyat' -> '[firma]-Nakliyat'); URL/e-posta/anma parcasi degil
 _FIRM_PREV = re.compile(r"(?<![\w./@:#" + _DASH + r"])([^\W\d_]+(?:['\u2019][^\W\d_]+)?(?:[" + _DASH + r"][^\W\d_]+)*)"
                         r"(?:[ \t]+(?:&[ \t]+)?|[" + _DASH + r"])$")
-_FIRM_HYPH = re.compile(r"[^\W\d_][" + _DASH + r"](?=" + _FIRM_ITEM + ")")     # on suzgec: tireli sozcuk sozcuk sayilmaz
 _JOIN_GAP = re.compile(r"[ \t]{0,2}[+&][ \t]{0,2}|[ \t]")                    # 'Tavro+Kişi 2', 'Tavro Kişi 2'
-_LABEL_AT = re.compile(r"Kişi (\d+)")
 _GAP_WS = re.compile(r"\s+")
 _HAS_DIGIT = re.compile(r"\d")
-_PHONE_CTX = re.compile(r"\[telefon\]|" + _PHONE)      # ham satirda telefon, ciktida maskesi
 # hiz: telefon en az 7 hanedir ve iki hanesi arasinda en cok 14 rakam disi karakter olur (tus kapagi 2 + grup ayraci _GS
 # 11, ')' dahil + '('); bu on denetimden gecmeyen satirda telefon aranmaz
 _PHONE_Q = re.compile(r"\d(?:\D{0,14}\d){6}")
-_TEL_MASK = re.compile(r"\[telefon\]")
 # iletisim sozcugu/telefon ile ad arasi; 7. tur: telefon ve isaret emojisi, ok, '|', '*' da ilan ayracidir ('Ad Soyad
 # <telefon emojisi> 0500...'); emoji secicisi U+FE0F ayrac sayisina girmez
-_CTX_PUNCT = "\u260e\U0001f4de\U0001f4f1\U0001f4f2\U0001f448\U0001f449\u261b\u261e\u2192\u21d2\u27a1\u279c\u2794>=|*"
+_CTX_PUNCT = "☎\U0001f4de\U0001f4f1\U0001f4f2\U0001f448\U0001f449☛☞→⇒➡➜➔>=|*"
 _CTX_GAP_AFTER = re.compile(r"(?:[\s:.\-\u2013\u2014,/()" + _CTX_PUNCT + r"]\ufe0f?){0,4}")
 _CTX_GAP_BEFORE = re.compile(r"(?:[\s:.\-\u2013\u2014,/(" + _CTX_PUNCT + r"]\ufe0f?){0,4}")
 _FIRM_GAP = re.compile(r"[ \t]+(?:&[ \t]+)?")
-_LABEL_END = re.compile(r"Kişi (?:\d+|\?)(?:(?:[ \t]+(?:ve|&))?[ \t]+|[" + _DASH + r"])$")   # firma adindaki etiket
-_LABEL_BEFORE = re.compile(r"(Kişi \d+)(?:[ \t]{0,2}[+&][ \t]{0,2}|[ \t])$")   # 'Kişi N <ad>'
 _COLON = re.compile(r"[ \t]*:")
 _HWS = re.compile(r"[ \t]*")
-_SIG_TAIL = re.compile(r"[\s\-\u2013\u2014:.,/|()]*(?:\[telefon\][\s\-\u2013\u2014:.,/|()]*)*")   # imza sonu
 _ALNUM = re.compile(r"[^\W_]")
-# soyad konumu (ilan baglaminda bilinmeyen soyad): satir sonu, ayrac, telefon (ham ya da maskeli)
-_SURNAME_POS = re.compile(r"[ \t]*(?:$|[:\-\u2013\u2014,/|(]|\.(?!\w)|\[telefon\])")
 # guzergah baglami (F3, ilke 2): ok/tire ile oteki ucu yer adi, ardinda yukleme sozcugu, '<yer>'dan ... 'a' / '...'dan <yer>'e
 _ARROW = r"(?:\u27a1\ufe0f?|\u2192|\u21d2|\u279c|\u2794|->|=>|>|-|\u2013|\u2014)"
 _ROUTE_PRE = re.compile(r"([^\W\d_]+)(?:['\u2019][^\W\d_]+)?[ \t]*" + _ARROW + r"[ \t]*$")
 _ROUTE_POST = re.compile(r"[ \t]*" + _ARROW + r"[ \t]*([^\W\d_]+)")
-# S8: yalniz kisinin ozne olamayacagi bicimler ('X yüklemeli', 'X çıkışlı'); 'X indirme/yükleme yaptı' kisi olabilir
-_ROUTE_LOAD = re.compile(r"[ \t]+" + _alt("yüklemeli yüklemesi yüklenecek çıkışlı boşaltmalı indirmeli varışlı".split())
-                         + r"(?!\w)")
-_ROUTE_FROM = re.compile(r"([^\W\d_]+)['\u2019](?:dan|den|tan|ten|DAN|DEN|TAN|TEN)(?!\w)")
-_ROUTE_TO = re.compile(r"([^\W\d_]+)['\u2019](?:y?[aeAE]|Y[AE])(?!\w)")
 _ROUTE_GAP = " \t:.,;/()-\u2013\u2014"
-_ROUTE_CONTACT = re.compile(r"(?<!\w)" + _alt(_CONTACT_W) + r"(?!\w)")
-_ROUTE_CONTACT_END = re.compile(r"(?<!\w)" + _alt(_CONTACT_W) + r"$")
+
+
+def _rx_lit(s):
+    """Literal text as regex source (spaces stay readable)."""
+    return re.escape(s).replace("\\ ", " ")
+
+
+def _keys(words):
+    return {_key(x) for x in words}
+
+
+@_on_pack
+def _build_names():
+    """Name-context vocabulary of the pack: honorifics, titles, institutions, contact and filler words, ordinary-word
+    test, trade-name chain words, listing vocabulary and route words (all matched in key form unless stated)."""
+    global _TAKVIM, _CAPWORD, _HON, _HON_ORG, _HON_STOP, _INST_ANY, _INST_CAP, _INST_ANY_K, _INST_CAP_K, _LM_HZ
+    global _SURNAME_SFX, _FAMILY, _TITLE_STOP, _SAYIN, _NOT_NAME_SFX, _SAYIN_STOP, _CONTACT_W, _ORG_UNIT, _CONTACT
+    global _FILLER_W, _FILLER, _ORD_SFX, _ORD_W, _FILLER_PFX, _CONTACT_FIELD, _LEGAL_W, _LEGAL_K, _LEGAL_STRONG
+    global _LEGAL_FORM, _SAN, _TIC, _LEGAL_PAIR, _LEGAL_GLUED, _AS, _AS_Q, _FIRM_ITEM, _FIRM_TAIL, _FIRM_HYPH
+    global _ILAN_PLACE, _ILAN, _KIN, _KIN_JOIN, _FIRM_FUNC, _FIRM_STOP, _HON_BASE, _HON_SG, _ADDR_ADJ
+    global _ROUTE_LOAD, _ROUTE_FROM, _ROUTE_TO, _ROUTE_FROM_K, _ROUTE_TO_K, _ROUTE_CONTACT, _ROUTE_CONTACT_END
+    P = _P
+    _TAKVIM = _keys(P.calendar_words)                   # ay ve gun adlari: ad degil
+    _CAPWORD = _keys(P.capitalized_words)               # hep buyuk harfle yazilan, ad olmayan sozcukler
+    _HON = re.compile(P.honorific_after)                # _key bicimi
+    _HON_ORG = re.compile(P.honorific_org)              # Dernek Başkanı: onundeki sozcuk kurum adidir
+    _HON_STOP = _keys(P.honorific_stop)
+    # yer/kurum adi: ad + bu sozcuk (ya da araya buyuk harfli sozcukler) -> dokunulmaz (Mimar Sinan Üniversitesi, Hz. Muhammed)
+    _INST_ANY = re.compile("^(?:" + "|".join(_key(x) for x in P.institution_any) + ")")
+    _INST_CAP = re.compile("^(?:" + "|".join(_key(x) for x in P.institution_cap) + ")$")
+    _INST_ANY_K = tuple(_key(x) for x in P.institution_any)      # onek (Hastanesinde)
+    _INST_CAP_K = frozenset(_key(x) for x in P.institution_cap)   # tam sozcuk
+    _LM_HZ = re.compile(P.landmark_before)
+    _SURNAME_SFX = re.compile(P.surname_suffix)        # Öztürkoğlu
+    _FAMILY = _keys(P.family_words)
+    _TITLE_STOP = _keys(P.chat_title_stop)
+    _SAYIN = set(P.title_before)
+    _NOT_NAME_SFX = re.compile(P.title_not_name_suffix)   # Sayın Üyelerimiz, Sayın Yetkililer
+    _SAYIN_STOP = _keys(P.title_stop)
+    # ---- nakliye ilanlari: iletisim baglami, ticari ad, ilan sozlugu (anahtar bicimi; tek kod yolu: Anonymizer._scan)
+    # iletisim sozcugu: ardindaki (ayrac ya da satirda telefon varsa), onundeki ya da maskelenen telefonun yanindaki buyuk
+    # harfli 1-3 sozcuk kisi adidir
+    _CONTACT_W = list(P.contact_words)
+    # S3c: birim adi ('Muhasebe Birimi', 'Satış Departmanı') kisi degildir: iletisim adi olarak alinmaz
+    _ORG_UNIT = re.compile(P.org_unit)
+    _CONTACT = _keys(_CONTACT_W)
+    # dolgu ve alan etiketi sozcukleri: iletisim baglaminda hicbir zaman ad degildir; numara*/telefon*/... ekli bicimleri de
+    _FILLER_W = list(P.filler_words)
+    _FILLER = _keys(_FILLER_W)
+    # ilke 3: siradan sozcuk testi (zayif kanit yalniz bundan gecerse maskelenir; guclu bulgu gecmezse yalniz o yerde kalir)
+    _ORD_SFX = re.compile(P.ordinary_suffix)
+    _ORD_W = _keys(P.ordinary_words)
+    _FILLER_PFX = tuple(_key(x) for x in P.filler_prefixes)
+    _CONTACT_FIELD = re.compile(r"(?<![\w.\-/@])" + _alt(_CONTACT_W) + r"(?!\w)(?:[ \t]+" + _alt(_FILLER_W)
+                                + r"(?!\w)){0,2}(?:[ \t]*\([^()\n]{1,24}\))?[ \t]*" + _FIELD_SEP)
+    # sektor sozcugu ve hukuki bicim: onlerindeki buyuk harfli sozcukler firma adinin ayirt edici kismidir -> [firma].
+    # Hizmet sozcukleri zincirin parcasidir ('Kaplo Lojistik Hizmetleri Ltd. Şti.': tek maske).
+    _LEGAL_W = list(P.legal_words)
+    _LEGAL_K = _keys(_LEGAL_W)
+    _LEGAL_STRONG = _keys(P.legal_strong)
+    # hukuki bicim (ikinci ilan imi gerekmez); tek 'Şirketi' siradan sozcuktur ('Elektrik Şirketi aradı')
+    _LEGAL_FORM = _keys(P.legal_form)
+    _SAN, _TIC, _LEGAL_PAIR = _keys(P.legal_san), _keys(P.legal_tic), _keys(P.legal_pair)
+    _LEGAL_GLUED = re.compile(P.legal_glued)                                     # 'Ltd.Şti.' tek parca yazimi
+    _AS = re.compile(r"(?<!\w)" + P.legal_special + r"\.?(?!\w)")                # A.Ş.
+    _AS_Q = re.compile("[" + re.escape(P.legal_special_chars) + "]")            # on suzgec
+    _FIRM_ITEM = (r"(?:(?:" + _alt(_SECTOR_W) + r")(?:['\u2019]\w+|" + _alt(_SECTOR_SFX_W) + r")?|" + _alt(_LEGAL_W)
+                  + r"|" + P.legal_special + r")\.?(?!\w)")
+    _FIRM_TAIL = re.compile(r"(?<!\w)" + _FIRM_ITEM + r"(?:[ \t.]*" + _FIRM_ITEM + r")*")   # 'Lojistik San. Tic. Ltd. Şti.'
+    _FIRM_HYPH = re.compile(r"[^\W\d_][" + _DASH + r"](?=" + _FIRM_ITEM + ")")   # on suzgec: tireli sozcuk sozcuk sayilmaz
+    # ilan sozlugu: il adlarinin gayriresmi bicimleri, yuk merkezi semtleri, ulke/bolge, arac/dorse, birim, sik ilan
+    # sozcukleri. Bunlar kisi ya da firma adi sayilmaz. Il ve ilce adlarinin TEK kaynagi yer listesidir (places()); il
+    # adlari yuklenince bu sozluge katilir (_LISTS['ilan']).
+    _ILAN_PLACE = _keys(P.listing_places)
+    _ILAN = _keys([*P.listing_places, *P.listing_words])
+    _KIN = _keys(P.kin)                                 # ticari adin icindeki akrabalik/baglac
+    _KIN_JOIN = _keys(P.kin_join)
+    # ilke 4a: ticari ad kuralinin durdurma listesi (genel nitelemeler; ayirt edici sozcuk degil). S4: dilbilgisi sozcukleri
+    # (_FIRM_FUNC) hukuki bicimli zincirde de ad degildir
+    _FIRM_FUNC = _keys(P.firm_func)
+    _FIRM_STOP = _FIRM_FUNC | _keys(P.firm_stop)
+    # ilke 4c: yalin hitap firma adi olabilir; S5: tekil iyelik ekli hitap ('Ustam Nakliyat') da (anahtar bicimi)
+    _HON_BASE = _keys(P.hon_base)
+    _HON_SG = re.compile(P.hon_singular)
+    _ADDR_ADJ = _keys(P.address_adjectives)
+    # S8: yalniz kisinin ozne olamayacagi bicimler ('X yüklemeli', 'X çıkışlı')
+    _ROUTE_LOAD = re.compile(r"[ \t]+" + _alt(P.route_load) + r"(?!\w)")
+    _ROUTE_FROM = re.compile(r"([^\W\d_]+)['\u2019](?:" + P.route_from + r")(?!\w)")
+    _ROUTE_TO = re.compile(r"([^\W\d_]+)['\u2019](?:" + P.route_to + r")(?!\w)")
+    _ROUTE_FROM_K, _ROUTE_TO_K = tuple(P.route_from_keys), tuple(P.route_to_keys)
+    _ROUTE_CONTACT = re.compile(r"(?<!\w)" + _alt(_CONTACT_W) + r"(?!\w)")
+    _ROUTE_CONTACT_END = re.compile(r"(?<!\w)" + _alt(_CONTACT_W) + r"$")
+
+
+@_on_pack
+def _build_label_patterns():
+    """Patterns that contain output labels (a label is never a name; a name part joins a neighbouring label; a masked
+    phone is evidence): built from the pack's labels, so another label set works the same way."""
+    global _LABEL_AFTER, _LABEL_AT, _LABEL_END, _LABEL_BEFORE, _PHONE_CTX, _TEL_MASK, _SIG_TAIL, _SURNAME_POS
+    global _PERSON_WORD, _PERSON_PREFIX, _UNKNOWN, _TEL, _FIRMA, _URL_LABELS
+    L = _L
+    _PERSON_WORD, _PERSON_PREFIX, _UNKNOWN = L.person_word, L.person_word + L.person_sep, L.person_unknown
+    _TEL, _FIRMA = L.masks["phone"], L.masks["company"]
+    pw, ps, unk, tel = (_rx_lit(x) for x in (L.person_word, L.person_sep, L.unknown_mark, _TEL))
+    _LABEL_AFTER = re.compile(ps + r"(?:\d|" + unk + ")")              # 'Kişi 3', 'Kişi ?': etiketin kendisi ad sanilmaz
+    _LABEL_AT = re.compile(pw + ps + r"(\d+)")
+    _LABEL_END = re.compile(pw + ps + r"(?:\d+|" + unk + r")(?:(?:[ \t]+(?:" + "|".join(_P.kin_join) + r"))?[ \t]+|[" + _DASH + r"])$")   # firma adindaki etiket
+    _LABEL_BEFORE = re.compile("(" + pw + ps + r"\d+)(?:[ \t]{0,2}[+&][ \t]{0,2}|[ \t])$")   # 'Kişi N <ad>'
+    _PHONE_CTX = re.compile(tel + "|" + _PHONE)      # ham satirda telefon, ciktida maskesi
+    _TEL_MASK = re.compile(tel)
+    # L9: ana makinesinde maske olan URL (etiketin boslugu kategori adinda tire olur: 'www.Kişi-8.com')
+    _URL_LABELS = pw + "[" + ps + r"\-](?:\d+|" + unk + ")|" + _rx_lit(_FIRMA)
+    _SIG_TAIL = re.compile(r"[\s\-\u2013\u2014:.,/|()]*(?:" + tel + r"[\s\-\u2013\u2014:.,/|()]*)*")   # imza sonu
+    # soyad konumu (ilan baglaminda bilinmeyen soyad): satir sonu, ayrac, telefon (ham ya da maskeli)
+    _SURNAME_POS = re.compile(r"[ \t]*(?:$|[:\-\u2013\u2014,/|(]|\.(?!\w)|" + tel + ")")
 
 
 def _ad_line(line):
     """Satir ilan imi tasiyor mu: telefon (ham ya da maskeli) ya da alan olarak iletisim sozcugu."""
-    return ("[telefon]" in line or (bool(_PHONE_Q.search(line)) and bool(_PHONE_CTX.search(line)))
+    return (_TEL in line or (bool(_PHONE_Q.search(line)) and bool(_PHONE_CTX.search(line)))
             or bool(_CONTACT_FIELD.search(line)))
 
 
@@ -1382,7 +1372,7 @@ def _route_adjacent(s, st, end):
     if _PHONE_CTX.match(s, ws) or _ROUTE_CONTACT.match(s, ws):
         return True
     pre = s[max(0, st - 40):st].rstrip(_ROUTE_GAP)
-    if pre.endswith("[telefon]") or _ROUTE_CONTACT_END.search(pre):
+    if pre.endswith(_TEL) or _ROUTE_CONTACT_END.search(pre):
         return True
     return pre[-1:].isdigit() and any(mo.end() == len(pre) for mo in _PHONE_CTX.finditer(pre))
 
@@ -1402,10 +1392,10 @@ def _route(s, st, en, end):
     if mo and _route_place(mo.group(1)):
         return True
     sfx = _key(s[en:end]).lstrip("'\u2019")
-    if sfx in ("dan", "den", "tan", "ten"):
+    if sfx in _ROUTE_FROM_K:
         mo = _ROUTE_TO.search(s, end, end + 60)
         return bool(mo and _route_place(mo.group(1)))
-    if sfx in ("a", "e", "ya", "ye"):
+    if sfx in _ROUTE_TO_K:
         mo = None
         for mo in _ROUTE_FROM.finditer(s, max(0, st - 60), st):
             pass
@@ -1503,14 +1493,15 @@ def name_lists():
     bos kume; missing_name_lists() eksikleri verir (anonim modda main bunu hata sayar, bkz. --sozluksuz)."""
     if not _LISTS:
         missing = []
-        for k, fn in (("g", "tr-adlar.txt"), ("f", "tr-soyadlar.txt"), ("a", "sozcuk-adlar.txt"), ("p", "tr-yerler.txt")):
+        files = _P.dictionary_files
+        for k, fn in (("g", files["given"]), ("f", files["surname"]), ("a", files["ambiguous"]), ("p", files["places"])):
             s = {} if k == "p" else set()
             try:
-                with open(os.path.join(_HERE, "adlar", fn), encoding="utf-8") as fh:
+                with open(os.path.join(_HERE, _P.dictionary_dir, fn), encoding="utf-8") as fh:
                     for line in fh:
                         if line.startswith("#"):
                             continue
-                        if k == "p":                  # '<il|ilçe><TAB><ad>'
+                        if k == "p":                  # '<tur><TAB><ad>' (TR: il | ilçe)
                             kind, _, name = line.rstrip("\n").partition("\t")
                             if name.strip():
                                 s[_key(name.strip())] = kind
@@ -1522,9 +1513,10 @@ def name_lists():
         _LISTS["missing"] = missing
         _ordinary.cache_clear()               # sozluk yeniden yuklendi (testler _LISTS'i temizler): onbellek eskidi
         p, g, f = _LISTS["p"], _LISTS["g"], _LISTS["f"]
-        _LISTS["ilan"] = _ILAN | {k for k, v in p.items() if v == "il"}       # il adlari ilan sozlugudur
+        region = _P.place_region_kind
+        _LISTS["ilan"] = _ILAN | {k for k, v in p.items() if v == region}     # il adlari ilan sozlugudur
         # yalniz yer: il adi ya da ad/soyad sozlugunde olmayan ilce adi (Bozova, Gebze); Fatih, Kartal, Bozkurt belirsizdir
-        _LISTS["pure"] = {k for k, v in p.items() if " " not in k and (v == "il" or (k not in g and k not in f))}
+        _LISTS["pure"] = {k for k, v in p.items() if " " not in k and (v == region or (k not in g and k not in f))}
     return _LISTS["g"], _LISTS["f"], _LISTS["a"]
 
 
@@ -1578,7 +1570,7 @@ def _tokens(line):
         a, a2 = (line[en] if en < n else ""), (line[en + 1] if en + 1 < n else "")
         men = b == "@" and (st < 2 or not (line[st - 2].isalnum() or line[st - 2] in "._-+"))
         if ((not men and (b.isalnum() or (b and b in "/@#_.-\\"))) or a.isalnum() or (a and a in "/@_\\")
-                or (a and a in ".-" and a2.isalnum()) or (m.group(0) == "Kişi" and _LABEL_AFTER.match(line, en))):
+                or (a and a in ".-" and a2.isalnum()) or (m.group(0) == _PERSON_WORD and _LABEL_AFTER.match(line, en))):
             prev_end = en
             continue
         gap = line[prev_end:st] if prev_end is not None else ""
@@ -1625,7 +1617,7 @@ class Anonymizer:
 
     def __init__(self, chat, msgs, chat_no=1, code=None, extra=None, group=None):
         self.chat = nfc(chat)
-        self.code = code or f"Sohbet-{chat_no}"
+        self.code = code or _L.chat.format(n=chat_no)
         self._label_counts = {}               # etiket -> dort etiket sozlugundeki gecis sayisi (_LabelMap, _new_label)
         self.labels = _LabelMap(self._label_counts)   # gercek ad -> 'Kişi N'
         self.origin = {}                      # etiket -> kaynak (sayim ozeti icin; gercek ad tutmaz)
@@ -1639,7 +1631,7 @@ class Anonymizer:
             elif _key(real) in self.by_key:
                 lab = self.by_key[_key(real)]
             else:
-                lab = f"Kişi {len(set(self.labels.values())) + 1}"
+                lab = _L.person(len(set(self.labels.values())) + 1)
                 self.origin[lab] = origin
             self.labels[real] = lab
             self.by_key.setdefault(_key(real), lab)
@@ -1687,7 +1679,7 @@ class Anonymizer:
         for i, m in enumerate(msgs):
             if not _KW_ANY.search(mtext[i]) and not _OTP_KW.search(mtext[i]):
                 continue
-            nd = 4 if re.search(r"(?<!\w)(?:pin|kod|otp|do[gğ]rulama)", _key(mtext[i])) else 6
+            nd = 4 if _OTP_SHORT.search(_key(mtext[i])) else 6
             for j in range(max(0, i - 3), min(i + 4, len(msgs))):
                 toks = mtext[j].split()
                 own = {nfc(v.strip()) for k, v in mparts[j] if k == "file" and v}
@@ -1720,7 +1712,7 @@ class Anonymizer:
             if len({self.labels[r] for r in own}) == 1:
                 self.by_key[k] = self.labels[next(iter(own))]
             else:                             # belirsiz ve tek sozcuklu sahibi yok: ad sizmasin diye notr etiket
-                self.by_key[k] = "Kişi ?"
+                self.by_key[k] = _UNKNOWN
             first_names.append(toktext[k])
         # F3 (ilke 2): yer listesinde olan, ad/soyad sozlugunde olmayan (il adi her zaman) tek parca ('Veli Karasoy Bozova 2'
         # icin 'Bozova') yalniz KANITLI guzergahta (oteki uc yer adi ya da yukleme sozcugu, yaninda telefon/iletisim sozcugu
@@ -1738,7 +1730,7 @@ class Anonymizer:
         for k, (disp, labs) in combo.items():
             if k in full_keys:                # baska katilimcinin tam adi: o kazanir
                 continue
-            self.by_key[k] = next(iter(labs)) if len(labs) == 1 else "Kişi ?"   # iki katilimcida ortak: notr
+            self.by_key[k] = next(iter(labs)) if len(labs) == 1 else _UNKNOWN   # iki katilimcida ortak: notr
             win_names.append(disp)
         self._mstart = {_key(n.split()[0]) for n in [*self.labels, *win_names] if len(n.split()) > 1}   # hiz: on suzgec
         # metinde gecen, katilimci olmayan adlar (ad sozlugu, hitap): yalniz bu sohbette gecenler regex'e girer
@@ -1865,7 +1857,7 @@ class Anonymizer:
         self._caprx = self._compile((), (), (), caps) if caps else None   # 7. tur eki: yalniz buyuk harfli adlar (_rx_sub)
         self._compiled = True
         # L9: ana makinesinde maske olan URL: maskenin ardindaki etiketler + uzanti + yol (maske harfiyle baslar: hizli)
-        self._url_rx = re.compile(r"(?:Kişi[ \-](?:\d+|\?)|\[firma\]|" + re.escape(self.code) + r")[\w\-]*(?:\.[\w\-]+)*?"
+        self._url_rx = re.compile(r"(?:" + _URL_LABELS + "|" + re.escape(self.code) + r")[\w\-]*(?:\.[\w\-]+)*?"
                                   r"\.(?i:" + _URL_TLD + r")(?P<ur>[/?#][^\s]*)")
 
     @staticmethod
@@ -1887,7 +1879,7 @@ class Anonymizer:
         return re.compile("|".join(alts))
 
     def _new_label(self, origin):
-        lab = f"Kişi {len(self._label_counts) + 1}"   # dort etiket sozlugundeki farkli etiket sayisi + 1 (_LabelMap)
+        lab = _L.person(len(self._label_counts) + 1)   # dort etiket sozlugundeki farkli etiket sayisi + 1 (_LabelMap)
         self.origin[lab] = origin
         return lab
 
@@ -1916,7 +1908,7 @@ class Anonymizer:
                 self._strengthen(k, disp, by_contact)              # adda guclu iletisim: ayni etiketle her bicimiyle; parcalar asagida
         else:
             first = (self.by_key.get(k0) or self.ctx_labels.get(k0)) if k0 and k0 not in self._partof else None
-            if first and first not in self._people and first != self.code and first != "Kişi ?":
+            if first and first not in self._people and first != self.code and first != _UNKNOWN:
                 lab = first
             else:
                 lab = (self.ctx_labels.get(k) or self._capparts.get(k)
@@ -1933,7 +1925,7 @@ class Anonymizer:
                 for p in parts if len(parts) > 1 else ():
                     pk = _key(p)
                     if len(p) >= 3 and pk not in self.by_key and pk not in _HON_STOP and not _HON.fullmatch(pk):
-                        self._capparts[pk] = lab if self._capparts.get(pk, lab) == lab else "Kişi ?"
+                        self._capparts[pk] = lab if self._capparts.get(pk, lab) == lab else _UNKNOWN
             if self._compiled:
                 self._lazy.add(k)
         if k0 and k0 not in a and (k0 in g or why in ("anma", "hitap")):
@@ -1959,8 +1951,8 @@ class Anonymizer:
                         self._capk.add(pk)
                     if self._compiled:
                         self._lazy.add(pk)
-                elif self._partof.get(pk, k) != k and self.by_key.get(pk) not in (lab, "Kişi ?"):
-                    self.by_key[pk] = "Kişi ?"        # N1: iki ogrenilmis adda ortak parca: notr etiket (main gibi)
+                elif self._partof.get(pk, k) != k and self.by_key.get(pk) not in (lab, _UNKNOWN):
+                    self.by_key[pk] = _UNKNOWN        # N1: iki ogrenilmis adda ortak parca: notr etiket (main gibi)
         return lab
 
     def _known(self, k):
@@ -2018,7 +2010,7 @@ class Anonymizer:
                 g, _, a = name_lists()
                 if lab is None and disp and parts[0] in g and parts[0] not in a:
                     lab = self._learn(disp.split()[0], why)
-                if lab is not None and (self._participant(lab) or lab == "Kişi ?"):
+                if lab is not None and (self._participant(lab) or lab == _UNKNOWN):
                     lab = None
             self.ctx_labels[k] = lab or self._capparts.get(k) or self._new_label(why)
         return self.ctx_labels[k]
@@ -2034,13 +2026,13 @@ class Anonymizer:
         out, skip, n = [], set(), len(toks)
         il = ilan_words()
         firm = (n and (not _LEGAL_STRONG.isdisjoint(keys) or any(map(_is_sector, keys))
-                       or ("." in line and _LEGAL_GLUED.search(line)) or (("Ş" in line or "ş" in line) and _AS.search(line)))
+                       or ("." in line and _LEGAL_GLUED.search(line)) or (bool(_AS_Q.search(line)) and _AS.search(line)))
                 or (bool(_DASH_RX.search(line)) and bool(_FIRM_HYPH.search(line))))
         contact = n and not _CONTACT.isdisjoint(keys)
         if not firm and not contact and not any(b[:1].isupper() and k not in il for b, k in zip(bases, keys)):
             return out, skip     # hiz: firma ve iletisim disindaki her kural buyuk harfli, ilan sozlugunde olmayan sozcuk ister
-        phone = n and ("[telefon]" in line or (not self._compiled and bool(_PHONE_Q.search(line))))
-        join = n and (("Kişi " in line) if self._compiled else not self._pkeys.isdisjoint(keys))
+        phone = n and (_TEL in line or (not self._compiled and bool(_PHONE_Q.search(line))))
+        join = n and ((_PERSON_PREFIX in line) if self._compiled else not self._pkeys.isdisjoint(keys))
         sig = self._sigok and 2 <= n <= 3 and keys[0] in name_lists()[0]    # imza: ilk sozcuk sozluk adi
         if not (firm or contact or phone or join or sig):     # hiz: cogu satirda hicbir kural adayi yok
             return out, skip
@@ -2103,7 +2095,7 @@ class Anonymizer:
             chain = m.group(0)
             hon = chain[:1].isupper()                  # sektor sozcugu buyuk harfli (SF2)
             ck = {_key(w) for w in re.findall(r"[^\W\d_]+", chain)}
-            legal = bool(ck & _LEGAL_FORM or _AS.search(chain) or (ck & _SAN and ck & _TIC) or {"limited", "sirketi"} <= ck)
+            legal = bool(ck & _LEGAL_FORM or _AS.search(chain) or (ck & _SAN and ck & _TIC) or _LEGAL_PAIR <= ck)
             strong = legal or any(_is_strong_sector(k) for k in ck)
             if not strong and not ((ck & _LEGAL_STRONG or any(_is_sector(k) for k in ck)) and ad()):
                 continue
@@ -2150,7 +2142,7 @@ class Anonymizer:
                         break
                     el[i] = (el[i][0], el[i][1], "d")
             # 'X ve Oğulları', 'X Kardeşler': X aile adidir (yer adi da olsa maskelenir)
-            fam = any(e[2] == "k" and _key(line[e[0]:e[1]]) not in ("ve", "&") for e in el)
+            fam = any(e[2] == "k" and _key(line[e[0]:e[1]]) not in _KIN_JOIN for e in el)
             while el and (el[0][2] == "t" and not fam or (el[0][2] == "k" and not line[el[0][0]:el[0][0] + 1].isupper())):
                 el.pop(0)
             if any(e[2] == "d" for e in el) or (fam and any(e[2] != "l" for e in el)):
@@ -2538,7 +2530,7 @@ class Anonymizer:
                         self._learn(disp, why)
                     continue
                 lab = (self._learn(disp, why) if act == "rx" else self._ctx_label(k, why, disp) if act == "ctx"
-                       else "[firma]" if act == "firma" else k)          # join: k katilimci etiketidir
+                       else _FIRMA if act == "firma" else k)          # join: k katilimci etiketidir
                 if self._counting:
                     self.stats[self.origin.get(lab, why)] = self.stats.get(self.origin.get(lab, why), 0) + 1
                 subs.append((st, en, lab))
@@ -2585,7 +2577,7 @@ class Anonymizer:
             for st, en, k, disp, act, why in dec:
                 if (st, en, k, disp, act, why) in inner:
                     continue
-                lab = "[firma]" if act == "firma" else self._ctx_label(k, why, disp)
+                lab = _FIRMA if act == "firma" else self._ctx_label(k, why, disp)
                 if self._counting:
                     cat = "firma" if act == "firma" else self.origin.get(lab, why)
                     self.stats[cat] = self.stats.get(cat, 0) + 1
@@ -2666,7 +2658,7 @@ class Anonymizer:
         if not hit:                                     # 'transportation.com', 'www.nakliyat.com': genel sozcuk
             return m.group(0)
         for c in hit:
-            labels[c] = "[firma]"
+            labels[c] = _FIRMA
         if self._counting:
             self.stats["firma"] = self.stats.get("firma", 0) + 1
         return m.group("wbp") + ".".join(labels) + m.group("wbt")
@@ -2684,12 +2676,12 @@ class Anonymizer:
                 break
         if end <= 1:
             return m.group(0)
-        return m.string[m.start():m.start("ur")] + r[0] + "[yol]" + r[end:]
+        return m.string[m.start():m.start("ur")] + r[0] + _L.masks["path"] + r[end:]
 
     def _handle(self, m):
         if self._counting:
             self.stats["kullanıcı adı"] = self.stats.get("kullanıcı adı", 0) + 1
-        return "[kullanıcı]"
+        return _L.masks["user"]
 
     def _cat(self, lab):
         return "sohbet adı" if lab == self.code else self.origin.get(lab, "gönderen")
@@ -2697,13 +2689,13 @@ class Anonymizer:
     def _mask(self, m):
         """-> (yerine, kategori|None)."""
         if m.group("wame"):
-            return m.group("wp") + "[telefon]", "telefon"
+            return m.group("wp") + _TEL, "telefon"
         if m.group("social"):
-            return m.group("sp") + "[kullanıcı]", "kullanıcı adı"
+            return m.group("sp") + _L.masks["user"], "kullanıcı adı"
         if m.group("iban"):
-            return "[iban]", "iban"
+            return _L.masks["iban"], "iban"
         if m.group("email"):
-            return "[e-posta]", "e-posta"
+            return _L.masks["email"], "e-posta"
         if m.groupdict().get("cat"):
             lab = self.cat_keys.get(_key(re.sub(r"[._\-]", "", m.group("cat"))))
             if lab is None:
@@ -2725,10 +2717,10 @@ class Anonymizer:
                 return m.group("name"), None
             return lab + (m.group("suf") or ""), self._cat(lab)
         if m.group("tckn"):
-            return "[tckn]", "tckn"
+            return _L.masks["national_id"], "tckn"
         if m.group("plaka"):
-            return "[plaka]", "plaka"
-        return "[telefon]", "telefon"
+            return _L.masks["plate"], "plaka"
+        return _TEL, "telefon"
 
     def _name_label(self, m, grp, count=True):
         """rx ad eslesmesinin (grp: 'nm' ya da 'nn') etiketi; maskelenmeyecekse (yer/kurum adinin parcasi, kanitli
@@ -2741,7 +2733,7 @@ class Anonymizer:
     def _participant(self, lab):
         """Etiket bir katilimcinin (gonderen, sistem satiri kisisi, ek ad, bire bir baslik; belirsiz ad parcasi 'Kişi ?')
         ya da kisi adli sohbet basliginin mi: bunlara hicbir istisna (yer/kurum, Hz.) uygulanmaz."""
-        return lab is not None and (lab in self._people or lab == self.code or lab == "Kişi ?")
+        return lab is not None and (lab in self._people or lab == self.code or lab == _UNKNOWN)
 
     def _route_hit(self, m, grp):
         """F3: katilimci adinin yalniz ilk olmayan konumdaki, sozlukte ad/soyad olmayan tek parcasi ('Bozova') guzergah
@@ -2788,12 +2780,12 @@ class Anonymizer:
                     continue
                 self._pend = 0
             if id(m) in self._cand_code:
-                line = re.sub(r"^(%s*)%sd{6,8}$" % (chr(92) + "s", chr(92)), lambda x: x.group(1) + "[kod]", line)
+                line = re.sub(r"^(%s*)%sd{6,8}$" % (chr(92) + "s", chr(92)), lambda x: x.group(1) + _L.masks["code"], line)
             if cand:
                 line = " ".join(_mask_tok(t, self._secrets) if _cred_like(t, cand) else t for t in line.split(" "))
             for sec in sorted(self._secrets, key=len, reverse=True):
                 if sec in line:
-                    line = re.sub(r"(?<![\w])" + re.escape(sec) + r"(?!\w)", "[parola]", line)
+                    line = re.sub(r"(?<![\w])" + re.escape(sec) + r"(?!\w)", _L.masks["password"], line)
             line, pend = _cred_line(line, self._secrets)
             if pend and m is not None:
                 self._pend = 2
@@ -2806,7 +2798,7 @@ class Anonymizer:
         self._actx = (id(m), m) if m is not None else (("s", s), s)
         try:
             if count:
-                for tag, cat in (("[parola]", "parola"), ("[kod]", "kod")):
+                for tag, cat in ((_L.masks["password"], "parola"), (_L.masks["code"], "kod")):
                     n = joined.count(tag) - s.count(tag)
                     if n > 0:
                         self.stats[cat] = self.stats.get(cat, 0) + n
@@ -2821,7 +2813,7 @@ class Anonymizer:
             if "@" in joined:             # tek basina sosyal kullanici adi (yalniz '@' iceren satirda: hiz)
                 joined = _HANDLE.sub(self._handle, joined)
             out = self._ctx(self._rx_sub(self.rx_t if title else self.rx, joined), joined)
-            if ("Kişi" in out or "[firma]" in out or self.code in out) and _URL_Q.search(out):   # L9: maskeli ana makine
+            if (_PERSON_WORD in out or _FIRMA in out or self.code in out) and _URL_Q.search(out):   # L9: maskeli ana makine
                 out = self._url_rx.sub(self._url_rest, out)
             return out
         finally:
@@ -2839,7 +2831,7 @@ class Anonymizer:
         flat = re.sub(r"[_\-.]+", " ", stem)
         if self.text(flat, title=True, cred=False) == flat and self.text(stem, title=True, cred=False) == stem:
             return real
-        self.media[real] = f"medya-{len(self.media) + 1}{ext}"
+        self.media[real] = _L.media.format(n=len(self.media) + 1, ext=ext)
         return self.media[real]
 
 
@@ -2868,15 +2860,16 @@ def message_parts(m):
 
 
 # ---- ekler: tur ve kopyalama politikasi (anonim modda anonimlestirilemeyen belge turleri varsayilan kopyalanmaz)
-_KINDS = [("görüntü", {".jpg", ".jpeg", ".png", ".webp", ".gif", ".heic", ".bmp"}),
+# tur kimlikleri dilden bagimsiz; gosterilen ad dil paketinin etiketidir (_L.kinds)
+_KINDS = [("image", {".jpg", ".jpeg", ".png", ".webp", ".gif", ".heic", ".bmp"}),
           ("video", {".mp4", ".3gp", ".mov", ".mkv", ".avi", ".webm"}),
-          ("ses", {".opus", ".ogg", ".mp3", ".m4a", ".aac", ".wav", ".amr"}),
-          ("kişi kartı", {".vcf"}),
-          ("PDF", {".pdf"}),
-          ("ofis belgesi", {".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".odt", ".ods", ".odp", ".rtf", ".csv",
+          ("audio", {".opus", ".ogg", ".mp3", ".m4a", ".aac", ".wav", ".amr"}),
+          ("contact", {".vcf"}),
+          ("pdf", {".pdf"}),
+          ("office", {".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".odt", ".ods", ".odp", ".rtf", ".csv",
                             ".txt", ".pages", ".numbers", ".key"}),
-          ("arşiv", {".zip", ".rar", ".7z", ".tar", ".gz", ".tgz", ".bz2", ".xz"})]
-COPY_KINDS = {"görüntü", "video", "ses"}   # anonim modda varsayilan yalniz bunlar kopyalanir (izin listesi); digerleri
+          ("archive", {".zip", ".rar", ".7z", ".tar", ".gz", ".tgz", ".bz2", ".xz"})]
+COPY_KINDS = {"image", "video", "audio"}   # anonim modda varsayilan yalniz bunlar kopyalanir (izin listesi); digerleri
 #                                            (kisi karti, PDF, ofis, arsiv, bilinmeyen/uzantisiz) --belgeleri-kopyala ile
 _FILE_EXT = set().union(*(exts for _, exts in _KINDS))
 _TITLE_LINE = re.compile(r"\S.{0,200}\.[A-Za-z0-9]{2,5}$")      # ek basligi / dosya adi satiri
@@ -2884,7 +2877,7 @@ _TITLE_LINE = re.compile(r"\S.{0,200}\.[A-Za-z0-9]{2,5}$")      # ek basligi / d
 
 def media_kind(name):
     ext = os.path.splitext(name)[1].lower()
-    return next((k for k, exts in _KINDS if ext in exts), "diğer")
+    return next((k for k, exts in _KINDS if ext in exts), "other")
 
 
 def is_title_line(val, file_names):
@@ -2923,10 +2916,11 @@ def render(title, msgs, export, media_dir_name="media", anon=None, no_media=Fals
     if anon:
         title, people = anon.code, [anon.sender(p) for p in people]
     out.append(f"# {title}\n")
-    out.append(f"- Katılımcılar: {', '.join(people) if people else '-'}")
-    out.append(f"- Mesaj sayısı: {len(real)}")
+    L = _L
+    out.append(f"- {L.participants}: {', '.join(people) if people else '-'}")
+    out.append(f"- {L.message_count}: {len(real)}")
     if msgs:
-        out.append(f"- Tarih aralığı: {msgs[0]['dt']:%Y-%m-%d} – {msgs[-1]['dt']:%Y-%m-%d}")
+        out.append(f"- {L.date_range}: {msgs[0]['dt']:%Y-%m-%d} – {msgs[-1]['dt']:%Y-%m-%d}")
     out.append("")
     day = None
     for m in msgs:
@@ -2950,29 +2944,29 @@ def render(title, msgs, export, media_dir_name="media", anon=None, no_media=Fals
             elif kind == "note":
                 rendered.append(f"_{T(val, title=sysline)}_")
             elif kind == "omitted":
-                rendered.append("_(medya dahil edilmemiş)_")
+                rendered.append(L.media_omitted)
             else:
                 real_name = export.find(val) if export is not None else None
                 if no_media:
                     shown = ((anon.media_name(real_name) if anon else real_name) if real_name
                              else (anon.media_name(os.path.basename(val.replace("\\", "/"))) if anon else val))
-                    manifest.setdefault(shown, (media_kind(val), "kopyalanmadı (--medya-yok)"))
-                    rendered.append("_(medya dahil edilmemiş)_")
+                    manifest.setdefault(shown, (L.kinds[media_kind(val)], L.status_no_media))
+                    rendered.append(L.media_omitted)
                     continue
                 if real_name is None:      # eksik ek: adi var olan medyayla ayni kuralla notr (medya-N) olur
                     missing += 1
                     shown = anon.media_name(os.path.basename(val.replace("\\", "/"))) if anon else val
-                    manifest.setdefault(shown, (media_kind(val), "eksik (dışa aktarımda yok)"))
-                    rendered.append(f"_(dosya eksik: {shown})_")
+                    manifest.setdefault(shown, (L.kinds[media_kind(val)], L.status_missing))
+                    rendered.append(L.file_missing.format(name=shown))
                     continue
                 shown = anon.media_name(real_name) if anon else real_name
                 kind_ = media_kind(real_name)
                 if anon and kind_ not in COPY_KINDS and not copy_docs:
-                    manifest.setdefault(shown, (kind_, "kopyalanmadı (kişisel veri içerebilir; --belgeleri-kopyala)"))
-                    rendered.append(f"_(ek kopyalanmadı: {shown}, {kind_})_")
+                    manifest.setdefault(shown, (L.kinds[kind_], L.status_not_copied))
+                    rendered.append(L.attachment_not_copied.format(name=shown, kind=L.kinds[kind_]))
                 else:
                     used[real_name] = True
-                    manifest.setdefault(shown, (kind_, "kopyalandı, elle kontrol gerekli"))
+                    manifest.setdefault(shown, (L.kinds[kind_], L.status_copied))
                     url = f"{media_dir_name}/{quote(shown)}"
                     if os.path.splitext(real_name)[1].lower() in IMAGE_EXT:
                         rendered.append(f"![]({url})")
@@ -3143,15 +3137,12 @@ def anonim_preflight(args, out_dir):
 def write_manifest(folder, manifest):
     """Sohbet-N/ekler.md: her ek (anonim ad), turu ve durumu. -> (kopyalanan Counter, kopyalanmayan Counter)."""
     copied, skipped = {}, {}
-    lines = ["# Ekler", "",
-             "Her ekin durumu. **Kopyalanan her dosya elle kontrol edilmeli**: görüntü/video/ses içeriği (yüzler, ekran "
-             "görüntüleri, sesler, belgelerdeki adlar) anonimleştirilmez.", "",
-             "| Dosya | Tür | Durum |", "|---|---|---|"]
+    lines = list(_L.manifest_head)
     for shown, (kind, status) in manifest.items():
         lines.append(f"| {shown.replace('|', '/')} | {kind} | {status} |")
-        d = copied if status.startswith("kopyalandı") else skipped
+        d = copied if status == _L.status_copied else skipped
         d[kind] = d.get(kind, 0) + 1
-    with open(os.path.join(folder, "ekler.md"), "w", encoding="utf-8", newline="\n") as f:
+    with open(os.path.join(folder, _L.manifest_file), "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(lines) + "\n")
     return copied, skipped
 
@@ -3161,7 +3152,7 @@ def write_review(review_dir, shown, review):
     review_dir varsayilan olarak cikti klasorunun disinda (default_review_dir); git agacinin icine yazilmaz."""
     if git_work_tree(review_dir):
         raise RuntimeError(t("review_in_git_exc"))
-    path = os.path.join(review_dir, sanitize(shown) + "-supheli-adlar.txt")
+    path = os.path.join(review_dir, sanitize(shown) + _L.review_suffix)
     if not review:
         if os.path.isfile(path):
             os.remove(path)
@@ -3204,7 +3195,7 @@ def write_chat(chat, msgs, export, out_dir, anonim=False, chat_no=1, label=None,
         c, sk = write_manifest(folder, manifest)
         fmt = lambda d: ", ".join(f"{k} {v}" for k, v in sorted(d.items(), key=lambda x: -x[1])) or "-"
         print(t("attach_warn", c=sum(c.values()), cd=fmt(c), s=sum(sk.values()), sd=fmt(sk),
-                path=os.path.join(folder, "ekler.md")))
+                path=os.path.join(folder, _L.manifest_file)))
     if anon:
         if copied:
             print(t("media_warn", n=copied))

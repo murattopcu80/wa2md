@@ -39,11 +39,9 @@ import wa2md
 HERE = os.path.dirname(os.path.abspath(__file__))
 COLLECT_JS = os.path.join(HERE, "wa2md_assets", "wa_collect.js")
 
-SYSTEM_SKIP = re.compile(r"uçtan uca şifrel|end-to-end encrypt|Bu sohbetteki mesajlar", re.I)
 KEY_RE = re.compile(r"^[A-Za-z0-9-]{1,40}$")
 BUNDLE_RE = re.compile(r"^wa-bundle-.+-([0-9a-z]+)-(\d{3})(?: \(\d+\))?\.json$")
 EXT_BY_KIND = {"image": ".jpg", "gif": ".mp4", "video": ".mp4", "audio": ".ogg", "document": ".bin"}
-KIND_TR = {"image": "fotoğraf", "gif": "gif", "video": "video", "audio": "ses", "document": "belge"}
 
 # ------------------------------------------------------------------ SECTION: tarih/saat ayristirma
 _PRE_A = re.compile(r"^\[" + wa2md.TIME + r",?\s*" + wa2md.DATE + r"\]\s*(.*?):\s*$")
@@ -66,28 +64,25 @@ def parse_pre_plain(s):
 
 
 def fold(s):
+    """Accent-free lower case (day dividers); the pack's i-letters (Turkish dotless i) fold to 'i'."""
     s = unicodedata.normalize("NFKD", s)
     s = "".join(c for c in s if unicodedata.category(c) != "Mn")
-    return s.lower().replace("ı", "i")
-
-
-_WEEKDAYS = ["pazartesi", "sali", "carsamba", "persembe", "cuma", "cumartesi", "pazar",
-             "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
-_TODAY, _YESTERDAY = {"bugun", "today"}, {"dun", "yesterday"}
+    return s.lower().translate({ord(c): "i" for c in wa2md.active_pack().fold_i if c.islower()})
 
 
 def parse_divider(text, today):
     """Gun basligi -> ('raw', (a, b, y)) | ('date', date) | None (tarih degilse)."""
     t = fold((text or "").strip())
+    P = wa2md.active_pack()
     m = re.match(r"^" + wa2md.DATE + r"$", t)
     if m:
         return "raw", tuple(int(x) for x in m.groups())
-    if t in _TODAY:
+    if t in P.web_today:
         return "date", today
-    if t in _YESTERDAY:
+    if t in P.web_yesterday:
         return "date", today - dt.timedelta(days=1)
-    if t in _WEEKDAYS:
-        wd = _WEEKDAYS.index(t) % 7
+    if t in P.web_weekdays:
+        wd = list(P.web_weekdays).index(t) % 7
         back = (today.weekday() - wd) % 7 or 7
         return "date", today - dt.timedelta(days=back)
     return None
@@ -160,10 +155,12 @@ def resolve_when(rows, today):
     return [(o[0], o[1]) for o in out]
 
 
-def build_messages(rows, title, today, media_files=None, staging=None, no_media=False, own_name="Ben"):
+def build_messages(rows, title, today, media_files=None, staging=None, no_media=False, own_name=None):
     """Paket satirlari -> wa2md mesaj listesi (parts modeli). media_files: {anahtar: (yol, uzanti)} (staging icinde).
     Medya dosyalari <YYYYMMDD-HHMM>-<kisa id>[-n].<uzanti> adina tasinir."""
     media_files = media_files or {}
+    P = wa2md.active_pack()
+    own_name = P.labels.own_name if own_name is None else own_name
     whens = resolve_when(rows, today)
     for r in rows:  # kendi adin: giden bir satirdaki damgadan
         if r.get("out") and r.get("stamp"):
@@ -173,7 +170,7 @@ def build_messages(rows, title, today, media_files=None, staging=None, no_media=
                 break
     msgs, prev_dt = [], None
     for r, (d, hm) in zip(rows, whens):
-        if r.get("system") is not None and SYSTEM_SKIP.search(r["system"]):
+        if r.get("system") is not None and re.search(P.web_system_skip, r["system"], re.I):
             continue
         if d is None:
             continue
@@ -192,9 +189,9 @@ def build_messages(rows, title, today, media_files=None, staging=None, no_media=
         parts = m["parts"]
         text = wa2md.INVISIBLE.sub("", r.get("text") or "").strip()
         if r.get("deleted") and not text:
-            parts.append(("note", "Bu mesaj silindi"))
+            parts.append(("note", P.labels.deleted))
         if r.get("forwarded"):
-            parts.append(("note", "Yönlendirilmiş mesaj"))
+            parts.append(("note", P.labels.forwarded))
         if r.get("quote"):
             parts.append(("quote", wa2md.INVISIBLE.sub("", r["quote"]).strip()))
         media = r.get("media") or []
@@ -220,6 +217,12 @@ def short_id(msg_id):
 _QUOTED = re.compile(r'^["“](.+?)["”](?:\s|$)')
 
 
+def _download_failed_rx():
+    """Pattern of the pack's 'download failed' note (the fixed text between its placeholders)."""
+    t = wa2md.active_pack().labels.download_failed
+    return re.compile(".*".join(re.escape(x) for x in re.split(r"\{\w+\}", t) if x.strip()))
+
+
 def doc_name(label):
     """Belge baslik ozniteligi ('"ad.ext" <indirme ipucu>') -> yalniz dosya adi."""
     label = wa2md.INVISIBLE.sub("", label or "").strip()
@@ -228,7 +231,8 @@ def doc_name(label):
 
 
 def _media_parts(r, md, idx, total, when, media_files, staging):
-    kind = md.get("kind") if md.get("kind") in KIND_TR else "document"
+    kinds = wa2md.active_pack().labels.web_kinds
+    kind = md.get("kind") if md.get("kind") in kinds else "document"
     stem = f"{when:%Y%m%d-%H%M}-{short_id(r['id'])}" + (f"-{idx + 1}" if total > 1 else "")
     got = media_files.get(md.get("key")) if md.get("key") else None
     if got and os.path.isfile(got[0]):
@@ -239,8 +243,8 @@ def _media_parts(r, md, idx, total, when, media_files, staging):
         return [("file", name)]
     if kind == "image":  # yazicinin mevcut "dosya eksik" isaretcisi
         return [("file", stem + EXT_BY_KIND["image"])]
-    label = doc_name(md.get("label")) or KIND_TR[kind]
-    return [("note", f"{KIND_TR[kind]} indirilemedi: {label}")]
+    label = doc_name(md.get("label")) or kinds[kind]
+    return [("note", wa2md.active_pack().labels.download_failed.format(kind=kinds[kind], label=label))]
 
 
 def filter_messages(msgs, date_from=None, date_to=None, max_messages=None):
@@ -362,7 +366,8 @@ def import_bundles(inputs, out_dir, date_from=None, date_to=None, max_messages=N
             export = wa2md.Export("web", "", b"", wa2md.scan_files(staging))
             wa2md.write_chat(title, msgs, export, out_dir, anonim=anonim, chat_no=chat_start + done, group=group,
                              extra_names=extra_names, review_dir=review_dir, no_dict=no_dict)
-            skipped = sum(1 for m in msgs for k, v in m["parts"] if k == "note" and "indirilemedi" in v)
+            failed_note = _download_failed_rx()
+            skipped = sum(1 for m in msgs for k, v in m["parts"] if k == "note" and failed_note.search(v))
             if skipped:
                 print(wa2md.t("web_skipped_media", n=skipped))
             if final.get("olderOnPhone"):
