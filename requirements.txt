@@ -1,1 +1,4 @@
+# OPTIONAL. wa2md itself needs only the Python standard library (Python 3.9 or later).
+# This file is only for the experimental direct Chrome connection (`wa2md-web list` / `export`) and the real-Chrome tests;
+# it is the same as `pip install ".[browser]"`.
 playwright==1.65.2
