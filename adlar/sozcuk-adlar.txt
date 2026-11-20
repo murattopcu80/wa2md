@@ -1,0 +1,47 @@
+# Sozluk anlami da olan adlar (belirsiz): tr-adlar.txt'deki bu adlar kucuk harfle ya da cumle basinda tek basina
+# gectiginde MASKELENMEZ, yalniz "supheli kalan" olarak sayilir ve inceleme dosyasina yazilir. Baglam varsa maskelenir:
+# cumle ortasinda buyuk harf, ozel ad kesme eki (Deniz'e), hitap (Umut abi) veya ardindan buyuk harfli soyad (Deniz Kaya).
+# Kaynak: bu reponun kendi listesi (elle derlendi, 2026-11-14); repo lisansiyla dagitilir. Ay ve gun adlari koddadir (wa2md._TAKVIM).
+# Bicim: satir basina bir sozcuk; # ile baslayan satirlar aciklama. Eslesme wa2md._key ile (buyuk/kucuk, i/I, ASCII duyarsiz).
+ada adalet adam adil afet ahenk alan alev algı ani arzu asil aslan ata ateş ava azar
+bahar bala balkan baskın başak başar bayram berrak beste bilge bilgi bilgin billur bozkurt budak buket bulut burçak
+can candan cesur cevher cuma cumhur
+damla defne değer deli demet demir deniz deren derin devlet devran devrim dilek dinç diyar dolunay doruk dost
+doğa doğan doğu doğuş durdu durmuş dursun duru duygu dönüş dünya düzen düzgün
+efsane ege ekim ekin elmas elçi emek emel emin emir ender eser evren evrim eylem eylül
+fidan galip gazi genç gezmiş gizem gök gönül gül güler gülen gülümser gün gündüz güney güneş güven güzel güçlü
+hacı hadi hakkı hale hasret hayat hayati heves heyecan hüner hürriyet
+ileri ilham ilke ilkin imam inan inanç inci ipek iris islam
+kader kahraman kalkan kara kartal kasım kaya keskin kent keklik kelime korkmaz korkut kudret kurtuluş
+kutlu kuzey kuzgun kılıç kıvılcım kıymet
+lale masal maya medine melek melodi menekşe metin mimar mine muhtar muhterem muhteşem mutlu müjde
+nadir narin naz nazik nehir nergis neşe nil nimet nisan nur
+okay okyanus olgu olgun onay onur orkide pamuk papatya pembe penbe polen
+rahim reis rüya saadet sabit safa said salim savaş saygı saygın seçkin sefer server
+sevda sevgi sevil sevin sevinç sezer simge solmaz sultan sönmez
+şafak şanlı şeker şeref şiir şirin
+talip tan tanyeri telli temel tok toprak torun tufan tuna tutku
+umut uygar ülke ülkü ümit üstün vatan varlık vefa
+yalın yaman yaprak yağmur yaşam yaşar yeter yetkin yonca yıldız yıldırım yılmaz yolcu yüksel
+zafer zeki çakar çalışkan çağdaş çağrı çelik çerkes çevik çiçek çınar ömür özge özgür özlem ışık ırmak
+aydın asya barış sevim ağa oğul
+akıl akın alim arı aslı atıf ayda aziz coşkun dara dindar evin fahri fikri gaye gözde halis harika ilmi imdat ışın işin
+kadim kani karın kerim konuk lara mazlum medeni meltem muteber nazlı nezaket oral oruç özgün parla rahman sadık sarp sefa
+servet sıla sıra sırrı şükran tali tekin türk ufuk ulaş umur vakıf vasıf veli yamaç yankı yiğit zatı zorlu zümrüt efe
+# --- Ek liste, 2026-11-15 (issue #70 inceleme bulgusu 8). Uc kaynak; her satir bir kaynaktan, tr-adlar.txt ile kesisim:
+# Kaynak 1: Wikidata sozcukbirimleri (lexeme), Turkce, ozel ad olmayanlar. Lisans CC0 1.0. Alinma 2026-11-15.
+#   Sorgu: SELECT DISTINCT ?v WHERE { ?l a ontolex:LexicalEntry; dct:language wd:Q256; wikibase:lemma ?lem;
+#          wikibase:lexicalCategory ?c . FILTER(?c != wd:Q147276) BIND(STR(?lem) AS ?v) }   (4191 lemma, 21 kesisim)
+acar acun aka alı alp çağla çağlayan canan cemre cenk derviş dudu egemen ezel gökçe hatun irfan izzet kıvanç tuğra yeşim
+# Kaynak 2: Wikidata Turkiye yer adlari (il Q48336, ilce Q1147395, akarsu Q4022, dag Q8502; wdt:P17 wd:Q43; tr etiketi;
+#   "X Nehri/Çayı/Irmağı/Dağı" -> X). Lisans CC0 1.0. Alinma 2026-11-15. Kesisimden kisi adli dag/cay adlari elle cikarildi.
+#   Sorgu (her tur icin ayri): SELECT DISTINCT ?v WHERE { ?i wdt:P31 wd:<TUR>; wdt:P17 wd:Q43; rdfs:label ?lab .
+#          FILTER(LANG(?lab)="tr") BIND(STR(?lab) AS ?v) }
+afşin akçay alara aras ceyhan dicle fatih fırat göksu gürsu hazar ılgın meriç nilüfer özalp pınar seyhan
+# Kaynak 3: elle derlendi ve gozden gecirildi (2026-11-15; acik lisansli Turkce sozluk kaynaginda yeterli kapsam
+#   bulunamadi). Gunluk dilde sozcuk anlami yaygin olan adlar; repo lisansiyla dagitilir.
+ahu altun armağan arslan atılgan baki balaban bora boran cihan civan ceylan çağlar çetin çiğdem derya dilber dirayet
+ece ela engin erdem esen esin eflatun ezgi fazilet feza filiz gamze görkem güzide halim hande hazan hicran hicri
+hidayet hikmet hilal himmet kamil kâmil konca latife mahir mehtap menderes mercan mert mevlüt miraç nail oya öykü
+ozan poyraz ramazan reşit reyhan saba sabri sedef seher selim sema serap seyran şahin şelale şule taşkın tayfun tunç
+turan ülker vuslat yağız yalçın yasemin yavuz zemzem

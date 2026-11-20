@@ -1,0 +1,2459 @@
+{
+ "aciklama": "6. tur: uydurma, telefonsuz, sifir genislikli karakterli satirlar ve onceki surumun bu satirlar icin ciktisi (tests/test_nakliye_gruplari.run ile ayni yol; her sohbet ayri, gonderen ve katilimcilar asagida). Uretec: sabit tohumlu; main araci bir kez calistirilip kaydedildi.",
+ "katilimcilar": [
+  "Ali Veli",
+  "Arvo Kestel",
+  "Brin Tamsel"
+ ],
+ "gonderen": "Brin Tamsel",
+ "sohbetler": [
+  [
+   [
+    "Tic. Ltd. \u015eti.\u200dbrin\u2060ILE",
+    "Tic. Ltd. \u015eti.\u200dKi\u015fi 3\u2060ILE"
+   ],
+   [
+    "Y\u00fck\u200cDorin!\u2060Adana\u200bfiyat\u200d D\u00fcn Demir",
+    "Y\u00fck\u200cDorin!\u2060Adana\u200bfiyat\u200d D\u00fcn Demir"
+   ],
+   [
+    "D\u00dcN\u2060. 2 ze\u200dlvo\u200dkestel\u00adh\u00fcseyin\u200d! 33",
+    "D\u00dcN\u2060. 2 ze\u200dlvo\u200dKi\u015fi 2\u00adKi\u015fi 4\u200d! 33"
+   ],
+   [
+    "ve kaplo\u2060Deniz",
+    "ve kaplo\u2060Ki\u015fi 5"
+   ],
+   [
+    "dorse\u2060bug\u00fcn\u200b usta\u200dDeniz\u00ad Tamam",
+    "dorse\u2060bug\u00fcn\u200b usta\u200dKi\u015fi 5\u00ad Tamam"
+   ],
+   [
+    "dorse KESTEL Arad\u0131\u200cLTD \u015eT\u0130",
+    "dorse Ki\u015fi 2 Arad\u0131\u200cLTD \u015eT\u0130"
+   ],
+   [
+    "(\u00ad\u015fahin\u200by\u00adar\u0131n\u00ad)",
+    "(\u00ad\u015fahin\u200by\u00adKi\u015fi 6\u00ad)"
+   ],
+   [
+    "KAPLAN kestel\u2060Arad\u0131\u200babi",
+    "KAPLAN Ki\u015fi 2\u2060Arad\u0131\u200babi"
+   ],
+   [
+    "Kaplan\u2060Tam\u00adsel\u200b! geldi DE\u00adNIZ usta\u200d fiyat",
+    "Kaplan\u2060Tam\u00adsel\u200b! geldi DE\u00adKi\u015fi 7 usta\u200d fiyat"
+   ],
+   [
+    "(\u200bHasan\u200c d\u00fcn YARIN A\u200dnkara\u200barad\u0131\u200bdemir\u2060? \u0130rtibat:\u2060)",
+    "(\u200bKi\u015fi 8\u200c d\u00fcn YARIN A\u200dnkara\u200barad\u0131\u200bdemir\u2060? \u0130rtibat:\u2060)"
+   ],
+   [
+    "DORSE\u200cyola brin\u200c velko\u200cf\u200datma \u200cSabah",
+    "DORSE\u200cyola Ki\u015fi 3\u200c velko\u200cf\u200datma \u200cSabah"
+   ],
+   [
+    "dorse\u2060TA\u2060MSEL KELVOR yola \u200bKayse\u200cri. 33",
+    "dorse\u2060TA\u2060MSEL KELVOR yola \u200bKayse\u200cri. 33"
+   ],
+   [
+    "Bug\u00fcn\u00adus\u200dta\u200cHasan \u00adkayseri tamam",
+    "Bug\u00fcn\u00adus\u200dta\u200cKi\u015fi 8 \u00adkayseri tamam"
+   ],
+   [
+    "SABAH\u200dBey\u200dFi\u2060yat\u200dBUG\u00dcN \u200cTAMSEL Kayseri",
+    "SABAH\u200dBey\u200dFi\u2060yat\u200dBUG\u00dcN \u200cKi\u015fi 3 Kayseri"
+   ],
+   [
+    "BEY?\u200cDorin\u200dARADI \u2060ankara, Ara\u00e7",
+    "BEY?\u200cDorin\u200dARADI \u2060ankara, Ara\u00e7"
+   ],
+   [
+    "VELI DORS\u2060E\u2060ile\u200cltd \u015fti\u0307",
+    "Ki\u015fi 1 DORS\u2060E\u2060ile\u200cltd \u015fti\u0307"
+   ],
+   [
+    "(\u200ckayseri\u200bU\u200bsta\u2060ara\u00e7 Bekliyor\u200b)",
+    "(\u200ckayseri\u200bU\u200bsta\u2060ara\u00e7 Bekliyor\u200b)"
+   ],
+   [
+    "bri\u200dn \u200bTe\u200dslim\u200cmersin Yar\u0131n!\u2060Kaplan",
+    "bri\u200dn \u200bTe\u200dslim\u200cmersin Yar\u0131n!\u2060Kaplan"
+   ],
+   [
+    "(\u200bteslim,\u200dme\u200chmet \u2060Velko\u200d Arad\u0131 kestel\u2060ve\u200d)",
+    "(\u200bteslim,\u200dme\u200chmet \u2060Velko\u200d Arad\u0131 Ki\u015fi 2\u2060ve\u200d)"
+   ],
+   [
+    "\u00c7el\u00adik\u200cs\u00adabah \u200dUsta\u00adTe\u200cslim\u2060 Velko",
+    "\u00c7el\u00adik\u200cs\u00adabah \u200dUsta\u00adTe\u200cslim\u2060 Velko"
+   ],
+   [
+    "(\u00adfenna\u2060arad\u0131\u200c, Say\u0131n\u200dTeslim\u00ad)",
+    "(\u00adfenna\u2060arad\u0131\u200c, Say\u0131n\u200dTeslim\u00ad)"
+   ],
+   [
+    "Y\u00fck\u00adKAPLO BRIN\u200d. H\u00fc\u200bseyin",
+    "Y\u00fck\u00adKAPLO Ki\u015fi 3\u200d. H\u00fc\u200bseyin"
+   ],
+   [
+    "(\u200bkelvor y\u00fck\u200d Seli\u200cm\u200d)",
+    "(\u200bkelvor y\u00fck\u200d Seli\u200cm\u200d)"
+   ],
+   [
+    "Y\u0131lm\u00adaz GELDI \u200b\u0130\u200drtibat: 33",
+    "Y\u0131lm\u00adaz GELDI \u200b\u0130\u200drtibat: 33"
+   ],
+   [
+    "(\u2060Say\u200d\u0131n\u200bKel\u200cvor ara\u00e7\u200d)",
+    "(\u2060Say\u200d\u0131n\u200bKel\u200cvor ara\u00e7\u200d)"
+   ]
+  ],
+  [
+   [
+    "han\u0131m \u200c\u00e7\u0131\u200ckt\u0131 \u200bTeslim\u200cAdana\u00ad fi\u200cyat\u200dKa\u200bplo",
+    "han\u0131m \u200c\u00e7\u0131\u200ckt\u0131 \u200bTeslim\u200cAdana\u00ad fi\u200cyat\u200dKa\u200bplo"
+   ],
+   [
+    "(\u200cbey \u00e7\u200c\u0131kt\u0131\u200bv\u200deli\u200dYar\u0131n\u200dLT\u200bD \u015eT\u0130? Selam\u200d)",
+    "(\u200cbey \u00e7\u200c\u0131kt\u0131\u200bv\u200dKi\u015fi 4\u200dYar\u0131n\u200dLT\u200bD \u015eT\u0130? Selam\u200d)"
+   ],
+   [
+    "s\u200cabah\u200d\u00e7\u0131kt\u0131!\u00adA\u200cdana \u200dbekliyor!\u00adBRIN",
+    "s\u200cabah\u200d\u00e7\u0131kt\u0131!\u00adA\u200cdana \u200dbekliyor!\u00adKi\u015fi 3"
+   ],
+   [
+    "usta\u00adko\u200bnya tamam.\u200cDemir\u200bb\u200drin",
+    "usta\u00adko\u200bnya tamam.\u200cDemir\u200bb\u200drin"
+   ],
+   [
+    "ABI arad\u0131\u2060Tes\u200clim\u200b Se\u2060lam Konya",
+    "ABI arad\u0131\u2060Tes\u200clim\u200b Se\u2060lam Konya"
+   ],
+   [
+    "Arvo\u00ad Teslim\u00adara\u00e7",
+    "Ki\u015fi 2\u00ad Teslim\u00adara\u00e7"
+   ],
+   [
+    "2 Ka\u200cder\u200csa\u200cbah\u200d dorin \u00adHasa\u2060n\u200bD\u00dcN",
+    "2 Ka\u200cder\u200csa\u200cbah\u200d dorin \u00adHasa\u2060n\u200bD\u00dcN"
+   ],
+   [
+    "fatma Nakliyat\u200d2? Usta",
+    "Ki\u015fi 5 Nakliyat\u200d2? Usta"
+   ],
+   [
+    "tam\u00adam\u2060TESLIM \u200d\u0130stanbul\u200darvo\u2060geldi Selim",
+    "tam\u00adam\u2060TESLIM \u200d\u0130stanbul\u200dKi\u015fi 2\u2060geldi Ki\u015fi 6"
+   ],
+   [
+    "Yar\u0131n\u200ckemal\u2060 Geldi",
+    "Yar\u0131n\u200cKi\u015fi 7\u2060 Geldi"
+   ],
+   [
+    "(\u2060KEMA\u200cL BUG\u00dcN\u200b BEKLIYOR \u2060Geldi.\u00adbey\u00ad ARVO\u2060: Kader\u200b)",
+    "(\u2060KEMA\u200cL BUG\u00dcN\u200b BEKLIYOR \u2060Geldi.\u00adbey\u00ad Ki\u015fi 2\u2060: Kader\u200b)"
+   ],
+   [
+    "(\u200bAbi \u200dveli \u200bSabah Teslim: konya? Fen\u200dna\u00ad)",
+    "(\u200bAbi \u200dKi\u015fi 1 \u200bSabah Teslim: konya? Fen\u200dna\u00ad)"
+   ],
+   [
+    "ve \u200bAli",
+    "ve \u200bKi\u015fi 1"
+   ],
+   [
+    "K\u200caplo Geldi Konya",
+    "K\u200caplo Geldi Konya"
+   ],
+   [
+    "yola Kade\u200br",
+    "yola Kade\u200br"
+   ],
+   [
+    "A\u200cNKARA\u200dKelvor \u00adTamam",
+    "A\u200cNKARA\u200dKelvor \u00adTamam"
+   ],
+   [
+    "ARADI,\u200dDeniz\u200b tic. l\u200dtd. \u015fti.",
+    "ARADI,\u200dKi\u015fi 8\u200b tic. l\u200dtd. \u015fti."
+   ],
+   [
+    "Sel\u200dim.\u200bhan\u2060\u0131m\u00ad yar\u0131n \u200dBekliyor Kelvor, i\u0307stanbul",
+    "Sel\u200dim.\u200bhan\u2060\u0131m\u00ad yar\u0131n \u200dBekliyor Kelvor, i\u0307stanbul"
+   ],
+   [
+    "Tun\u00e7\u200d, mehme\u200dt\u2060 33, TESLIM d\u00fcn\u200dhan\u0131m Say\u0131n\u2060, kelvor",
+    "Tun\u00e7\u200d, mehme\u200dt\u2060 33, TESLIM d\u00fcn\u200dhan\u0131m Say\u0131n\u2060, kelvor"
+   ],
+   [
+    "YAR\u200cIN\u200bkader\u200dIle\u00adteslim",
+    "YAR\u200cIN\u200bkader\u200dIle\u00adteslim"
+   ],
+   [
+    "(\u200ddorse\u200c: Ara\u00e7, konya\u00ady\u00fck\u00ad)",
+    "(\u200ddorse\u200c: Ara\u00e7, konya\u00ady\u00fck\u00ad)"
+   ],
+   [
+    "2\u00ad, kestel\u00adAy\u015fe. Teslim",
+    "2\u00ad, Ki\u015fi 2\u00adKi\u015fi 9. Teslim"
+   ],
+   [
+    "2 Ka\u200braca\u200cKaplo\u200d, arad\u2060\u0131",
+    "2 Ka\u200braca\u200cKaplo\u200d, arad\u2060\u0131"
+   ],
+   [
+    "BUG\u00dcN\u00ad ELIF Y\u200bOLA \u015eAHIN",
+    "BUG\u00dcN\u00ad Ki\u015fi 10 Y\u200bOLA \u015eAHIN"
+   ],
+   [
+    "deniz? ve\u200bfiyat",
+    "deniz? ve\u200bfiyat"
+   ]
+  ],
+  [
+   [
+    "Tun\u00e7\u200dABI\u00adArvo\u200bara\u00e7 \u0130stanbul",
+    "Tun\u00e7\u200dABI\u00adKi\u015fi 2\u200bara\u00e7 \u0130stanbul"
+   ],
+   [
+    "bekliyor\u2060Kelvor?\u200byar\u0131\u200cn 33 Nakliyat",
+    "bekliyor\u2060Kelvor?\u200byar\u0131\u200cn 33 Nakliyat"
+   ],
+   [
+    "2 i\u0307rtiba\u200bt:\u2060 H\u00fcseyin\u200dhan\u0131m",
+    "2 i\u0307rtiba\u200bt:\u2060 Ki\u015fi 4\u200dhan\u0131m"
+   ],
+   [
+    "(\u200ddorin\u200dNakliyat\u200dD\u00fcn\u200c)",
+    "(\u200ddorin\u200dNakliyat\u200dD\u00fcn\u200c)"
+   ],
+   [
+    "(\u200bABI\u200dbrin 33 Fatma\u200d)",
+    "(\u200bABI\u200dKi\u015fi 3 33 Ki\u015fi 5\u200d)"
+   ],
+   [
+    "Ta\u2060mam\u200dkestel Bekliyor\u00adAD\u200bANA",
+    "Ta\u2060mam\u200dKi\u015fi 2 Bekliyor\u00adAD\u200bANA"
+   ],
+   [
+    "KADER\u200carad\u0131\u200c? 33\u200d Fenna",
+    "KADER\u200carad\u0131\u200c? 33\u200d Fenna"
+   ],
+   [
+    "Ay\u015fe \u0130stanbul\u200dbey\u200bTAMAM: Demir Y\u00dcK",
+    "Ki\u015fi 6 \u0130stanbul\u200dbey\u200bTAMAM: Demir Y\u00dcK"
+   ],
+   [
+    "tamam \u200bKAYSE\u200dRI? Brin Tavro",
+    "tamam \u200bKAYSE\u200dRI? Ki\u015fi 3 Tavro"
+   ],
+   [
+    "\u00c7IKTI\u200bkaya Ile KESTEL\u00adfiyat",
+    "\u00c7IKTI\u200bkaya Ile Ki\u015fi 2\u00adfiyat"
+   ],
+   [
+    "zelvo\u200bA\u200bRVO\u200d Y\u200cola Ile Tun\u00e7",
+    "zelvo\u200bA\u200bRVO\u200d Y\u200cola Ile Tun\u00e7"
+   ],
+   [
+    "(\u200bKaplo\u2060H\u200bANIM\u200dyola\u200b)",
+    "(\u200bKaplo\u2060H\u200bANIM\u200dyola\u200b)"
+   ],
+   [
+    "mersin Karaca\u200c selam bekliyor",
+    "mersin Karaca\u200c selam bekliyor"
+   ],
+   [
+    "veli\u200c USTA\u200dAnkara.\u200bbug\u00fcn 2 Mehmet",
+    "Ki\u015fi 1\u200c USTA\u200dAnkara.\u200bbug\u00fcn 2 Ki\u015fi 7"
+   ],
+   [
+    "(\u00adHasan SABAH\u200bVeli\u200d, kaplo yar\u0131n\u200d)",
+    "(\u00adKi\u015fi 8 SABAH\u200bKi\u015fi 1\u200d, kaplo yar\u0131n\u200d)"
+   ],
+   [
+    "abi. ve \u015eah\u200bin\u00ad brin\u2060 ada\u200bna",
+    "abi. ve \u015eah\u200bin\u00ad Ki\u015fi 3\u2060 ada\u200bna"
+   ],
+   [
+    "Mersin tamsel \u200dY\u200bar\u0131n! Ara\u200b\u00e7\u200bDori\u2060n",
+    "Mersin Ki\u015fi 3 \u200dY\u200bKi\u015fi 9! Ara\u200b\u00e7\u200bDori\u2060n"
+   ],
+   [
+    "(\u200dFatma Kelvo\u2060r\u2060 sela\u00adm\u200b)",
+    "(\u200dKi\u015fi 5 Kelvo\u2060r\u2060 sela\u00adm\u200b)"
+   ],
+   [
+    "han\u0131m\u200cA\u00adRA\u00c7\u2060 dorse\u00adAr\u200dvo\u2060TAMAM",
+    "han\u0131m\u200cA\u00adRA\u00c7\u2060 dorse\u00adAr\u200dvo\u2060TAMAM"
+   ],
+   [
+    "Han\u0131m?\u2060i\u200b\u0307stanbul\u200bve?\u2060Y\u00dcK Ay\u015fe",
+    "Han\u0131m?\u2060i\u200b\u0307stanbul\u200bve?\u2060Y\u00dcK Ki\u015fi 6"
+   ],
+   [
+    "Tic. Ltd. \u015eti.\u200bFiyat\u200ckelvor fatma\u2060bey",
+    "Tic. Ltd. \u015eti.\u200bFiyat\u200ckelvor Ki\u015fi 5\u2060bey"
+   ],
+   [
+    "veli \u200dbey\u2060bug\u00fcn\u200c Ge\u2060ldi",
+    "Ki\u015fi 1 \u200dbey\u2060bug\u00fcn\u200c Ge\u2060ldi"
+   ],
+   [
+    "Fenna\u200cselam Ara\u00e7\u200cyar\u0131n",
+    "Fenna\u200cselam Ara\u00e7\u200cyar\u0131n"
+   ],
+   [
+    "Ve\u200cHasa\u2060n \u2060Ha\u00adn\u0131m\u2060 Fenna",
+    "Ve\u200cHasa\u2060n \u2060Ha\u00adn\u0131m\u2060 Fenna"
+   ],
+   [
+    "(\u200dSelam Velko \u200dKemal\u2060)",
+    "(\u200dSelam Velko \u200dKi\u015fi 10\u2060)"
+   ]
+  ],
+  [
+   [
+    "bekl\u200ciyor:\u200bbug\u00fcn Ve\u200bH\u00fc\u200dseyin",
+    "bekl\u200ciyor:\u200bbug\u00fcn Ve\u200bH\u00fc\u200dseyin"
+   ],
+   [
+    "K\u2060emal Ge\u2060ldi\u200c i\u0307sta\u2060nbul tavr\u200do\u200bsela\u200bm yar\u0131n",
+    "K\u2060emal Ge\u2060ldi\u200c i\u0307sta\u2060nbul tavr\u200do\u200bsela\u200bm yar\u0131n"
+   ],
+   [
+    "(\u200bBekliyor DENIZ\u200cAbi\u200bYola\u200c DEMI\u200cR kestel\u00ad ile\u00ad)",
+    "(\u200bBekliyor DENIZ\u200cAbi\u200bYola\u200c DEMI\u200cR Ki\u015fi 2\u00ad ile\u00ad)"
+   ],
+   [
+    "d\u00fcn! ile\u00adTAVRO yetkili:\u200bKaplan",
+    "d\u00fcn! ile\u00adTAVRO yetkili:\u200bKaplan"
+   ],
+   [
+    "sabah\u2060 arv\u200co \u00adTic. Ltd. \u015eti.",
+    "sabah\u2060 arv\u200co \u00adTic. Ltd. \u015eti."
+   ],
+   [
+    "yol\u200ba dors\u00ade\u200bkapl\u2060o,\u200cadana\u200bile LTD \u015eT\u0130\u200cKaplan",
+    "yol\u200ba dors\u00ade\u200bkapl\u2060o,\u200cadana\u200bile LTD \u015eT\u0130\u200cKaplan"
+   ],
+   [
+    "Fenna\u2060Kemal\u00ad teslim\u2060Ve",
+    "Fenna\u2060Ki\u015fi 4\u00ad teslim\u2060Ve"
+   ],
+   [
+    "(\u00ad\u0130rtibat:\u2060T\u00adavro Yar\u0131n\u200dAli\u200b)",
+    "(\u00ad\u0130rtibat:\u2060T\u00adavro Yar\u0131n\u200dKi\u015fi 1\u200b)"
+   ],
+   [
+    "yo\u200dla\u200bVelko Han\u0131m\u00ad Tamsel",
+    "yo\u200dla\u200bKi\u015fi 5 Han\u0131m\u00ad Ki\u015fi 3"
+   ],
+   [
+    "Ay\u015fe usta Z\u2060ELVO\u200c tamam\u200cBr\u200bin",
+    "Ki\u015fi 6 usta Z\u2060ELVO\u200c tamam\u200cBr\u200bin"
+   ],
+   [
+    "D\u00fcn NAKLIYAT\u2060tes\u2060lim yola\u200d\u0130st\u2060anbul",
+    "D\u00fcn NAKLIYAT\u2060tes\u2060lim yola\u200d\u0130st\u2060anbul"
+   ],
+   [
+    "y\u200car\u0131n\u200bEmi\u2060ne. Arad\u0131",
+    "y\u200cKi\u015fi 7\u200bEmi\u2060ne. Arad\u0131"
+   ],
+   [
+    "Y\u0131l\u200dmaz, 33 \u2060Bey",
+    "Y\u0131l\u200dmaz, 33 \u2060Bey"
+   ],
+   [
+    "\u00c7\u0131kt\u0131\u00adArad\u0131 \u00adfiyat\u2060Y\u200dETKILI: Ankara",
+    "\u00c7\u0131kt\u0131\u00adArad\u0131 \u00adfiyat\u2060Y\u200dETKILI: Ankara"
+   ],
+   [
+    "LTD \u015e\u200dT\u0130: Ara\u00e7\u2060\u00c7\u0131\u00adkt\u0131\u2060Mersin\u200dDorse",
+    "LTD \u015e\u200dT\u0130: Ara\u00e7\u2060\u00c7\u0131\u00adkt\u0131\u2060Mersin\u200dDorse"
+   ],
+   [
+    "brin TAMAM A\u2060bi",
+    "Ki\u015fi 3 TAMAM A\u2060bi"
+   ],
+   [
+    "Kay\u00ada ve \u200bYe\u2060tkili:\u200d Geldi",
+    "Kay\u00ada ve \u200bYe\u2060tkili:\u200d Geldi"
+   ],
+   [
+    "Zelvo \u00adKEMAL\u200cf\u200biyat\u200dYOLA",
+    "Zelvo \u00adKi\u015fi 4\u200cf\u200biyat\u200dYOLA"
+   ],
+   [
+    "Tamam\u200dSABAH\u00ad us\u200bta ADANA Fenna\u200c \u00c7\u00adIKTI\u200d H\u00dcSEYIN",
+    "Tamam\u200dSABAH\u00ad us\u200bta ADANA Fenna\u200c \u00c7\u00adIKTI\u200d Ki\u015fi 8"
+   ],
+   [
+    "Ankara\u200dUsta YARIN\u200cKELVOR.\u2060fatma",
+    "Ankara\u200dUsta YARIN\u200cKELVOR.\u2060Ki\u015fi 9"
+   ],
+   [
+    "(\u00ad2,\u200cAnkara\u200c kel\u200dvor veli\u00ad)",
+    "(\u00ad2,\u200cAnkara\u200c kel\u200dvor Ki\u015fi 1\u00ad)"
+   ],
+   [
+    "kony\u200da,\u200cgeldi\u200bdorse",
+    "kony\u200da,\u200cgeldi\u200bdorse"
+   ],
+   [
+    "arad\u0131! \u00c7IKTI\u2060Zelvo h\u00fcsey\u2060in Tic. Ltd. \u015eti.\u2060. Konya bug\u00fcn usta",
+    "arad\u0131! \u00c7IKTI\u2060Zelvo h\u00fcsey\u2060in Tic. Ltd. \u015eti.\u2060. Konya bug\u00fcn usta"
+   ],
+   [
+    "Kelv\u200dor Kayseri \u00ad\u00e7\u0131kt\u0131\u200b 2. TAMSEL bug\u00fcn",
+    "Kelv\u200dor Kayseri \u00ad\u00e7\u0131kt\u0131\u200b 2. Ki\u015fi 3 bug\u00fcn"
+   ],
+   [
+    "fatma y\u00fck\u200dara\u00e7\u200c LT\u00adD \u015eT\u0130\u2060ve.\u200bVE\u200dLKO",
+    "Ki\u015fi 9 y\u00fck\u200dara\u00e7\u200c LT\u00adD \u015eT\u0130\u2060ve.\u200bVE\u200dLKO"
+   ]
+  ],
+  [
+   [
+    "Elif \u2060Tamam \u200byola\u200c \u015eahin\u200d\u00e7\u0131kt\u0131",
+    "Ki\u015fi 4 \u2060Tamam \u200byola\u200c Ki\u015fi 5\u200d\u00e7\u0131kt\u0131"
+   ],
+   [
+    "Selim\u200c d\u2060orse\u200cNa\u2060kliyat: brin",
+    "Selim\u200c d\u2060orse\u200cNa\u2060kliyat: Ki\u015fi 3"
+   ],
+   [
+    "(\u200cile\u200b han\u0131m\u2060VELKO \u200dMERSIN\u200c)",
+    "(\u200cile\u200b han\u0131m\u2060VELKO \u200dMERSIN\u200c)"
+   ],
+   [
+    "(\u2060d\u00fcn\u200d Ka\u200craca\u2060Ve\u2060, LTD \u00ad\u015eT\u0130\u200ctamam\u200d)",
+    "(\u2060d\u00fcn\u200d Ka\u200craca\u2060Ve\u2060, LTD \u00ad\u015eT\u0130\u200ctamam\u200d)"
+   ],
+   [
+    "veli \u200cDemir Arad\u0131",
+    "Ki\u015fi 1 \u200cDemir Arad\u0131"
+   ],
+   [
+    "tavr\u00ado:\u00adDemir\u200b \u0130stanbul \u00ad\u00c7\u0131kt\u0131",
+    "tavr\u00ado:\u00adDemir\u200b \u0130stanbul \u00ad\u00c7\u0131kt\u0131"
+   ],
+   [
+    "(\u00adArad\u0131\u200cYetkili:\u00ad33\u200bALI\u200d)",
+    "(\u00adArad\u0131\u200cYetkili:\u00ad33\u200bKi\u015fi 1\u200d)"
+   ],
+   [
+    "(\u200cDeniz Kony\u200ba \u2060bekliyor\u200bVe\u200cDO\u200cRIN\u200b)",
+    "(\u200cDeniz Kony\u200ba \u2060bekliyor\u200bVe\u200cDO\u200cRIN\u200b)"
+   ],
+   [
+    "D\u00fcn\u200c Deniz\u2060\u015eahin\u2060 Nakl\u00adiyat \u200cfiyat \u00adf\u200benna",
+    "D\u00fcn\u200c Ki\u015fi 6\u2060Ki\u015fi 5\u2060 Nakl\u00adiyat \u200cfiyat \u00adf\u200benna"
+   ],
+   [
+    "TIC. LTD. \u015eTI.\u2060ile\u200bUsta\u200bali\u200d Kayseri",
+    "TIC. LTD. \u015eTI.\u2060ile\u200bUsta\u200bKi\u015fi 1\u200d Kayseri"
+   ],
+   [
+    "(\u200bNakliyat\u00adile! Fenna\u00ad Se\u2060lim\u2060)",
+    "(\u200bNakliyat\u00adile! Fenna\u00ad Se\u2060lim\u2060)"
+   ],
+   [
+    "h\u00fcs\u00adeyin\u200bzelvo \u200cKestel\u2060A\u200crad\u0131\u200c Ara\u00e7",
+    "h\u00fcs\u00adeyin\u200bzelvo \u200cKi\u015fi 2\u2060A\u200crad\u0131\u200c Ara\u00e7"
+   ],
+   [
+    "ali\u00ad D\u00dcN\u200dAnkara",
+    "Ki\u015fi 1\u00ad D\u00dcN\u200dAnkara"
+   ],
+   [
+    "kestel\u2060naime Y\u00fck\u200da\u00adra\u00e7 \u200dbekliyor \u200ckap\u00adlo",
+    "Ki\u015fi 2\u2060Ki\u015fi 7 Y\u00fck\u200da\u00adra\u00e7 \u200dbekliyor \u200ckap\u00adlo"
+   ],
+   [
+    "(\u2060ZELVO\u00adY\u00dcK\u2060Bu\u200cg\u00fcn\u200d KA\u200cYA\u200c)",
+    "(\u2060ZELVO\u00adY\u00dcK\u2060Bu\u200cg\u00fcn\u200d KA\u200cYA\u200c)"
+   ],
+   [
+    "TAMSEL ltd \u015fti\u0307\u200c F\u200diyat d\u00fcn",
+    "Ki\u015fi 3 ltd \u015fti\u0307\u200c F\u200diyat d\u00fcn"
+   ],
+   [
+    "Kaplan\u200c Fiyat\u00adKes\u200ctel\u200ddeniz\u00ad teslim",
+    "Kaplan\u200c Fiyat\u00adKes\u200ctel\u200ddeniz\u00ad teslim"
+   ],
+   [
+    "(\u200dArvo\u200d Fiy\u200cat\u200b)",
+    "(\u200dKi\u015fi 2\u200d Fiy\u200cat\u200b)"
+   ],
+   [
+    "(\u00adFe\u2060nna\u200bARADI\u2060YARIN fiya\u2060t\u00ad)",
+    "(\u00adFe\u2060nna\u200bARADI\u2060YARIN fiya\u2060t\u00ad)"
+   ],
+   [
+    "Ara\u200d\u00e7 KONYA Yetki\u2060li:",
+    "Ara\u200d\u00e7 KONYA Yetki\u2060li:"
+   ],
+   [
+    "2\u00ad y\u00fck\u2060A\u200cY\u015eE \u200cb\u200crin\u2060 sabah",
+    "2\u00ad y\u00fck\u2060A\u200cY\u015eE \u200cb\u200crin\u2060 sabah"
+   ],
+   [
+    "B\u200drin tamam",
+    "B\u200drin tamam"
+   ],
+   [
+    "bug\u00fc\u200bn\u200dD\u00dcN \u2060ara\u00e7\u200bY\u00adILMAZ\u00adkayse\u200bri\u200cnakliyat\u200cvelko",
+    "bug\u00fc\u200bn\u200dD\u00dcN \u2060ara\u00e7\u200bY\u00adILMAZ\u00adkayse\u200bri\u200cnakliyat\u200cvelko"
+   ],
+   [
+    "Tamse\u2060l ILE\u00ad Geldi\u200cKemal\u200d? Abi \u0130rtibat: \u200dVe\u00admersin",
+    "Tamse\u2060l ILE\u00ad Geldi\u200cKi\u015fi 8\u200d? Abi \u0130rtibat: \u200dVe\u00admersin"
+   ],
+   [
+    "Kap\u200blan yar\u0131n:\u200bkestel",
+    "Kap\u200blan yar\u0131n:\u200bKi\u015fi 2"
+   ]
+  ],
+  [
+   [
+    "Ve\u2060 KAP\u200bLO Dorse",
+    "Ve\u2060 KAP\u200bLO Dorse"
+   ],
+   [
+    "Demir\u200cZelvo\u00ad? 33 brin",
+    "Demir\u200cZelvo\u00ad? 33 Ki\u015fi 3"
+   ],
+   [
+    "Y\u0131lmaz,\u200cabi\u200bT\u200dic. Ltd. \u015eti. TAM\u00adSEL\u2060arad\u0131",
+    "Y\u0131lmaz,\u200cabi\u200bT\u200dic. Ltd. \u015eti. TAM\u00adSEL\u2060arad\u0131"
+   ],
+   [
+    "TESLIM\u00ad Kony\u2060a\u200b Tams\u200del",
+    "TESLIM\u00ad Kony\u2060a\u200b Tams\u200del"
+   ],
+   [
+    "(\u200dSay\u0131n\u200dD\u200borse\u200b kaplan\u200bAy\u015fe\u200d)",
+    "(\u200dSay\u0131n\u200dD\u200borse\u200b kaplan\u200bKi\u015fi 4\u200d)"
+   ],
+   [
+    "\u00c7IKTI\u200cY\u00dcK\u200dNakliy\u200bat \u2060Adana\u2060dor\u200cse",
+    "\u00c7IKTI\u200cY\u00dcK\u200dNakliy\u200bat \u2060Adana\u2060dor\u200cse"
+   ],
+   [
+    "usta \u200bd\u00fcn\u200badana\u200c y\u00fck",
+    "usta \u200bd\u00fcn\u200badana\u200c y\u00fck"
+   ],
+   [
+    "Tamsel\u200d Tamam Dorse \u00adBug\u00fcn\u200cKonya\u200bYETKILI:! VELKO",
+    "Ki\u015fi 3\u200d Tamam Dorse \u00adBug\u00fcn\u200cKonya\u200bYETKILI:! VELKO"
+   ],
+   [
+    "(\u200cara\u00e7 Ankara,\u200dTic. Ltd\u200b. \u015eti.\u200d)",
+    "(\u200cara\u00e7 Ankara,\u200dTic. Ltd\u200b. \u015eti.\u200d)"
+   ],
+   [
+    "bri\u2060n i\u0307stanbul\u200babi\u200cTamam bug\u00fcn\u200c\u00c7el\u2060ik",
+    "bri\u2060n i\u0307stanbul\u200babi\u200cTamam bug\u00fcn\u200c\u00c7el\u2060ik"
+   ],
+   [
+    "2?\u200dveli \u2060Deniz",
+    "2?\u200dKi\u015fi 1 \u2060Ki\u015fi 5"
+   ],
+   [
+    "YOL\u2060A\u00ad 33 \u200dElif sabah",
+    "YOL\u2060A\u00ad 33 \u200dKi\u015fi 6 sabah"
+   ],
+   [
+    "Arad\u0131\u200dD\u00fcn\u200cB\u200cug\u00fcn\u200c Fenna",
+    "Arad\u0131\u200dD\u00fcn\u200cB\u200cug\u00fcn\u200c Fenna"
+   ],
+   [
+    "dorse kestel \u2060Mersin\u2060\u00c7elik\u200dHan\u0131m",
+    "dorse Ki\u015fi 2 \u2060Mersin\u2060Ki\u015fi 7\u200dHan\u0131m"
+   ],
+   [
+    "\u00c7el\u200bik\u200b\u00c7\u0131kt\u2060\u0131, teslim Yetkil\u200bi: Dorin 33\u200b arvo",
+    "\u00c7el\u200bik\u200b\u00c7\u0131kt\u2060\u0131, teslim Yetkil\u200bi: Dorin 33\u200b Ki\u015fi 2"
+   ],
+   [
+    "Kaplo\u200bselam",
+    "Kaplo\u200bselam"
+   ],
+   [
+    "BEY\u2060 yola Dorse\u2060\u00e7\u0131kt\u2060\u0131 FENN\u2060A\u200cMe\u2060hmet",
+    "BEY\u2060 yola Dorse\u2060\u00e7\u0131kt\u2060\u0131 FENN\u2060A\u200cMe\u2060hmet"
+   ],
+   [
+    "G\u00adeldi \u2060tic\u200c. ltd. \u015fti. mersin Zel\u00advo\u00adtam\u2060sel",
+    "G\u00adeldi \u2060tic\u200c. ltd. \u015fti. mersin Zel\u00advo\u00adtam\u2060sel"
+   ],
+   [
+    "Ankara \u00adBrin\u200d tam\u200dam",
+    "Ankara \u00adKi\u015fi 3\u200d tam\u200dam"
+   ],
+   [
+    "Yar\u0131\u200cn Zelvo\u00ad GELDI\u200d\u015eahin:\u200csay\u0131n\u200c Fa\u2060tma VE",
+    "Yar\u0131\u200cn Zelvo\u00ad GELDI\u200dKi\u015fi 8:\u200csay\u0131n\u200c Fa\u2060tma VE"
+   ],
+   [
+    "geldi \u206033\u200dAn\u200bkara \u200dkestel Sel\u200cim Tamam",
+    "geldi \u206033\u200dAn\u200bkara \u200dKi\u015fi 2 Sel\u200cim Tamam"
+   ],
+   [
+    "\u00c7elik\u2060 33",
+    "\u00c7elik\u2060 33"
+   ],
+   [
+    "(\u200bTamam\u200dILE\u200dbey tavro\u00ad)",
+    "(\u200bTamam\u200dILE\u200dbey tavro\u00ad)"
+   ],
+   [
+    "abi\u200cbri\u00adn\u200bK\u200dONYA teslim ARADI\u00adZelvo",
+    "abi\u200cbri\u00adn\u200bK\u200dONYA teslim ARADI\u00adZelvo"
+   ],
+   [
+    "abi ILE ve\u200cTAVRO\u00ad ara\u00e7\u200d Ha\u200bsan\u00adYetkili:? BRIN",
+    "abi ILE ve\u200cTAVRO\u00ad ara\u00e7\u200d Ha\u200bsan\u00adYetkili:? Ki\u015fi 3"
+   ]
+  ],
+  [
+   [
+    "d\u00fcn Velko\u200cTun\u00e7 Y\u00fck\u200b Nakliyat",
+    "d\u00fcn Velko\u200cTun\u00e7 Y\u00fck\u200b Nakliyat"
+   ],
+   [
+    "fiyat \u200dKAY\u2060A mehmet\u200bbey Yar\u0131n \u200dile",
+    "fiyat \u200dKAY\u2060A Ki\u015fi 4\u200bbey Yar\u0131n \u200dile"
+   ],
+   [
+    "Adana\u00adBug\u00fc\u00adn \u200cka\u200draca\u2060 D\u00fcn\u200ckest\u200bel",
+    "Ki\u015fi 11\u00adBug\u00fc\u00adn \u200cka\u200draca\u2060 D\u00fcn\u200ckest\u200bel"
+   ],
+   [
+    "(\u200ctamse\u2060l\u200dmersin\u200ddorse\u2060velko\u200d)",
+    "(\u200ctamse\u2060l\u200dmersin\u200ddorse\u2060velko\u200d)"
+   ],
+   [
+    "bug\u00fcn\u00ad Tic. Ltd. \u015eti.\u00ad33\u200bTAVRO\u200d GE\u00adLDI\u200dMe\u200dhmet",
+    "bug\u00fcn\u00ad Tic. Ltd. \u015eti.\u00ad33\u200bTAVRO\u200d GE\u00adLDI\u200dMe\u200dhmet"
+   ],
+   [
+    "Zelvo\u00ad dorse\u200cteslim han\u00ad\u0131m 33",
+    "Zelvo\u00ad dorse\u200cteslim han\u00ad\u0131m 33"
+   ],
+   [
+    "Teslim\u200dali Fatma\u200b\u00c7elik Tamam",
+    "Teslim\u200dKi\u015fi 1 Ki\u015fi 5\u200b\u00c7elik Tamam"
+   ],
+   [
+    "han\u0131m\u2060 Geldi\u200b Brin",
+    "han\u0131m\u2060 Geldi\u200b Ki\u015fi 3"
+   ],
+   [
+    "arad\u0131 \u00adLTD \u015eT\u0130\u00ad \u00e7\u0131kt\u0131 \u00adteslim\u2060B\u200brin! usta\u2060K\u200bADER",
+    "arad\u0131 \u00adLTD \u015eT\u0130\u00ad \u00e7\u0131kt\u0131 \u00adteslim\u2060B\u200brin! usta\u2060K\u200bADER"
+   ],
+   [
+    "VELI, ABI\u200b\u00e7\u0131kt\u0131\u2060 Y\u0131lmaz",
+    "Ki\u015fi 1, ABI\u200b\u00e7\u0131kt\u0131\u2060 Ki\u015fi 6"
+   ],
+   [
+    "(\u200dKARACA \u200dIle\u200b)",
+    "(\u200dKARACA \u200dIle\u200b)"
+   ],
+   [
+    "brin\u200dhan\u0131m 33\u200b fi\u200cyat",
+    "Ki\u015fi 3\u200dhan\u0131m 33\u200b fi\u200cyat"
+   ],
+   [
+    "ltd \u015fti\u0307 TAMAM Tesli\u200cm\u200cKemal\u200dKarac\u00ada\u200c ke\u200dlvor",
+    "ltd \u015fti\u0307 TAMAM Tesli\u200cm\u200cKi\u015fi 7\u200dKarac\u00ada\u200c ke\u200dlvor"
+   ],
+   [
+    "BUG\u00dcN ali \u2060Nakliyat Karaca",
+    "BUG\u00dcN Ki\u015fi 1 \u2060Nakliyat Karaca"
+   ],
+   [
+    "brin Se\u00adlam\u00ad 2\u200c: ay\u015fe BEY LTD \u015eT\u0130 \u200bBekliyor",
+    "Ki\u015fi 3 Se\u00adlam\u00ad 2\u200c: Ki\u015fi 8 BEY LTD \u015eT\u0130 \u200bBekliyor"
+   ],
+   [
+    "33\u2060geldi!\u200dyola KAYA",
+    "33\u2060geldi!\u200dyola KAYA"
+   ],
+   [
+    "Kader \u200d\u00e7\u0131kt\u0131 Mehm\u2060et\u200c ankara\u200cbekliyor",
+    "Kader \u200d\u00e7\u0131kt\u0131 Mehm\u2060et\u200c ankara\u200cbekliyor"
+   ],
+   [
+    "eli\u200bf\u200c. a\u200drvo Mers\u00adin \u00adBekliyor",
+    "Ki\u015fi 9\u200bf\u200c. a\u200drvo Mers\u00adin \u00adBekliyor"
+   ],
+   [
+    "(\u00adzelvo\u00adVe\u200b kade\u200cr \u200bA\u200crvo\u2060 ti\u2060c. ltd. \u015fti.\u2060)",
+    "(\u00adzelvo\u00adVe\u200b kade\u200cr \u200bA\u200crvo\u2060 ti\u2060c. ltd. \u015fti.\u2060)"
+   ],
+   [
+    "\u00e7\u0131kt\u0131\u200dKaya\u00ad Fenna",
+    "\u00e7\u0131kt\u0131\u200dKi\u015fi 10\u00ad Fenna"
+   ],
+   [
+    "ile\u00ad Bug\u00fc\u200bn! Velko",
+    "ile\u00ad Bug\u00fc\u200bn! Velko"
+   ],
+   [
+    "teslim:\u00adKa\u200cya Ankara \u200d\u00c7I\u200dKTI \u200bbey",
+    "teslim:\u00adKa\u200cya Ankara \u200d\u00c7I\u200dKTI \u200bbey"
+   ],
+   [
+    "tamam\u00adAdana usta: Ar\u200bvo Y\u0131lmaz",
+    "tamam\u00adKi\u015fi 11 usta: Ar\u200bvo Ki\u015fi 6"
+   ],
+   [
+    "arad\u0131\u200b kayseri\u200d Velko BEKLIYOR",
+    "arad\u0131\u200b kayseri\u200d Velko BEKLIYOR"
+   ],
+   [
+    "ar\u200dad\u0131\u00adnakliyat? Ay\u015fe ile",
+    "ar\u200dad\u0131\u00adnakliyat? Ki\u015fi 8 ile"
+   ]
+  ],
+  [
+   [
+    "b\u2060ug\u00fcn \u2060Yar\u0131\u200cn\u2060i\u0307stanbul\u2060veli",
+    "b\u2060ug\u00fcn \u2060Yar\u0131\u200cn\u2060i\u0307stanbul\u2060Ki\u015fi 1"
+   ],
+   [
+    "D\u200corse \u00ad\u00e7\u0131kt\u0131\u200dKAYS\u200dERI\u00adSelim",
+    "D\u200corse \u00ad\u00e7\u0131kt\u0131\u200dKAYS\u200dERI\u00adKi\u015fi 4"
+   ],
+   [
+    "(\u2060Selam\u200bZelvo \u00c7IKTI\u00adhasan\u00ad abi DORSE\u200b)",
+    "(\u2060Selam\u200bZelvo \u00c7IKTI\u00adKi\u015fi 5\u00ad abi DORSE\u200b)"
+   ],
+   [
+    "Te\u2060slim han\u0131m\u00ad2 \u00adadan\u200ca\u00addeniz",
+    "Te\u2060slim han\u0131m\u00ad2 \u00adadan\u200ca\u00addeniz"
+   ],
+   [
+    "Kaplo \u2060selam\u200bYILMAZ",
+    "Kaplo \u2060selam\u200bYILMAZ"
+   ],
+   [
+    "(\u200btav\u00adro YARI\u2060N. Kaplan KESTEL\u200b)",
+    "(\u200btav\u00adro YARI\u2060N. Kaplan Ki\u015fi 2\u200b)"
+   ],
+   [
+    "ay\u015fe\u200dta\u2060mam\u200byar\u0131n\u200carad\u0131 Arvo",
+    "Ki\u015fi 6\u200dta\u2060mam\u200byar\u0131n\u200carad\u0131 Ki\u015fi 2"
+   ],
+   [
+    "(\u200dFen\u200cna\u200dyar\u0131\u200dn Karac\u200ba\u2060)",
+    "(\u200dFen\u200cna\u200dyar\u0131\u200dn Karac\u200ba\u2060)"
+   ],
+   [
+    "Ank\u200bara\u200d Kemal\u200bile",
+    "Ank\u200bara\u200d Ki\u015fi 7\u200bile"
+   ],
+   [
+    "h\u00fcseyin\u200bYetkili: Sabah",
+    "Ki\u015fi 8\u200bYetkili: Sabah"
+   ],
+   [
+    "(\u00adAy\u015fe\u00adTUN\u00c7! ara\u200c\u00e7\u200d LTD \u015eT\u0130\u200cFenna\u200cAbi geld\u2060i\u200b)",
+    "(\u00adKi\u015fi 6\u00adTUN\u00c7! ara\u200c\u00e7\u200d LTD \u015eT\u0130\u200cFenna\u200cAbi geld\u2060i\u200b)"
+   ],
+   [
+    "(\u200cltd \u015fti\u0307\u200cAdana:\u200dTUN\u00c7 bek\u00adliyor\u200ctamsel\u00adARA\u00c7\u200d)",
+    "(\u200cltd \u015fti\u0307\u200cAdana:\u200dTUN\u00c7 bek\u00adliyor\u200cKi\u015fi 3\u00adARA\u00c7\u200d)"
+   ],
+   [
+    "yola\u200chan\u0131m!\u2060Tu\u2060n\u00e7 kest\u200del. Selim",
+    "yola\u200chan\u0131m!\u2060Tu\u2060n\u00e7 kest\u200del. Selim"
+   ],
+   [
+    "Ara\u00e7\u200c Mersin\u200d\u015eAHIN\u200b tesli\u200cm \u00adFiyat\u200dH\u00dcSEYIN",
+    "Ara\u00e7\u200c Mersin\u200d\u015eAHIN\u200b tesli\u200cm \u00adFiyat\u200dKi\u015fi 8"
+   ],
+   [
+    "tamsel\u200b! Ile. \u00e7\u0131k\u200dt\u0131\u200dVE",
+    "Ki\u015fi 3\u200b! Ile. \u00e7\u0131k\u200dt\u0131\u200dVE"
+   ],
+   [
+    "KARACA\u2060\u0130rtibat:\u200cara\u00e7 \u00adHan\u0131m ankara\u2060 Mehmet\u200cAr\u200bad\u0131",
+    "KARACA\u2060\u0130rtibat:\u200cara\u00e7 \u00adHan\u0131m ankara\u2060 Ki\u015fi 9\u200cAr\u200bad\u0131"
+   ],
+   [
+    "\u00c7I\u00adKTI\u200bFENNA\u200bveli",
+    "\u00c7I\u00adKTI\u200bFENNA\u200bKi\u015fi 1"
+   ],
+   [
+    "(\u200dg\u200beldi:\u200custa\u200d\u0130stanbul\u200b)",
+    "(\u200dg\u200beldi:\u200custa\u200d\u0130stanbul\u200b)"
+   ],
+   [
+    "Abi\u2060\u015eahin\u2060se\u200dlam fiyat",
+    "Abi\u2060Ki\u015fi 10\u2060se\u200dlam fiyat"
+   ],
+   [
+    "ARADI i\u0307stanbu\u2060l",
+    "ARADI i\u0307stanbu\u2060l"
+   ],
+   [
+    "De\u200cmir Tamsel\u200chan\u0131m \u2060Yetkili:\u200d: hasan\u200cselam\u2060yola\u200dbug\u00fcn",
+    "De\u200cmir Ki\u015fi 3\u200chan\u0131m \u2060Yetkili:\u200d: Ki\u015fi 5\u200cselam\u2060yola\u200dbug\u00fcn"
+   ],
+   [
+    "(\u200dSabah\u200d kestel \u2060d\u00fcn yol\u200da\u2060h\u200ban\u0131m\u2060Zelvo\u200c)",
+    "(\u200dSabah\u200d Ki\u015fi 2 \u2060d\u00fcn yol\u200da\u2060h\u200ban\u0131m\u2060Zelvo\u200c)"
+   ],
+   [
+    "ar\u200da\u00e7\u2060Br\u200din sabah\u200dyola",
+    "ar\u200da\u00e7\u2060Br\u200din sabah\u200dyola"
+   ],
+   [
+    "ile K\u2060aplo\u200dmehmet bug\u00fcn D\u00dcN\u2060bey\u00adKestel",
+    "ile K\u2060aplo\u200dKi\u015fi 9 bug\u00fcn D\u00dcN\u2060bey\u00adKi\u015fi 2"
+   ],
+   [
+    "(\u200cIle\u200cY\u00fck\u200c Bug\u00fcn\u200b, Kaplo\u2060\u0130rtibat:\u200cVELI\u200d)",
+    "(\u200cIle\u200cY\u00fck\u200c Bug\u00fcn\u200b, Kaplo\u2060\u0130rtibat:\u200cKi\u015fi 1\u200d)"
+   ]
+  ],
+  [
+   [
+    "(\u00adMersin,\u200cTa\u00admsel\u200bLTD \u015e\u200dT\u0130\u200d Y\u00fck\u00adkap\u200dlo\u00ad \u00c7IKTI\u200d)",
+    "(\u00adMersin,\u200cTa\u00admsel\u200bLTD \u015e\u200dT\u0130\u200d Y\u00fck\u00adkap\u200dlo\u00ad \u00c7IKTI\u200d)"
+   ],
+   [
+    "Kara\u200cca\u00adFiyat\u200b de\u200cniz tav\u200dro VE A\u200bRA\u00c7",
+    "Kara\u200cca\u00adFiyat\u200b de\u200cniz tav\u200dro VE A\u200bRA\u00c7"
+   ],
+   [
+    "Yar\u0131\u200cn \u00addorse\u200ctama\u200cm\u200cmehmet \u200dk\u2060elvor",
+    "Yar\u0131\u200cn \u00addorse\u200ctama\u200cm\u200cKi\u015fi 4 \u200dk\u2060elvor"
+   ],
+   [
+    "yar\u0131n D\u200cemir FATMA",
+    "yar\u0131n D\u200cemir Ki\u015fi 5"
+   ],
+   [
+    "Fiyat adana\u2060dors\u200de\u2060Velko",
+    "Fiyat adana\u2060dors\u200de\u2060Velko"
+   ],
+   [
+    "s\u200babah\u2060ile\u00adHan\u0131m\u200dMersin \u200b\u00c7\u0131kt\u0131",
+    "s\u200babah\u2060ile\u00adHan\u0131m\u200dMersin \u200b\u00c7\u0131kt\u0131"
+   ],
+   [
+    "Tun\u00e7\u2060yola bekliyor\u00adbug\u00fcn",
+    "Tun\u00e7\u2060yola bekliyor\u00adbug\u00fcn"
+   ],
+   [
+    "Sabah usta say\u0131n fenna!\u00adDeniz Karaca!\u2060Ve",
+    "Sabah usta say\u0131n fenna!\u00adKi\u015fi 6!\u2060Ve"
+   ],
+   [
+    "(\u00addeniz \u200bGE\u00adLDI\u200bd\u00fcn? y\u00fck\u200d)",
+    "(\u00addeniz \u200bGE\u00adLDI\u200bd\u00fcn? y\u00fck\u200d)"
+   ],
+   [
+    "u\u200dsta: VE\u2060LKO ARA\u00c7",
+    "u\u200dsta: VE\u2060LKO ARA\u00c7"
+   ],
+   [
+    "b\u2060rin \u200cyar\u0131n! Y\u00dcK\u00ad Fiyat",
+    "b\u2060rin \u200cyar\u0131n! Y\u00dcK\u00ad Fiyat"
+   ],
+   [
+    "Ar\u200cad\u0131 \u2060AR\u200dVO D\u2060emir\u200b? Usta\u200b NAKLIYAT\u200d VELKO",
+    "Ar\u200cad\u0131 \u2060AR\u200dVO D\u2060emir\u200b? Usta\u200b NAKLIYAT\u200d VELKO"
+   ],
+   [
+    "(\u200cFATMA\u200b fiyat ile\u2060Dorin\u200dbe\u200ckliyor \u0130stan\u200dbul\u200d)",
+    "(\u200cKi\u015fi 5\u200b fiyat ile\u2060Dorin\u200dbe\u200ckliyor \u0130stan\u200dbul\u200d)"
+   ],
+   [
+    "(\u200ckayseri\u200bFiyat mehme\u2060t\u2060han\u0131m\u200c ve\u2060DO\u2060RIN\u200b)",
+    "(\u200ckayseri\u200bFiyat mehme\u2060t\u2060han\u0131m\u200c ve\u2060DO\u2060RIN\u200b)"
+   ],
+   [
+    "(\u00adDemir\u200b HANIM\u2060? Tavro 33. teslim \u00adselam\u2060Deniz\u2060)",
+    "(\u00adDemir\u200b HANIM\u2060? Tavro 33. teslim \u00adselam\u2060Ki\u015fi 7\u2060)"
+   ],
+   [
+    "Tun\u00e7\u00ad V\u2060eli\u200d dorse\u00adH\u00fcsey\u200din",
+    "Tun\u00e7\u00ad V\u2060Ki\u015fi 8\u200d dorse\u00adH\u00fcsey\u200din"
+   ],
+   [
+    "Fenna\u2060Demir \u200cay\u015fe.\u2060sabah",
+    "Fenna\u2060Ki\u015fi 9 \u200cKi\u015fi 10.\u2060sabah"
+   ],
+   [
+    "(\u200dKelvor\u200bEl\u00adif bekliyor \u200dY\u00fck \u00adse\u200dlam\u200b)",
+    "(\u200dKelvor\u200bEl\u00adif bekliyor \u200dY\u00fck \u00adse\u200dlam\u200b)"
+   ],
+   [
+    "Ve:\u200bVelko\u200dnakliyat\u200bKaraca\u200b, bekliyo\u200cr Y\u00fck\u200b. t\u200damsel",
+    "Ve:\u200bVelko\u200dnakliyat\u200bKaraca\u200b, bekliyo\u200cr Y\u00fck\u200b. t\u200damsel"
+   ],
+   [
+    "bek\u200dliyor\u2060 y\u0131lmaz Selim\u00ad DORS\u2060E\u00ad: brin\u200c 2",
+    "bek\u200dliyor\u2060 y\u0131lmaz Ki\u015fi 11\u00ad DORS\u2060E\u00ad: Ki\u015fi 3\u200c 2"
+   ],
+   [
+    "Ay\u015fe\u200c, ve Tavro\u00adBRIN",
+    "Ki\u015fi 10\u200c, ve Tavro\u00adKi\u015fi 3"
+   ],
+   [
+    "ara\u00e7\u00adKema\u200bl\u200cdorse",
+    "ara\u00e7\u00adKema\u200bl\u200cdorse"
+   ],
+   [
+    "KAR\u00adACA\u00ad YETKILI:\u00ad Y\u00fck! geldi\u200dElif",
+    "KAR\u00adACA\u00ad YETKILI:\u00ad Y\u00fck! geldi\u200dKi\u015fi 12"
+   ],
+   [
+    "ve\u200dvelko",
+    "ve\u200dvelko"
+   ],
+   [
+    "Y\u00fck hasan\u200ctamsel",
+    "Y\u00fck Ki\u015fi 13\u200cKi\u015fi 3"
+   ]
+  ],
+  [
+   [
+    "\u00e7\u0131kt\u0131!\u2060Kaplan",
+    "\u00e7\u0131kt\u0131!\u2060Kaplan"
+   ],
+   [
+    "Adana \u200cS\u200belam\u200b Dorin \u200cFatma",
+    "Adana \u200cS\u200belam\u200b Dorin \u200cKi\u015fi 4"
+   ],
+   [
+    "ve\u200cBrin Y\u00fck \u200cZELVO\u200c Mersin",
+    "ve\u200cKi\u015fi 3 Y\u00fck \u200cZELVO\u200c Mersin"
+   ],
+   [
+    "(\u200btic. ltd. \u015fti.\u200d Kelvor\u200d Kaplan\u200c\u00c7\u0131kt\u0131\u200c)",
+    "(\u200btic. ltd. \u015fti.\u200d Kelvor\u200d Kaplan\u200c\u00c7\u0131kt\u0131\u200c)"
+   ],
+   [
+    "SABAH y\u00fck ARA\u00c7 velko \u00c7elik!\u200ctamsel",
+    "SABAH y\u00fck ARA\u00c7 velko Ki\u015fi 5!\u200cKi\u015fi 3"
+   ],
+   [
+    "han\u200d\u0131m Mehme\u200dt\u200b yola sabah\u00adY\u00fck",
+    "han\u200d\u0131m Mehme\u200dt\u200b yola sabah\u00adY\u00fck"
+   ],
+   [
+    "\u015eahi\u2060n\u2060Bug\u00fcn\u200b33 \u200dTeslim\u00adADANA \u200dH\u2060asan",
+    "\u015eahi\u2060n\u2060Bug\u00fcn\u200b33 \u200dTeslim\u00adADANA \u200dH\u2060asan"
+   ],
+   [
+    "veli yar\u0131n\u200bdor\u200cse\u00ad y\u00fck \u0130stanbul\u200cdeniz",
+    "Ki\u015fi 1 yar\u0131n\u200bdor\u200cse\u00ad y\u00fck \u0130stanbul\u200cdeniz"
+   ],
+   [
+    "y\u0131lmaz\u200c ile\u00adAnkara\u200bh\u200b\u00fcseyin",
+    "y\u0131lmaz\u200c ile\u00adAnkara\u200bh\u200b\u00fcseyin"
+   ],
+   [
+    "Selam\u00adARA\u00c7\u200d Adana.\u200cteslim!\u200cnakliya\u200ct",
+    "Selam\u00adARA\u00c7\u200d Adana.\u200cteslim!\u200cnakliya\u200ct"
+   ],
+   [
+    "33\u200c Selim, Bu\u200dg\u00fcn\u200dd\u00fcn",
+    "33\u200c Selim, Bu\u200dg\u00fcn\u200dd\u00fcn"
+   ],
+   [
+    "NAIME\u00adar\u200ba\u00e7",
+    "Ki\u015fi 6\u00adar\u200ba\u00e7"
+   ],
+   [
+    "arvo\u200bKaplo\u200b d\u00fcn yola",
+    "Ki\u015fi 2\u200bKaplo\u200b d\u00fcn yola"
+   ],
+   [
+    "Fiyat Hasan\u200b\u0130stanbul \u200cltd \u015fti\u0307",
+    "Fiyat Ki\u015fi 7\u200b\u0130stanbul \u200cltd \u015fti\u0307"
+   ],
+   [
+    "B\u2060rin\u200cANKARA sa\u200dbah \u015eahin",
+    "B\u2060rin\u200cANKARA sa\u200dbah Ki\u015fi 8"
+   ],
+   [
+    "ali\u2060 Y\u00dcK\u00adTic. Ltd. \u015e\u200bti.\u2060NAIME",
+    "Ki\u015fi 1\u2060 Y\u00dcK\u00adTic. Ltd. \u015e\u200bti.\u2060Ki\u015fi 6"
+   ],
+   [
+    "se\u2060lim\u00ad yar\u0131n mers\u2060in\u2060demir\u2060Ile",
+    "se\u2060lim\u00ad yar\u0131n mers\u2060in\u2060demir\u2060Ile"
+   ],
+   [
+    "(\u206033 Sabah\u00ad han\u0131m v\u200deli\u2060 \u00c7elik\u200d)",
+    "(\u206033 Sabah\u00ad han\u0131m v\u200dKi\u015fi 9\u2060 Ki\u015fi 5\u200d)"
+   ],
+   [
+    "(\u200b\u0130\u200brtibat: \u200b\u00e7\u0131k\u00adt\u0131 \u00adBRIN\u200d)",
+    "(\u200b\u0130\u200brtibat: \u200b\u00e7\u0131k\u00adt\u0131 \u00adKi\u015fi 3\u200d)"
+   ],
+   [
+    "(\u200dFenna yar\u0131n \u2060Tic. Ltd. \u015eti.\u200d)",
+    "(\u200dFenna yar\u0131n \u2060Tic. Ltd. \u015eti.\u200d)"
+   ],
+   [
+    "(\u200cabi\u200cA\u2060nkara\u200c Hasan!\u200d33\u200d Kelvor\u200cdorse\u2060)",
+    "(\u200cabi\u200cA\u2060nkara\u200c Ki\u015fi 7!\u200d33\u200d Kelvor\u200cdorse\u2060)"
+   ],
+   [
+    "(\u200bF\u200cIYAT \u200d\u0130STANBUL\u200d ara\u00e7\u200b: bekliyor\u200b)",
+    "(\u200bF\u200cIYAT \u200d\u0130STANBUL\u200d ara\u00e7\u200b: bekliyor\u200b)"
+   ],
+   [
+    "(\u200dyar\u0131\u200dn\u200bali. me\u2060hmet\u200b Ankara\u00adTIC. LTD. \u015eT\u200bI.\u00ad)",
+    "(\u200dyar\u0131\u200dn\u200bKi\u015fi 1. me\u2060hmet\u200b Ankara\u00adTIC. LTD. \u015eT\u200bI.\u00ad)"
+   ],
+   [
+    "(\u2060Y\u00dcK Mersin\u2060Y\u00adola Tamsel\u2060kader\u200b)",
+    "(\u2060Y\u00dcK Mersin\u2060Y\u00adola Ki\u015fi 3\u2060kader\u200b)"
+   ],
+   [
+    "(\u00adFenna sabah teslim\u200d a\u200dra\u00e7\u200d)",
+    "(\u00adFenna sabah teslim\u200d a\u200dra\u00e7\u200d)"
+   ]
+  ],
+  [
+   [
+    "ay\u015fe SELAM\u2060Ta\u00advro",
+    "Ki\u015fi 4 SELAM\u2060Ta\u00advro"
+   ],
+   [
+    "(\u00adk\u200caraca usta! \u0130rtibat: \u200dVE t\u200beslim\u2060)",
+    "(\u00adk\u200caraca usta! \u0130rtibat: \u200dVE t\u200beslim\u2060)"
+   ],
+   [
+    "tamsel\u200d Bey.\u200dbekliyor:\u200bK\u200baya\u200cZelvo",
+    "Ki\u015fi 3\u200d Bey.\u200dbekliyor:\u200bK\u200baya\u200cZelvo"
+   ],
+   [
+    "(\u200bta\u200dmam YARIN veli\u2060dorse\u00ad)",
+    "(\u200bta\u200dmam YARIN Ki\u015fi 1\u2060dorse\u00ad)"
+   ],
+   [
+    "kelvor \u200dB\u200bRIN\u200dARA\u00c7\u200b Naime",
+    "kelvor \u200dB\u200bRIN\u200dARA\u00c7\u200b Ki\u015fi 5"
+   ],
+   [
+    "zelvo:\u00adLTD \u015eT\u0130\u200c2 y\u00fck \u2060Kestel.\u200d\u015eahin",
+    "zelvo:\u00adLTD \u015eT\u0130\u200c2 y\u00fck \u2060Ki\u015fi 2.\u200d\u015eahin"
+   ],
+   [
+    "Fenna\u200c TESLIM\u2060Ar\u2060ad\u0131\u200dKonya\u200ck\u2060ader\u2060ABI",
+    "Fenna\u200c TESLIM\u2060Ar\u2060ad\u0131\u200dKonya\u200ck\u2060ader\u2060ABI"
+   ],
+   [
+    "2 SABAH\u2060A\u200by\u015fe",
+    "2 SABAH\u2060A\u200by\u015fe"
+   ],
+   [
+    "(\u200cKARACA\u200d bekliyor!\u00adGeldi\u00adKelvo\u00adr YARIN\u00ad)",
+    "(\u200cKARACA\u200d bekliyor!\u00adGeldi\u00adKelvo\u00adr YARIN\u00ad)"
+   ],
+   [
+    "Kelvor\u00adD\u00dcN\u00ad: Elif\u200b33\u2060bekliyor",
+    "Kelvor\u00adD\u00dcN\u00ad: Ki\u015fi 6\u200b33\u2060bekliyor"
+   ],
+   [
+    "D\u00fcn Geldi\u200c usta\u00adta\u200cvro",
+    "D\u00fcn Geldi\u200c usta\u00adta\u200cvro"
+   ],
+   [
+    "y\u00fck: Abi\u200cBug\u00fcn\u200c\u00e7\u0131kt\u200b\u0131\u2060Velko",
+    "y\u00fck: Abi\u200cBug\u00fcn\u200c\u00e7\u0131kt\u200b\u0131\u2060Velko"
+   ],
+   [
+    "Tavro\u200by\u00adola\u00adAnkara\u200b? Veli",
+    "Tavro\u200by\u00adola\u00adAnkara\u200b? Ki\u015fi 1"
+   ],
+   [
+    "bug\u00fcn.\u200d hasan",
+    "bug\u00fcn.\u200d Ki\u015fi 7"
+   ],
+   [
+    "(\u200babi\u200dadana\u00addorse\u2060VEL\u200dKO\u200b)",
+    "(\u200babi\u200dadana\u00addorse\u2060VEL\u200dKO\u200b)"
+   ],
+   [
+    "B\u200cUG\u00dcN \u2060ltd \u015fti\u0307\u2060Kaya",
+    "B\u200cUG\u00dcN \u2060ltd \u015fti\u0307\u2060Ki\u015fi 8"
+   ],
+   [
+    "(\u200bTic. Ltd. \u015eti.\u200cyo\u00adla\u2060Ile ALI\u2060)",
+    "(\u200bTic. Ltd. \u015eti.\u200cyo\u00adla\u2060Ile Ki\u015fi 1\u2060)"
+   ],
+   [
+    "(\u00adAra\u00e7\u200cMehmet \u200dhan\u0131m\u200b)",
+    "(\u00adAra\u00e7\u200cKi\u015fi 9 \u200dhan\u0131m\u200b)"
+   ],
+   [
+    "(\u200bgeldi\u200b, usta\u200bY\u0131lmaz\u2060Deni\u00adz\u200c)",
+    "(\u200bgeldi\u200b, usta\u200bKi\u015fi 10\u2060Deni\u00adz\u200c)"
+   ],
+   [
+    "Ust\u200ba \u2060y\u00fck\u2060 \u0130STANB\u200dUL\u200cBug\u00fc\u2060n:\u200dara\u00e7\u200b Nakliyat",
+    "Ust\u200ba \u2060y\u00fck\u2060 \u0130STANB\u200dUL\u200cBug\u00fc\u2060n:\u200dara\u00e7\u200b Nakliyat"
+   ],
+   [
+    "Selam\u200cVe\u200c DEMI\u200cR\u2060TIC. LTD\u200b. \u015eTI.\u200dArad\u2060\u0131",
+    "Selam\u200cVe\u200c DEMI\u200cR\u2060TIC. LTD\u200b. \u015eTI.\u200dArad\u2060\u0131"
+   ],
+   [
+    "(\u200bteslim BUG\u00dcN\u00adSAYIN\u00adK\u200daplo\u20602\u200b)",
+    "(\u200bteslim BUG\u00dcN\u00adSAYIN\u00adK\u200daplo\u20602\u200b)"
+   ],
+   [
+    "\u015ea\u2060hin\u00ad\u0130rtibat:\u200c: Ara\u00e7",
+    "\u015ea\u2060hin\u00ad\u0130rtibat:\u200c: Ara\u00e7"
+   ],
+   [
+    "selam\u200cKEMA\u200dL,\u200by\u00fck\u2060yar\u0131n",
+    "selam\u200cKEMA\u200dL,\u200by\u00fck\u2060yar\u0131n"
+   ],
+   [
+    "DENIZ\u200dTun\u00e7\u200c 33",
+    "DENIZ\u200dKi\u015fi 11\u200c 33"
+   ]
+  ],
+  [
+   [
+    "(\u200bankara\u00ad U\u200csta\u200b Ar\u00advo\u200bArad\u0131 \u00addem\u200cir\u00ad)",
+    "(\u200bankara\u00ad U\u200csta\u200b Ar\u00advo\u200bArad\u0131 \u00addem\u200cir\u00ad)"
+   ],
+   [
+    "LTD \u015eT\u0130\u00ad \u00e7\u0131kt\u0131 \u200ctavro mersin",
+    "LTD \u015eT\u0130\u00ad \u00e7\u0131kt\u0131 \u200ctavro mersin"
+   ],
+   [
+    "\u0130STANBUL \u00adm\u200dehmet\u200dabi DORSE\u200d Yetkili:",
+    "\u0130STANBUL \u00adm\u200dehmet\u200dabi DORSE\u200d Yetkili:"
+   ],
+   [
+    "Fatma\u200b veli\u200cfiyat: \u00e7\u0131kt\u0131",
+    "Ki\u015fi 4\u200b Ki\u015fi 1\u200cfiyat: \u00e7\u0131kt\u0131"
+   ],
+   [
+    "Zelvo\u2060ile BUG\u00dcN\u200dHan\u0131m?\u200darvo\u00ad geldi",
+    "Ki\u015fi 5\u2060ile BUG\u00dcN\u200dHan\u0131m?\u200dKi\u015fi 2\u00ad geldi"
+   ],
+   [
+    "Kay\u200ba ali\u200d! H\u2060an\u0131m \u200cFIYAT\u200c2 \u00c7\u0131kt\u0131",
+    "Kay\u200ba Ki\u015fi 1\u200d! H\u2060an\u0131m \u200cFIYAT\u200c2 \u00c7\u0131kt\u0131"
+   ],
+   [
+    "(\u200cAbi A\u2060Y\u015eE \u2060Yar\u0131n\u200bDemir \u0130rtibat\u2060:\u2060! ve\u200d)",
+    "(\u200cAbi A\u2060Y\u015eE \u2060Yar\u0131n\u200bDemir \u0130rtibat\u2060:\u2060! ve\u200d)"
+   ],
+   [
+    "YARIN velko\u200dBEY\u2060e\u00admine \u2060sabah\u00ad FI\u00adYAT \u200darvo",
+    "YARIN velko\u200dBEY\u2060e\u00admine \u2060sabah\u00ad FI\u00adYAT \u200dKi\u015fi 2"
+   ],
+   [
+    "(\u00adKELVOR \u0130stanbul\u200dVe\u00ad)",
+    "(\u00adKELVOR \u0130stanbul\u200dVe\u00ad)"
+   ],
+   [
+    "sela\u00adm KE\u200cLVOR\u2060: \u00c7ELIK\u00adara\u200c\u00e7\u2060 yola",
+    "sela\u00adm KE\u200cLVOR\u2060: \u00c7ELIK\u00adara\u200c\u00e7\u2060 yola"
+   ],
+   [
+    "Kestel Zelvo bey\u200dkaplan.\u200cFIYAT",
+    "Ki\u015fi 2 Ki\u015fi 5 bey\u200dkaplan.\u200cFIYAT"
+   ],
+   [
+    "FIYAT\u2060 kaya\u200c yola\u200by\u00fck lt\u200bd \u015fti\u0307\u200d Adana arvo",
+    "FIYAT\u2060 kaya\u200c yola\u200by\u00fck lt\u200bd \u015fti\u0307\u200d Adana Ki\u015fi 2"
+   ],
+   [
+    "(\u200cKEMAL\u200cBr\u2060in\u00ad 2\u200btesli\u200dm\u2060ABI\u200b)",
+    "(\u200cKi\u015fi 6\u200cBr\u2060in\u00ad 2\u200btesli\u200dm\u2060ABI\u200b)"
+   ],
+   [
+    "(\u206033 mehmet\u00ad selam\u200cye\u2060tkili: Han\u0131m\u200b)",
+    "(\u206033 Ki\u015fi 7\u00ad selam\u200cye\u2060tkili: Han\u0131m\u200b)"
+   ],
+   [
+    "Ali \u200bnakliyat\u00adabi! Elif ve: ile KE\u200bLVOR",
+    "Ki\u015fi 1 \u200bnakliyat\u00adabi! Ki\u015fi 8 ve: ile KE\u200bLVOR"
+   ],
+   [
+    "abi\u2060Yola\u00adKAPLO\u2060y\u0131lm\u2060az",
+    "abi\u2060Yola\u00adKAPLO\u2060y\u0131lm\u2060az"
+   ],
+   [
+    "Y\u0131lm\u00adaz Y\u00fck\u00adkemal:\u00adsay\u0131n! \u00c7\u0131kt\u0131",
+    "Y\u0131lm\u00adaz Y\u00fck\u00adKi\u015fi 6:\u00adsay\u0131n! \u00c7\u0131kt\u0131"
+   ],
+   [
+    "Kaya\u2060Tamam\u200b. yola\u200cb\u200bekliyor",
+    "Kaya\u2060Tamam\u200b. yola\u200cb\u200bekliyor"
+   ],
+   [
+    "Yetkil\u200ci: ve Tamam\u00ad? HASAN",
+    "Yetkil\u200ci: ve Tamam\u00ad? Ki\u015fi 9"
+   ],
+   [
+    "\u0130st\u00adanbul \u00e7\u0131kt\u0131\u200b, tam\u200bam",
+    "\u0130st\u00adanbul \u00e7\u0131kt\u0131\u200b, tam\u200bam"
+   ],
+   [
+    "Yola Tavro\u00ad, \u00e7eli\u200ck \u200dTic.\u2060 Ltd. \u015eti.\u2060 Dorse d\u00fcn",
+    "Yola Tavro\u00ad, \u00e7eli\u200ck \u200dTic.\u2060 Ltd. \u015eti.\u2060 Dorse d\u00fcn"
+   ],
+   [
+    "Arad\u0131\u200d YO\u2060LA\u2060Kelvor mehmet",
+    "Arad\u0131\u200d YO\u2060LA\u2060Kelvor Ki\u015fi 7"
+   ],
+   [
+    "(\u200b33 \u200cSELAM Mersin.\u200cDori\u00adn \u200bY\u0131lmaz\u200d)",
+    "(\u200b33 \u200cSELAM Mersin.\u200cDori\u00adn \u200bKi\u015fi 10\u200d)"
+   ],
+   [
+    "KAYSERI\u200c33 Yetkili:",
+    "KAYSERI\u200c33 Yetkili:"
+   ],
+   [
+    "(\u200cAbi\u200dtun\u00e7! Yola\u200c)",
+    "(\u200cAbi\u200dtun\u00e7! Yola\u200c)"
+   ]
+  ],
+  [
+   [
+    "fiyat\u200c i\u0307stanbul Nak\u00adliyat",
+    "fiyat\u200c i\u0307stanbul Nak\u00adliyat"
+   ],
+   [
+    "Demir yar\u0131n\u00addorin ile\u200bhan\u0131m\u200csabah\u200c\u0130RTIBAT:",
+    "Demir yar\u0131n\u00addorin ile\u200bhan\u0131m\u200csabah\u200c\u0130RTIBAT:"
+   ],
+   [
+    "Yar\u0131n\u200d: Y\u00fck \u00adsab\u00adah \u2060Kestel \u00adkaraca",
+    "Yar\u0131n\u200d: Y\u00fck \u00adsab\u00adah \u2060Ki\u015fi 2 \u00adkaraca"
+   ],
+   [
+    "bug\u00fcn Kony\u200ca\u200d V\u200delko tamsel\u200d\u00e7\u0131k\u200ct\u0131 dorse",
+    "bug\u00fcn Kony\u200ca\u200d V\u200delko Ki\u015fi 3\u200d\u00e7\u0131k\u200ct\u0131 dorse"
+   ],
+   [
+    "arvo\u200cteslim\u200delif \u200b2",
+    "Ki\u015fi 2\u200cteslim\u200dKi\u015fi 4 \u200b2"
+   ],
+   [
+    "ara\u00e7\u200c: dor\u00adse ile\u00adDorin \u200cBey",
+    "ara\u00e7\u200c: dor\u00adse ile\u00adDorin \u200cBey"
+   ],
+   [
+    "Dorse sabah \u2060ZELVO",
+    "Dorse sabah \u2060ZELVO"
+   ],
+   [
+    "(\u200bH\u200ban\u0131m arad\u0131\u2060! zelv\u200do\u200c)",
+    "(\u200bH\u200ban\u0131m arad\u0131\u2060! zelv\u200do\u200c)"
+   ],
+   [
+    "Kaplan\u2060, i\u0307\u200crtibat:\u00adhan\u0131m\u200b Arad\u0131\u00adt\u200cavro",
+    "Kaplan\u2060, i\u0307\u200crtibat:\u00adhan\u0131m\u200b Arad\u0131\u00adt\u200cavro"
+   ],
+   [
+    "(\u200d\u00c7ELIK Y\u00dcK Ara\u00e7\u200bar\u00advo\u2060\u0130STANBUL\u200d)",
+    "(\u200d\u00c7ELIK Y\u00dcK Ara\u00e7\u200bar\u00advo\u2060\u0130STANBUL\u200d)"
+   ],
+   [
+    "(\u2060Dorse\u200d, ANKARA\u00ad h\u00fcsey\u200din Abi.\u200bk\u200destel? y\u00fck\u200c)",
+    "(\u2060Dorse\u200d, ANKARA\u00ad h\u00fcsey\u200din Abi.\u200bk\u200destel? y\u00fck\u200c)"
+   ],
+   [
+    "Tamam ve: Yola\u2060 Mersin\u2060 ke\u200cstel",
+    "Tamam ve: Yola\u2060 Mersin\u2060 ke\u200cstel"
+   ],
+   [
+    "Yetki\u200cli:\u200bAr\u200dvo! \u00c7\u0131\u200ckt\u0131 teslim",
+    "Yetki\u200cli:\u200bAr\u200dvo! \u00c7\u0131\u200ckt\u0131 teslim"
+   ],
+   [
+    "(\u2060Ali.\u00adbey Y\u00fck\u00adFiyat\u2060T\u00adAMAM\u200b)",
+    "(\u2060Ki\u015fi 1.\u00adbey Y\u00fck\u00adFiyat\u2060T\u00adAMAM\u200b)"
+   ],
+   [
+    "(\u2060tavro\u200cGel\u200bdi abi\u200cYar\u0131n \u00c7\u0131kt\u0131 VE\u200cLI\u00adF\u00adatma\u200d)",
+    "(\u2060tavro\u200cGel\u200bdi abi\u200cYar\u0131n \u00c7\u0131kt\u0131 VE\u200cLI\u00adF\u00adatma\u200d)"
+   ],
+   [
+    "Kayseri\u200c, \u0130rtibat: \u200dTamam",
+    "Kayseri\u200c, \u0130rtibat: \u200dTamam"
+   ],
+   [
+    "t\u200damam\u200d: KEMAL",
+    "t\u200damam\u200d: Ki\u015fi 5"
+   ],
+   [
+    "33\u200dAnk\u00adara Dorin\u200bbek\u2060liyor\u2060Yetkili:\u200bHasan\u2060yar\u0131n",
+    "33\u200dAnk\u00adara Dorin\u200bbek\u2060liyor\u2060Yetkili:\u200bKi\u015fi 6\u2060yar\u0131n"
+   ],
+   [
+    "Kon\u200dya\u200c! G\u200bELDI Zelvo\u200busta\u200b \u00c7elik\u200d \u00e7\u0131kt\u0131",
+    "Kon\u200dya\u200c! G\u200bELDI Zelvo\u200busta\u200b Ki\u015fi 7\u200d \u00e7\u0131kt\u0131"
+   ],
+   [
+    "yola Say\u0131\u200bn\u200b ay\u015fe Han\u0131m",
+    "yola Say\u0131\u200bn\u200b Ki\u015fi 8 Han\u0131m"
+   ],
+   [
+    "(\u2060b\u2060ug\u00fcn \u200c2\u200bsabah\u200cAy\u015fe\u200b)",
+    "(\u2060b\u2060ug\u00fcn \u200c2\u200bsabah\u200cKi\u015fi 8\u200b)"
+   ],
+   [
+    "(\u2060Fiy\u200cat\u200dILE, teslim \u015eAHIN\u200b KE\u00adLVOR K\u200bonya\u200c)",
+    "(\u2060Fiy\u200cat\u200dILE, teslim \u015eAHIN\u200b KE\u00adLVOR K\u200bonya\u200c)"
+   ],
+   [
+    "ve\u2060Tavro\u200dDE\u00adNIZ \u200bY\u00dcK",
+    "ve\u2060Tavro\u200dDE\u00adNIZ \u200bY\u00dcK"
+   ],
+   [
+    "a\u2060dana. fiyat!\u200bTic. Ltd. \u015eti. \u2060arv\u200do\u00ad ar\u2060ad\u0131",
+    "a\u2060dana. fiyat!\u200bTic. Ltd. \u015eti. \u2060arv\u200do\u00ad ar\u2060ad\u0131"
+   ],
+   [
+    "dors\u2060e?\u2060Demir\u200bZelvo\u200dnaime \u200cabi\u200b\u00e7\u0131kt\u0131 \u2060Ile",
+    "dors\u2060e?\u2060Demir\u200bZelvo\u200dKi\u015fi 9 \u200cabi\u200b\u00e7\u0131kt\u0131 \u2060Ile"
+   ]
+  ],
+  [
+   [
+    "Ada\u200bna,\u200bTAVR\u2060O\u2060brin\u200bd\u00fcn\u200dbey ve",
+    "Ada\u200bna,\u200bTAVR\u2060O\u2060Ki\u015fi 3\u200bd\u00fcn\u200dbey ve"
+   ],
+   [
+    "(\u00adSelam\u2060han\u0131m?\u2060Tamam\u200dKayseri\u00ad: ZELVO\u2060i\u0307rtibat:\u200d)",
+    "(\u00adSelam\u2060han\u0131m?\u2060Tamam\u200dKayseri\u00ad: ZELVO\u2060i\u0307rtibat:\u200d)"
+   ],
+   [
+    "Keste\u200bl bekliyor",
+    "Keste\u200bl bekliyor"
+   ],
+   [
+    "33\u200b Ara\u00e7 kest\u2060el\u200dMehmet, 2\u200cKa\u200cder",
+    "33\u200b Ara\u00e7 kest\u2060el\u200dKi\u015fi 4, 2\u200cKa\u200cder"
+   ],
+   [
+    "teslim\u200b Sel\u200cim Y\u0131l\u200dmaz\u200c! yar\u0131n\u2060 D\u00fcn",
+    "teslim\u200b Sel\u200cim Y\u0131l\u200dmaz\u200c! yar\u0131n\u2060 D\u00fcn"
+   ],
+   [
+    "Naime: \u0130\u00adrtibat:\u200c\u0130st\u200canbul\u200b, ve veli",
+    "Ki\u015fi 5: \u0130\u00adrtibat:\u200c\u0130st\u200canbul\u200b, ve Ki\u015fi 1"
+   ],
+   [
+    "kel\u200bvor\u2060Sabah\u00ad! Kayser\u200ci",
+    "kel\u200bvor\u2060Sabah\u00ad! Kayser\u200ci"
+   ],
+   [
+    "(\u200dKader TAVRO L\u200bTD \u015eT\u0130 tamam\u200b)",
+    "(\u200dKader TAVRO L\u200bTD \u015eT\u0130 tamam\u200b)"
+   ],
+   [
+    "Yetkili:,\u00adHA\u200cNIM\u200d, kaplo Veli\u2060 33",
+    "Yetkili:,\u00adHA\u200cNIM\u200d, kaplo Ki\u015fi 1\u2060 33"
+   ],
+   [
+    "bekliyo\u200br\u200bH\u200ban\u0131m\u200cTeslim\u00adsay\u200b\u0131n\u200b \u015fahin i\u0307stanbul",
+    "bekliyo\u200br\u200bH\u200ban\u0131m\u200cTeslim\u00adsay\u200b\u0131n\u200b \u015fahin i\u0307stanbul"
+   ],
+   [
+    "(\u00adve KEMAL\u200d)",
+    "(\u00adve Ki\u015fi 6\u200d)"
+   ],
+   [
+    "Teslim\u200btamam \u2060KAYSERI\u200b! kelvor ile",
+    "Teslim\u200btamam \u2060KAYSERI\u200b! kelvor ile"
+   ],
+   [
+    "(\u00adADANA 33\u200cFiya\u00adt\u200b Kaplo:\u200cd\u00fcn\u200b)",
+    "(\u00adADANA 33\u200cFiya\u00adt\u200b Kaplo:\u200cd\u00fcn\u200b)"
+   ],
+   [
+    "(\u00adBug\u00fcn \u0130STANBU\u200cL tic. ltd. \u015ft\u200bi.\u00ad arvo \u00adVe\u200d)",
+    "(\u00adBug\u00fcn \u0130STANBU\u200cL tic. ltd. \u015ft\u200bi.\u00ad Ki\u015fi 2 \u00adVe\u200d)"
+   ],
+   [
+    "(\u200ddorse\u2060 gel\u00addi\u200bEl\u200dif\u00ad)",
+    "(\u200ddorse\u2060 gel\u00addi\u200bEl\u200dif\u00ad)"
+   ],
+   [
+    "velko\u200c tamam",
+    "velko\u200c tamam"
+   ],
+   [
+    "Sab\u200dah ve\u2060 karaca bug\u00fcn",
+    "Sab\u200dah ve\u2060 karaca bug\u00fcn"
+   ],
+   [
+    "DORSE\u200d, tamsel \u2060arad\u0131\u200c KONYA\u200dKA\u200bDER",
+    "DORSE\u200d, Ki\u015fi 3 \u2060arad\u0131\u200c KONYA\u200dKA\u200bDER"
+   ],
+   [
+    "Adana\u200c Ile\u200cVe \u200dBEY",
+    "Adana\u200c Ile\u200cVe \u200dBEY"
+   ],
+   [
+    "Han\u0131m\u00adTun\u00e7\u00addorse: H\u00fcseyin\u2060teslim\u00ad Kayser\u2060i",
+    "Han\u0131m\u00adKi\u015fi 7\u00addorse: Ki\u015fi 8\u2060teslim\u00ad Kayser\u2060i"
+   ],
+   [
+    "ara\u00e7 ve\u200cli",
+    "ara\u00e7 ve\u200cli"
+   ],
+   [
+    "Velko\u00adAli \u00c7EL\u200dIK\u2060bug\u00fcn\u200csel\u200dam\u206033",
+    "Velko\u00adKi\u015fi 1 \u00c7EL\u200dIK\u2060bug\u00fcn\u200csel\u200dam\u206033"
+   ],
+   [
+    "ile\u200dY\u00adar\u0131n 33\u200bBri\u2060n",
+    "ile\u200dY\u00adKi\u015fi 9 33\u200bBri\u2060n"
+   ],
+   [
+    "Tun\u00e7\u200bveli \u200bARA\u00c7",
+    "Tun\u00e7\u200bKi\u015fi 1 \u200bARA\u00c7"
+   ],
+   [
+    "(\u200bMersin\u200d\u015eah\u200bin\u200b arad\u0131\u200b)",
+    "(\u200bMersin\u200d\u015eah\u200bin\u200b arad\u0131\u200b)"
+   ]
+  ],
+  [
+   [
+    "Dorse kelvor\u200bK\u00adaraca",
+    "Dorse kelvor\u200bK\u00adaraca"
+   ],
+   [
+    "(\u200cKapl\u00adan\u200bSay\u0131n\u200bMERSIN: Y\u200dola\u200d)",
+    "(\u200cKapl\u00adan\u200bSay\u0131n\u200bMERSIN: Y\u200dola\u200d)"
+   ],
+   [
+    "Adana\u200bBey\u200c fiyat",
+    "Adana\u200bBey\u200c fiyat"
+   ],
+   [
+    "Ankara arad\u0131\u200dbu\u2060g\u00fcn\u200dYetkili:",
+    "Ankara arad\u0131\u200dbu\u2060g\u00fcn\u200dYetkili:"
+   ],
+   [
+    "Dorin\u2060ar\u200dad\u0131 Naime\u2060Ara\u00e7\u00ady\u00fck",
+    "Dorin\u2060ar\u200dad\u0131 Ki\u015fi 4\u2060Ara\u00e7\u00ady\u00fck"
+   ],
+   [
+    "Y\u00fck\u200c Veli\u2060 bey\u00ad TAMAM.\u200dsel\u200cam\u200dKaplan",
+    "Y\u00fck\u200c Ki\u015fi 1\u2060 bey\u00ad TAMAM.\u200dsel\u200cam\u200dKaplan"
+   ],
+   [
+    "ALI\u200bd\u00fcn Y\u00dcK H\u00fcseyin\u200babi, Yetkili:\u00adve",
+    "Ki\u015fi 1\u200bd\u00fcn Y\u00dcK Ki\u015fi 5\u200babi, Yetkili:\u00adve"
+   ],
+   [
+    "(\u2060zelvo\u200bara\u00e7\u200dH\u00fcseyin\u2060yola! YARIN\u200d)",
+    "(\u2060zelvo\u200bara\u00e7\u200dKi\u015fi 5\u2060yola! YARIN\u200d)"
+   ],
+   [
+    "\u00e7\u00ad\u0131kt\u0131\u2060, Fenna \u015ea\u200dhin\u200d\u0130STANBUL",
+    "\u00e7\u00ad\u0131kt\u0131\u2060, Fenna \u015ea\u200dhin\u200d\u0130STANBUL"
+   ],
+   [
+    "(\u2060naime\u200di\u0307stanbul\u200bDORIN\u200dTeslim \u206033 Arad\u0131\u200b)",
+    "(\u2060Ki\u015fi 4\u200di\u0307stanbul\u200bDORIN\u200dTeslim \u206033 Arad\u0131\u200b)"
+   ],
+   [
+    "(\u00ady\u0131lmaz\u200c Y\u00dcK\u200b)",
+    "(\u00ady\u0131lmaz\u200c Y\u00dcK\u200b)"
+   ],
+   [
+    "(\u200cLTD \u015eT\u0130?\u00adbri\u2060n ARADI:\u200cbekl\u200ciyor Tavro\u00adDeniz\u2060)",
+    "(\u200cLTD \u015eT\u0130?\u00adbri\u2060n ARADI:\u200cbekl\u200ciyor Tavro\u00adKi\u015fi 6\u2060)"
+   ],
+   [
+    "(\u200dbey\u200bara\u00e7\u200c \u0130rtibat: \u200c\u0130stanbul \u00adY\u0131lmaz\u200d)",
+    "(\u200dbey\u200bara\u00e7\u200c \u0130rtibat: \u200c\u0130stanbul \u00adKi\u015fi 7\u200d)"
+   ],
+   [
+    "teslim 2 DORIN\u200cara\u00e7: Demir tamsel",
+    "teslim 2 DORIN\u200cara\u00e7: Demir Ki\u015fi 3"
+   ],
+   [
+    "geldi\u200dbri\u2060n\u200d Usta",
+    "geldi\u200dbri\u2060n\u200d Usta"
+   ],
+   [
+    "(\u200c33. Kader? FENNA\u200c)",
+    "(\u200c33. Kader? FENNA\u200c)"
+   ],
+   [
+    "(\u200bMers\u2060in\u200b vel\u200cko.\u200bdemir\u2060dor\u200dse\u200ctamam\u200d)",
+    "(\u200bMers\u2060in\u200b vel\u200cko.\u200bdemir\u2060dor\u200dse\u200ctamam\u200d)"
+   ],
+   [
+    "(\u200cgeldi\u200dMERSIN\u206033\u200c Kaplan Fatma\u200d\u00e7\u0131kt\u0131\u200d)",
+    "(\u200cgeldi\u200dMERSIN\u206033\u200c Kaplan Ki\u015fi 8\u200d\u00e7\u0131kt\u0131\u200d)"
+   ],
+   [
+    "\u00e7\u0131kt\u0131\u200cH\u00dcSEYIN\u2060 Karaca\u200c tamam\u2060abi \u200dD\u00fcn",
+    "\u00e7\u0131kt\u0131\u200cKi\u015fi 5\u2060 Karaca\u200c tamam\u2060abi \u200dD\u00fcn"
+   ],
+   [
+    "Kayseri Tamam d\u200cemir\u200cbrin \u2060ABI",
+    "Kayseri Tamam d\u200cemir\u200cKi\u015fi 3 \u2060ABI"
+   ],
+   [
+    "(\u200dY\u00fck y\u0131lmaz ABI\u200b \u00e7\u0131kt\u0131:\u200cgeldi\u00ad)",
+    "(\u200dY\u00fck Ki\u015fi 7 ABI\u200b \u00e7\u0131kt\u0131:\u200cgeldi\u00ad)"
+   ],
+   [
+    "Velko\u200cabi? selam \u200bSay\u0131n",
+    "Velko\u200cabi? selam \u200bSay\u0131n"
+   ],
+   [
+    "fiyat\u200dBug\u00fcn Ka\u200bya! Fenna",
+    "fiyat\u200dBug\u00fcn Ka\u200bya! Fenna"
+   ],
+   [
+    "y\u00adola \u00adteslim \u00e7elik\u2060 ust\u200da",
+    "y\u00adola \u00adteslim \u00e7elik\u2060 ust\u200da"
+   ],
+   [
+    "kestel. Ile\u200b T\u200cavro, \u0130STANBU\u200bL\u2060b\u200bug\u00fcn",
+    "Ki\u015fi 2. Ile\u200b T\u200cavro, \u0130STANBU\u200bL\u2060b\u200bug\u00fcn"
+   ]
+  ],
+  [
+   [
+    "(\u200b\u015f\u200bahin\u2060MEHMET\u2060u\u200csta\u00ad teslim\u2060)",
+    "(\u200b\u015f\u200bahin\u2060Ki\u015fi 4\u2060u\u200csta\u00ad teslim\u2060)"
+   ],
+   [
+    "Ara\u00e7\u2060 Tun\u00e7 han\u0131m\u200b Bug\u200b\u00fcn\u200bMersin\u200dDorse",
+    "Ara\u00e7\u2060 Ki\u015fi 5 han\u0131m\u200b Bug\u200b\u00fcn\u200bMersin\u200dDorse"
+   ],
+   [
+    "fiyat\u200cvelko \u200byo\u2060la",
+    "fiyat\u200cvelko \u200byo\u2060la"
+   ],
+   [
+    "\u0130\u200drtibat:\u00adKaya\u2060\u00e7\u0131kt\u0131:\u2060FE\u00adNNA han\u0131m\u00adSelam",
+    "\u0130\u200drtibat:\u00adKaya\u2060\u00e7\u0131kt\u0131:\u2060FE\u00adKi\u015fi 6 han\u0131m\u00adSelam"
+   ],
+   [
+    "33\u200bMehmet ABI\u200darad\u0131 i\u0307stanbu\u200bl\u200cYetkili:",
+    "33\u200bKi\u015fi 4 ABI\u200darad\u0131 i\u0307stanbu\u200bl\u200cYetkili:"
+   ],
+   [
+    "sabah?\u00aday\u015fe",
+    "sabah?\u00adKi\u015fi 7"
+   ],
+   [
+    "(\u200dse\u2060lam bri\u200cn\u200c)",
+    "(\u200dse\u2060lam bri\u200cn\u200c)"
+   ],
+   [
+    "mehmet y\u00fck:\u2060Kader \u2060be\u2060kliyor \u2060Selam Yetkili:\u200dKaplo",
+    "Ki\u015fi 4 y\u00fck:\u2060Kader \u2060be\u2060kliyor \u2060Selam Yetkili:\u200dKaplo"
+   ],
+   [
+    "i\u0307stanbul \u200dFiyat. AY\u015eE\u200c Selam",
+    "i\u0307stanbul \u200dFiyat. Ki\u015fi 7\u200c Selam"
+   ],
+   [
+    "Tav\u00adro\u200b y\u00fck",
+    "Tav\u00adro\u200b y\u00fck"
+   ],
+   [
+    "yar\u0131\u200bn\u2060: kapl\u200can\u200dIle. do\u200crse\u200ch\u00fcseyin",
+    "yar\u0131\u200bn\u2060: kapl\u200can\u200dIle. do\u200crse\u200cKi\u015fi 8"
+   ],
+   [
+    "Arad\u0131\u200c H\u00fcseyin Mersin \u015fahin",
+    "Arad\u0131\u200c Ki\u015fi 8 Mersin \u015fahin"
+   ],
+   [
+    "KELVOR Ay\u015fe:\u00adbekliyor\u00adAra\u00e7.\u2060Y\u00fck",
+    "KELVOR Ki\u015fi 7:\u00adbekliyor\u00adAra\u00e7.\u2060Y\u00fck"
+   ],
+   [
+    "(\u200dsay\u0131n arvo Tamam\u00adY\u200cola\u00ad)",
+    "(\u200dsay\u0131n Ki\u015fi 2 Tamam\u00adY\u200cola\u00ad)"
+   ],
+   [
+    "2 \u200dAli Bekliyor\u200c! demir",
+    "2 \u200dKi\u015fi 1 Bekliyor\u200c! demir"
+   ],
+   [
+    "Mersin\u00adH\u00fcsey\u200din \u00addorse\u200dLTD \u015eT\u0130\u200dBug\u00fcn",
+    "Mersin\u00adH\u00fcsey\u200din \u00addorse\u200dLTD \u015eT\u0130\u200dBug\u00fcn"
+   ],
+   [
+    "ve EMIN\u200dE\u00addorse\u2060LTD \u015eT\u0130",
+    "ve EMIN\u200dE\u00addorse\u2060LTD \u015eT\u0130"
+   ],
+   [
+    "usta\u200bKade\u00adr\u200dMehmet\u200dVeli ile \u200cara\u200c\u00e7",
+    "usta\u200bKade\u00adr\u200dKi\u015fi 4\u200dKi\u015fi 1 ile \u200cara\u200c\u00e7"
+   ],
+   [
+    "Selam\u2060dem\u200bir \u200cadan\u2060a \u200dbey Ay\u015fe",
+    "Selam\u2060dem\u200bir \u200cadan\u2060a \u200dbey Ki\u015fi 7"
+   ],
+   [
+    "Kestel dor\u200dse tun\u00e7",
+    "Ki\u015fi 2 dor\u200dse tun\u00e7"
+   ],
+   [
+    "Kayseri \u200ddorse",
+    "Kayseri \u200ddorse"
+   ],
+   [
+    "Bekliyor \u200dALI\u00ady\u0131lma\u2060z",
+    "Bekliyor \u200dKi\u015fi 1\u00ady\u0131lma\u2060z"
+   ],
+   [
+    "A\u200bRA\u00c7 SELI\u00adM\u200bDemir\u200dz\u00adelvo",
+    "A\u200bRA\u00c7 SELI\u00adM\u200bKi\u015fi 9\u200dz\u00adelvo"
+   ],
+   [
+    "B\u200brin\u200bYe\u2060tkili:\u200dAnkara\u200custa \u200bY\u200dola\u00adsela\u00adm",
+    "B\u200brin\u200bYe\u2060tkili:\u200dAnkara\u200custa \u200bY\u200dola\u00adsela\u00adm"
+   ],
+   [
+    "bey \u0130ST\u2060ANBUL\u00ad TAMAM\u00ad D\u00dcN\u200d ali\u2060 selam",
+    "bey \u0130ST\u2060ANBUL\u00ad TAMAM\u00ad D\u00dcN\u200d Ki\u015fi 1\u2060 selam"
+   ]
+  ],
+  [
+   [
+    "Z\u200belvo usta Tam\u200cam\u200dy\u00fck\u200d\u0130STANBU\u200bL\u00ad Kaplan Nakli\u200byat\u200dgel\u200cdi",
+    "Z\u200belvo usta Tam\u200cam\u200dy\u00fck\u200d\u0130STANBU\u200bL\u00ad Kaplan Nakli\u200byat\u200dgel\u200cdi"
+   ],
+   [
+    "Velko,\u2060Kayseri\u00ad 2",
+    "Velko,\u2060Kayseri\u00ad 2"
+   ],
+   [
+    "Ara\u00e7\u00adu\u2060sta\u2060 arad\u0131 ya\u200br\u0131n\u200bK\u200bonya",
+    "Ara\u00e7\u00adu\u2060sta\u2060 arad\u0131 ya\u200br\u0131n\u200bK\u200bonya"
+   ],
+   [
+    "ankar\u00ada Zelvo\u2060Y\u00fck\u200d. TESL\u200cIM? geldi",
+    "ankar\u00ada Zelvo\u2060Y\u00fck\u200d. TESL\u200cIM? geldi"
+   ],
+   [
+    "Kader\u200c, bug\u00fcn\u200dKelv\u200dor",
+    "Kader\u200c, bug\u00fcn\u200dKelv\u200dor"
+   ],
+   [
+    "Kelvor\u00ad! \u00c7e\u2060lik\u200d. A\u200bdana \u200cILE!\u00adbey\u200bGeldi",
+    "Kelvor\u00ad! \u00c7e\u2060lik\u200d. A\u200bdana \u200cILE!\u00adbey\u200bGeldi"
+   ],
+   [
+    "DOR\u200bSE\u200dKelvor\u200b bug\u00fcn\u2060kestel \u2060Say\u0131n\u200btes\u200blim\u200c? ELI\u200cF",
+    "DOR\u200bSE\u200dKelvor\u200b bug\u00fcn\u2060Ki\u015fi 2 \u2060Say\u0131n\u200btes\u200blim\u200c? Ki\u015fi 4\u200cF"
+   ],
+   [
+    "LTD \u015eT\u0130\u200cKap\u2060lan sabah Ay\u015fe Dorse\u200cVE\u200cKaplo",
+    "LTD \u015eT\u0130\u200cKap\u2060lan sabah Ki\u015fi 5 Dorse\u200cVE\u200cKaplo"
+   ],
+   [
+    "AR\u200dA\u00c7 Demir ADANA",
+    "AR\u200dA\u00c7 Demir ADANA"
+   ],
+   [
+    "Me\u2060hmet Kaya\u200b Ile",
+    "Me\u2060hmet Ki\u015fi 6\u200b Ile"
+   ],
+   [
+    "(\u2060\u015eahin\u200b ve naime:\u200bBug\u00fcn \u200bara\u200cd\u0131 Mersin\u200b YETKILI:\u200b)",
+    "(\u2060\u015eahin\u200b ve Ki\u015fi 7:\u200bBug\u00fcn \u200bara\u200cd\u0131 Mersin\u200b YETKILI:\u200b)"
+   ],
+   [
+    "(\u2060Konya\u200d! 2:\u200cHANIM\u2060TES\u200dLIM Yetkili:\u200d)",
+    "(\u2060Konya\u200d! 2:\u200cHANIM\u2060TES\u200dLIM Yetkili:\u200d)"
+   ],
+   [
+    "bug\u00fcn\u2060Selim\u2060tamsel. Adana\u200c Say\u0131n",
+    "bug\u00fcn\u2060Ki\u015fi 8\u2060Ki\u015fi 3. Adana\u200c Say\u0131n"
+   ],
+   [
+    "(\u00adkemal\u00adLT\u200dD \u015eT\u0130\u206033 selam\u200c)",
+    "(\u00adKi\u015fi 9\u00adLT\u200dD \u015eT\u0130\u206033 selam\u200c)"
+   ],
+   [
+    "yol\u200ca\u2060 Nakliyat Mersin!\u200dve\u200d Ya\u200cr\u0131n!\u00adY\u0131lmaz",
+    "yol\u200ca\u2060 Nakliyat Mersin!\u200dve\u200d Ya\u200cr\u0131n!\u00adY\u0131lmaz"
+   ],
+   [
+    "LTD \u015eT\u0130\u200dyar\u2060\u0131n \u200cg\u00adeldi\u200cArad\u0131, tamsel \u00c7elik Selim",
+    "LTD \u015eT\u0130\u200dyar\u2060\u0131n \u200cg\u00adeldi\u200cArad\u0131, Ki\u015fi 3 \u00c7elik Selim"
+   ],
+   [
+    "ve. Kemal. arad\u0131 \u200cALI! KAPLAN",
+    "ve. Ki\u015fi 9. arad\u0131 \u200cKi\u015fi 1! KAPLAN"
+   ],
+   [
+    "TIC. LTD. \u015eTI. \u200dBekliy\u200dor\u2060 Karaca ali\u00adKemal\u2060 geld\u00adi teslim",
+    "TIC. LTD. \u015eTI. \u200dBekliy\u200dor\u2060 Karaca Ki\u015fi 1\u00adKi\u015fi 9\u2060 geld\u00adi teslim"
+   ],
+   [
+    "(\u200d\u00c7\u0131kt\u0131\u200cH\u00fcseyin\u2060: say\u0131n? Dorse \u200bFIYAT \u00adkestel\u200d Kaplo\u200c)",
+    "(\u200d\u00c7\u0131kt\u0131\u200cKi\u015fi 10\u2060: say\u0131n? Dorse \u200bFIYAT \u00adKi\u015fi 2\u200d Kaplo\u200c)"
+   ],
+   [
+    "VE \u200bYar\u0131n usta\u2060H\u00fcseyin\u2060 ile\u200bDemir",
+    "VE \u200bKi\u015fi 11 usta\u2060Ki\u015fi 10\u2060 ile\u200bKi\u015fi 12"
+   ],
+   [
+    "(\u20602\u200c \u00c7\u200delik \u200dVELKO\u200b)",
+    "(\u20602\u200c \u00c7\u200delik \u200dVELKO\u200b)"
+   ],
+   [
+    "ile \u00adyola\u2060Zelvo bekliyor",
+    "ile \u00adyola\u2060Zelvo bekliyor"
+   ],
+   [
+    "Veli\u200bFI\u00adYAT kapl\u00adan\u200bgeldi Sel\u2060am\u200dYetkili:\u00ad Ankara",
+    "Ki\u015fi 1\u200bFI\u00adYAT kapl\u00adan\u200bgeldi Sel\u2060am\u200dYetkili:\u00ad Ankara"
+   ],
+   [
+    "(\u2060Arvo \u00adtun\u00e7\u200c \u00e7\u0131k\u200ct\u0131,\u200cTavro\u200b)",
+    "(\u2060Ki\u015fi 2 \u00adtun\u00e7\u200c \u00e7\u0131k\u200ct\u0131,\u200cTavro\u200b)"
+   ],
+   [
+    "t\u200damam\u200b\u00e7\u0131kt\u0131\u2060Do\u2060rin 2\u00adKaya\u2060\u0130STANBUL",
+    "t\u200damam\u200b\u00e7\u0131kt\u0131\u2060Do\u2060rin 2\u00adKi\u015fi 6\u2060\u0130STANBUL"
+   ]
+  ],
+  [
+   [
+    "HANIM\u200c Bekli\u2060yor \u00e7\u0131kt\u0131\u200b \u00c7ELIK\u00adDorse\u00adfenna\u200cKemal",
+    "HANIM\u200c Bekli\u2060yor \u00e7\u0131kt\u0131\u200b \u00c7ELIK\u00adDorse\u00adfenna\u200cKi\u015fi 4"
+   ],
+   [
+    "usta\u00adArad\u0131\u00ad mehmet\u200c\u0130\u200cstanbul? \u00e7\u0131kt\u00ad\u0131",
+    "usta\u00adArad\u0131\u00ad Ki\u015fi 5\u200c\u0130\u200cstanbul? \u00e7\u0131kt\u00ad\u0131"
+   ],
+   [
+    "Han\u0131m \u0130stanbul \u200bbug\u00fcn Demir",
+    "Han\u0131m \u0130stanbul \u200bbug\u00fcn Ki\u015fi 6"
+   ],
+   [
+    "Y\u0131lmaz: abi\u2060 Arad\u2060\u0131",
+    "Y\u0131lmaz: abi\u2060 Arad\u2060\u0131"
+   ],
+   [
+    "selam T\u00adun\u00e7 tamsel\u00ad geldi \u200csabah",
+    "selam T\u00adun\u00e7 Ki\u015fi 3\u00ad geldi \u200csabah"
+   ],
+   [
+    "dor\u00adse\u200d U\u2060sta Em\u2060ine\u200bdorin",
+    "dor\u00adse\u200d U\u2060sta Em\u2060ine\u200bdorin"
+   ],
+   [
+    "(\u00ad\u00c7ELIK ARADI\u200d Fenna Ay\u015fe\u2060)",
+    "(\u00ad\u00c7ELIK ARADI\u200d Fenna Ki\u015fi 7\u2060)"
+   ],
+   [
+    "DEMIR yar\u0131n! TAMSEL \u200dbey",
+    "DEMIR yar\u0131n! Ki\u015fi 3 \u200dbey"
+   ],
+   [
+    "d\u00fcn brin!\u200dile\u200dTamam\u200dkaplo\u00ad fatma",
+    "d\u00fcn Ki\u015fi 3!\u200dile\u200dTamam\u200dkaplo\u00ad Ki\u015fi 8"
+   ],
+   [
+    "D\u00dcN\u2060Nakliyat\u00adBUG\u00dcN Velko",
+    "D\u00dcN\u2060Nakliyat\u00adBUG\u00dcN Velko"
+   ],
+   [
+    "Dorse,\u200cMERSIN \u200dabi",
+    "Dorse,\u200cMERSIN \u200dabi"
+   ],
+   [
+    "ILE Ve Han\u0131m\u200bDORIN\u200darad\u0131",
+    "ILE Ve Han\u0131m\u200bDORIN\u200darad\u0131"
+   ],
+   [
+    "usta\u200cYOLA\u00adfatma Nakliyat,\u200bkayseri \u00adara\u00e7",
+    "usta\u200cYOLA\u00adKi\u015fi 8 Nakliyat,\u200bkayseri \u00adara\u00e7"
+   ],
+   [
+    "Y\u00fck FIYAT\u00adFe\u200cnna Usta dorse",
+    "Y\u00fck FIYAT\u00adFe\u200cnna Usta dorse"
+   ],
+   [
+    "h\u00fcseyin Kelvor\u200c, bekliyor",
+    "Ki\u015fi 9 Kelvor\u200c, bekliyor"
+   ],
+   [
+    "\u00c7\u0131kt\u0131\u20602 Fatma",
+    "\u00c7\u0131kt\u0131\u20602 Ki\u015fi 8"
+   ],
+   [
+    "Mehmet\u200c2\u200b Fenna\u200cY\u0131lmaz",
+    "Ki\u015fi 5\u200c2\u200b Fenna\u200cKi\u015fi 10"
+   ],
+   [
+    "Bekliyor\u00adusta:\u200cy\u00fck?\u200bkaraca",
+    "Bekliyor\u00adusta:\u200cy\u00fck?\u200bkaraca"
+   ],
+   [
+    "(\u2060Kemal\u200babi:\u00adtamam \u200cF\u00adIYAT\u200b)",
+    "(\u2060Ki\u015fi 4\u200babi:\u00adtamam \u200cF\u00adIYAT\u200b)"
+   ],
+   [
+    "Mehmet\u200d han\u0131m\u200dselam\u2060kaya Dorin",
+    "Ki\u015fi 5\u200d han\u0131m\u200dselam\u2060kaya Dorin"
+   ],
+   [
+    "UST\u00adA\u00adH\u00fcseyin Yetkili: D\u00fcn\u200bGeldi \u00adarvo\u200bKonya",
+    "UST\u00adA\u00adKi\u015fi 9 Yetkili: D\u00fcn\u200bGeldi \u00adKi\u015fi 2\u200bKonya"
+   ],
+   [
+    "(\u200ci\u0307st\u200canbul geldi\u2060fiyat\u2060)",
+    "(\u200ci\u0307st\u200canbul geldi\u2060fiyat\u2060)"
+   ],
+   [
+    "abi \u015eahin yola\u00adsela\u2060m\u200btamsel",
+    "abi Ki\u015fi 11 yola\u00adsela\u2060m\u200bKi\u015fi 3"
+   ],
+   [
+    "teslim\u200carvo? Ile\u00adTun\u00e7\u00adElif",
+    "teslim\u200cKi\u015fi 2? Ile\u00adKi\u015fi 12\u00adKi\u015fi 13"
+   ],
+   [
+    "KEMAL\u200bSelam \u200b\u00c7ELIK",
+    "Ki\u015fi 4\u200bSelam \u200b\u00c7ELIK"
+   ]
+  ],
+  [
+   [
+    "ARVO Y\u00dcK\u2060tic. ltd. \u015fti.\u200b: Mersi\u2060n\u200cSelam",
+    "Ki\u015fi 2 Y\u00dcK\u2060tic. ltd. \u015fti.\u200b: Mersi\u2060n\u200cSelam"
+   ],
+   [
+    "y\u00fck.\u200dDor\u200cin\u200cKaplan\u200c \u0130stanbul",
+    "y\u00fck.\u200dDor\u200cin\u200cKaplan\u200c \u0130stanbul"
+   ],
+   [
+    "ltd \u2060\u015fti\u0307 y\u00adola\u200b han\u2060\u0131m\u200b Ko\u200cnya",
+    "ltd \u2060\u015fti\u0307 y\u00adola\u200b han\u2060\u0131m\u200b Ko\u200cnya"
+   ],
+   [
+    "(\u00adarad\u0131\u200cveli? 33\u2060deniz KELVOR\u200c)",
+    "(\u00adarad\u0131\u200cKi\u015fi 1? 33\u2060deniz KELVOR\u200c)"
+   ],
+   [
+    "A\u200ddana\u200c ali SELAM\u2060Han\u0131m\u200bBug\u2060\u00fcn",
+    "A\u200ddana\u200c Ki\u015fi 1 SELAM\u2060Han\u0131m\u200bBug\u2060\u00fcn"
+   ],
+   [
+    "Dorse\u200bZELVO\u200bNakliyat",
+    "Dorse\u200bZELVO\u200bNakliyat"
+   ],
+   [
+    "g\u00adeldi\u2060\u00e7\u0131kt\u0131\u2060\u0130rtibat: Zelvo\u00adILE Adana",
+    "g\u00adeldi\u2060\u00e7\u0131kt\u0131\u2060\u0130rtibat: Zelvo\u00adILE Adana"
+   ],
+   [
+    "Yol\u00ada\u2060ve\u2060Geldi \u200cdeniz",
+    "Yol\u00ada\u2060ve\u2060Geldi \u200cdeniz"
+   ],
+   [
+    "yola\u2060Tun\u00e7\u2060\u0130rtibat: Adana",
+    "yola\u2060Ki\u015fi 4\u2060\u0130rtibat: Adana"
+   ],
+   [
+    "(\u200d33\u200dKaplo\u200ckonya\u200b)",
+    "(\u200d33\u200dKaplo\u200ckonya\u200b)"
+   ],
+   [
+    "(\u2060bug\u00fcn\u2060y\u00fck\u00adtavro\u2060 bekliyor\u200cali bey\u200bMERSIN\u2060)",
+    "(\u2060bug\u00fcn\u2060y\u00fck\u00adtavro\u2060 bekliyor\u200cKi\u015fi 1 bey\u200bMERSIN\u2060)"
+   ],
+   [
+    "(\u200dTic. Ltd. \u015eti.\u00adDORSE\u00adKonya\u200b)",
+    "(\u200dTic. Ltd. \u015eti.\u00adDORSE\u00adKonya\u200b)"
+   ],
+   [
+    "Demir ta\u200bmsel\u200d? NAKLIYAT bug\u00fcn\u200bHasan\u200c, D\u200bORSE",
+    "Demir ta\u200bmsel\u200d? NAKLIYAT bug\u00fcn\u200bKi\u015fi 5\u200c, D\u200bORSE"
+   ],
+   [
+    "hasan fiyat\u200bKelvor\u2060LT\u200cD \u015eT\u0130",
+    "Ki\u015fi 5 fiyat\u200bKelvor\u2060LT\u200cD \u015eT\u0130"
+   ],
+   [
+    "\u00e7\u200c\u0131kt\u0131\u200c Fe\u200dnna Bug\u00fcn\u200cKonya\u00ad Say\u0131n tamam",
+    "\u00e7\u200c\u0131kt\u0131\u200c Fe\u200dnna Bug\u00fcn\u200cKonya\u00ad Say\u0131n tamam"
+   ],
+   [
+    "(\u200ckaraca, 2\u2060H\u00fcs\u200deyin\u200b 33\u2060)",
+    "(\u200ckaraca, 2\u2060H\u00fcs\u200deyin\u200b 33\u2060)"
+   ],
+   [
+    "bekliyor \u200dY\u0131lmaz\u200bB\u2060rin",
+    "bekliyor \u200dKi\u015fi 6\u200bB\u2060rin"
+   ],
+   [
+    "YA\u00adRIN\u200bDeniz\u200ctesli\u200dm KAPLAN\u200d. FENNA\u2060! BEKLIYOR",
+    "YA\u00adRIN\u200bKi\u015fi 7\u200ctesli\u200dm KAPLAN\u200d. FENNA\u2060! BEKLIYOR"
+   ],
+   [
+    "2 \u2060ADANA Say\u0131n \u200dSabah\u2060ta\u200dvro",
+    "2 \u2060ADANA Say\u0131n \u200dSabah\u2060ta\u200dvro"
+   ],
+   [
+    "(\u00adKelvor\u2060LTD \u015eT\u0130 y\u00fck Kaplan 2 konya\u00adTAMAM\u2060)",
+    "(\u00adKelvor\u2060LTD \u015eT\u0130 y\u00fck Kaplan 2 konya\u00adTAMAM\u2060)"
+   ],
+   [
+    "Fiyat? arv\u2060o\u200dKEMAL\u200c2\u200dVELKO\u200d33",
+    "Fiyat? arv\u2060o\u200dKi\u015fi 8\u200c2\u200dVELKO\u200d33"
+   ],
+   [
+    "dorse\u200dALI\u200dSelim \u015fahin\u200dgel\u200cdi Abi",
+    "dorse\u200dKi\u015fi 1\u200dKi\u015fi 9 \u015fahin\u200dgel\u200cdi Abi"
+   ],
+   [
+    "(\u2060VEL\u00adKO\u00adtamam.\u2060A\u00ady\u015fe\u200dd\u00fcn\u200dY\u0131lm\u00adaz\u200c bekliyor\u200d)",
+    "(\u2060VEL\u00adKO\u00adtamam.\u2060A\u00ady\u015fe\u200dd\u00fcn\u200dY\u0131lm\u00adaz\u200c bekliyor\u200d)"
+   ],
+   [
+    "Demir \u20602\u200d selam\u200c\u0130stanbul \u200bGeldi\u200cBr\u00adin",
+    "Demir \u20602\u200d selam\u200c\u0130stanbul \u200bGeldi\u200cBr\u00adin"
+   ],
+   [
+    "n\u200dakliyat\u200cTavro.\u200c\u00e7elik: Ile",
+    "n\u200dakliyat\u200cTavro.\u200c\u00e7elik: Ile"
+   ]
+  ],
+  [
+   [
+    "(\u200byar\u0131n\u200d tic. ltd. \u015fti. Zelvo\u2060Y\u200bola\u200bADANA\u2060 Ve\u00ad)",
+    "(\u200byar\u0131n\u200d tic. ltd. \u015fti. Zelvo\u2060Y\u200bola\u200bADANA\u2060 Ve\u00ad)"
+   ],
+   [
+    "ay\u015f\u200de \u200b2\u200d. ANKARA arad\u0131 demir Bekliyor",
+    "ay\u015f\u200de \u200b2\u200d. ANKARA arad\u0131 demir Bekliyor"
+   ],
+   [
+    "(\u200bara\u00e7 \u00ady\u0131lmaz,\u200bKaplo?\u200dabi\u00adYola\u200bIle\u00ad)",
+    "(\u200bara\u00e7 \u00ady\u0131lmaz,\u200bKaplo?\u200dabi\u00adYola\u200bIle\u00ad)"
+   ],
+   [
+    "(\u200dTeslim,\u200bveli Say\u0131n\u200b)",
+    "(\u200dTeslim,\u200bKi\u015fi 1 Say\u0131n\u200b)"
+   ],
+   [
+    "dorse\u200c H\u00fcsey\u200cin\u200cABI\u200c bug\u00fc\u00adn",
+    "dorse\u200c H\u00fcsey\u200cin\u200cABI\u200c bug\u00fc\u00adn"
+   ],
+   [
+    "s\u2060abah\u200cVeli\u00ad, yar\u0131n \u200dT\u00adun\u00e7\u200d, selim",
+    "s\u2060abah\u200cKi\u015fi 1\u00ad, yar\u0131n \u200dT\u00adun\u00e7\u200d, selim"
+   ],
+   [
+    "(\u200cmehmet han\u0131m\u00adSelam\u200d)",
+    "(\u200cKi\u015fi 4 han\u0131m\u00adSelam\u200d)"
+   ],
+   [
+    "ve\u2060? selim\u200bi\u0307rtibat: TESLIM",
+    "ve\u2060? selim\u200bi\u0307rtibat: TESLIM"
+   ],
+   [
+    "ara\u00e7\u200c Tavro",
+    "ara\u00e7\u200c Tavro"
+   ],
+   [
+    "(\u200cbu\u200dg\u00fcn y\u00fck KON\u200dYA \u00c7\u0131kt\u0131 Usta\u200c)",
+    "(\u200cbu\u200dg\u00fcn y\u00fck KON\u200dYA Ki\u015fi 5 Usta\u200c)"
+   ],
+   [
+    "geldi\u00adkaya brin\u200b S\u200cay\u0131n",
+    "Ki\u015fi 13\u00adkaya Ki\u015fi 3\u200b S\u200cay\u0131n"
+   ],
+   [
+    "brin\u00adbek\u00adliyor ay\u015fe\u200dYARIN a\u200cnkara",
+    "Ki\u015fi 3\u00adbek\u00adliyor Ki\u015fi 7\u200dYARIN a\u200cnkara"
+   ],
+   [
+    "Yetki\u2060li:!\u00adbug\u00fcn kaya tavro\u200bgeldi\u00adarad\u0131",
+    "Yetki\u2060li:!\u00adbug\u00fcn kaya tavro\u200bKi\u015fi 13\u00adarad\u0131"
+   ],
+   [
+    "(\u2060Vel\u2060ko\u200d naime: Y\u0131lmaz \u200dtama\u00adm\u2060Ye\u200ctkili:\u200b)",
+    "(\u2060Vel\u2060ko\u200d Ki\u015fi 8: Y\u0131lmaz \u200dtama\u00adm\u2060Ye\u200ctkili:\u200b)"
+   ],
+   [
+    "zelvo USTA \u200dtama\u200cm",
+    "zelvo USTA \u200dtama\u200cm"
+   ],
+   [
+    "Deniz\u00adKader\u2060bekli\u200dyor Tavro 33",
+    "Deniz\u00adKi\u015fi 9\u2060bekli\u200dyor Tavro 33"
+   ],
+   [
+    "(\u200dabi\u200b arad\u0131 H\u00fcseyin\u2060NAKLIYAT\u00ad)",
+    "(\u200dabi\u200b arad\u0131 Ki\u015fi 10\u2060NAKLIYAT\u00ad)"
+   ],
+   [
+    "Kays\u200beri Kemal\u200d\u015eahin \u2060sela\u200bm? SABAH \u200dGELDI abi",
+    "Kays\u200beri Ki\u015fi 11\u200dKi\u015fi 12 \u2060sela\u200bm? SABAH \u200dKi\u015fi 13 abi"
+   ],
+   [
+    "(\u2060Yetkil\u2060i:\u2060VE\u200d Demir\u200b)",
+    "(\u2060Yetkil\u2060i:\u2060VE\u200d Ki\u015fi 14\u200b)"
+   ],
+   [
+    "Y\u0131lmaz fe\u200cnna\u2060, YOLA? \u0130sta\u00adnbul\u200c ile\u200ci\u0307rtibat:",
+    "Y\u0131lmaz fe\u200cnna\u2060, YOLA? \u0130sta\u00adnbul\u200c ile\u200ci\u0307rtibat:"
+   ],
+   [
+    "VE\u200cLI\u200ct\u00adamam ankara",
+    "VE\u200cLI\u200ct\u00adamam ankara"
+   ],
+   [
+    "yar\u0131n bey\u200d D\u00fcn\u2060 brin\u200bdeniz",
+    "yar\u0131n bey\u200d D\u00fcn\u2060 Ki\u015fi 3\u200bdeniz"
+   ],
+   [
+    "FIYA\u00adT \u200bf\u00adatma\u200cKapl\u200bo",
+    "FIYA\u00adT \u200bf\u00adatma\u200cKapl\u200bo"
+   ],
+   [
+    "ve Kema\u200bl YA\u200cRIN\u200bKarac\u200da\u200btic. \u200cltd. \u015fti.",
+    "ve Kema\u200bl YA\u200cRIN\u200bKarac\u200da\u200btic. \u200cltd. \u015fti."
+   ],
+   [
+    "usta\u2060 ADANA! Bug\u00fcn\u200bTESLIM \u200dtams\u200cel \u00e7\u0131\u00adkt\u0131",
+    "usta\u2060 ADANA! Bug\u00fcn\u200bTESLIM \u200dtams\u200cel \u00e7\u0131\u00adkt\u0131"
+   ]
+  ],
+  [
+   [
+    "fiyat!\u200dbey\u200cTI\u200cC. LTD. \u015eTI.\u200cMehmet",
+    "fiyat!\u200dbey\u200cTI\u200cC. LTD. \u015eTI.\u200cKi\u015fi 4"
+   ],
+   [
+    "ankara VELI? Han\u0131m\u00ad BEKLIYOR",
+    "ankara Ki\u015fi 1? Han\u0131m\u00ad BEKLIYOR"
+   ],
+   [
+    "bug\u00fcn 33\u200dArad\u0131\u2060kay\u200da",
+    "bug\u00fcn 33\u200dArad\u0131\u2060kay\u200da"
+   ],
+   [
+    "FIYA\u2060T A\u2060rvo ara\u200c\u00e7.\u2060Ile",
+    "FIYA\u2060T A\u2060rvo ara\u200c\u00e7.\u2060Ile"
+   ],
+   [
+    "Dorin\u200d HANI\u200dM selam\u200cd\u00fcn",
+    "Dorin\u200d HANI\u200dM selam\u200cd\u00fcn"
+   ],
+   [
+    "ABI arad\u0131\u2060 Sabah\u200d Kestel: Naime",
+    "ABI arad\u0131\u2060 Sabah\u200d Ki\u015fi 2: Ki\u015fi 5"
+   ],
+   [
+    "Konya Bey Fiyat\u200d kes\u2060tel\u200dte\u200bslim \u200d33\u200dzelvo",
+    "Konya Bey Fiyat\u200d kes\u2060tel\u200dte\u200bslim \u200d33\u200dzelvo"
+   ],
+   [
+    "(\u200d33\u00adZelvo.\u200cAdana\u200c. bekliyor\u200cK\u200bader \u200barad\u200c\u0131\u200c)",
+    "(\u200d33\u00adZelvo.\u200cAdana\u200c. bekliyor\u200cK\u200bader \u200barad\u200c\u0131\u200c)"
+   ],
+   [
+    "say\u0131n\u2060Ankara bug\u00fcn\u200dtama\u00adm d\u00fcn",
+    "say\u0131n\u2060Ankara bug\u00fcn\u200dtama\u00adm d\u00fcn"
+   ],
+   [
+    "kapla\u00adn sabah Konya",
+    "kapla\u00adn sabah Konya"
+   ],
+   [
+    "\u00c7IKTI\u200btamsel: yola Zelvo \u2060y\u00fck",
+    "\u00c7IKTI\u200bKi\u015fi 3: yola Zelvo \u2060y\u00fck"
+   ],
+   [
+    "ARVO\u200dara\u00e7\u200dusta:\u00adKAYSERI\u200bselam\u2060Arad\u0131",
+    "Ki\u015fi 2\u200dara\u00e7\u200dusta:\u00adKAYSERI\u200bselam\u2060Arad\u0131"
+   ],
+   [
+    "tamsel ADA\u200dNA\u00ad nakliyat\u200c: geldi",
+    "Ki\u015fi 3 ADA\u200dNA\u00ad nakliyat\u200c: geldi"
+   ],
+   [
+    "33 Teslim \u2060ar\u2060vo A\u2060dana\u2060Elif",
+    "33 Teslim \u2060ar\u2060vo A\u2060dana\u2060Ki\u015fi 6"
+   ],
+   [
+    "(\u00adkader\u200c2 \u200d\u00c7\u0131\u200ckt\u0131 \u200cMehmet\u200b Adana\u200d)",
+    "(\u00adkader\u200c2 \u200d\u00c7\u0131\u200ckt\u0131 \u200cKi\u015fi 4\u200b Adana\u200d)"
+   ],
+   [
+    "(\u200d\u0130rtib\u200cat: \u00adMERS\u00adIN 33\u200cAra\u00e7?\u2060\u00c7elik Kelvor tamam\u2060)",
+    "(\u200d\u0130rtib\u200cat: \u00adMERS\u00adIN 33\u200cAra\u00e7?\u2060\u00c7elik Kelvor tamam\u2060)"
+   ],
+   [
+    "Yetk\u200bili: Selam Kayseri 2\u00adTavro Bug\u00fcn ali",
+    "Yetk\u200bili: Selam Kayseri 2\u00adTavro Bug\u00fcn Ki\u015fi 1"
+   ],
+   [
+    "(\u200bTamam GELDI Ye\u00adtkili::\u200cSabah abi\u2060 Ay\u015fe\u200c)",
+    "(\u200bTamam GELDI Ye\u00adtkili::\u200cSabah abi\u2060 Ki\u015fi 7\u200c)"
+   ],
+   [
+    "Fa\u200dtma. Selam\u00adusta\u200c KAPLO geldi \u200byola",
+    "Fa\u200dtma. Selam\u00adusta\u200c KAPLO geldi \u200byola"
+   ],
+   [
+    "kaya\u200b. Kayseri\u00adAra\u00e7 \u200dbug\u00fcn.\u200dFENN\u200bA",
+    "kaya\u200b. Kayseri\u00adAra\u00e7 \u200dbug\u00fcn.\u200dFENN\u200bA"
+   ],
+   [
+    "(\u200d\u00c7\u0131kt\u0131\u2060Y\u200bola\u200dELIF\u200c\u015eahi\u200bn\u2060BEY\u200b brin NA\u200bKLIYAT\u200b)",
+    "(\u200d\u00c7\u0131kt\u0131\u2060Y\u200bola\u200dKi\u015fi 6\u200c\u015eahi\u200bn\u2060BEY\u200b Ki\u015fi 3 NA\u200bKLIYAT\u200b)"
+   ],
+   [
+    "Kayseri\u200dKelvor ara\u00e7 tamam\u00adVeli",
+    "Kayseri\u200dKelvor ara\u00e7 tamam\u00adKi\u015fi 1"
+   ],
+   [
+    "ARA\u00c7\u200dIle\u2060 Velk\u200bo",
+    "ARA\u00c7\u200dIle\u2060 Velk\u200bo"
+   ],
+   [
+    "y\u00adar\u0131n k\u200dader",
+    "y\u00adKi\u015fi 8 k\u200dader"
+   ],
+   [
+    "y\u200b\u0131lmaz\u200ctama\u200cm\u2060usta\u2060Em\u200bine",
+    "y\u200b\u0131lmaz\u200ctama\u200cm\u2060usta\u2060Em\u200bine"
+   ]
+  ],
+  [
+   [
+    "D\u00dcN\u200b! Dorin TAMA\u200bM\u200cyar\u0131n mer\u200csin\u2060Hasan",
+    "D\u00dcN\u200b! Dorin TAMA\u200bM\u200cyar\u0131n mer\u200csin\u2060Ki\u015fi 4"
+   ],
+   [
+    "2\u200d! ve tamsel\u200dsabah",
+    "2\u200d! ve Ki\u015fi 3\u200dsabah"
+   ],
+   [
+    "Yar\u0131\u200cn\u2060 Dors\u200be\u200d Meh\u200dmet usta d\u00fcn",
+    "Yar\u0131\u200cn\u2060 Dors\u200be\u200d Meh\u200dmet usta d\u00fcn"
+   ],
+   [
+    "Deniz \u2060tamsel. usta \u00adbekliyor \u200dY\u0131lm\u200caz fi\u00adyat",
+    "Deniz \u2060Ki\u015fi 3. usta \u00adbekliyor \u200dY\u0131lm\u200caz fi\u00adyat"
+   ],
+   [
+    "teslim\u2060 Say\u0131n.\u200ckaplan\u200c Ile",
+    "teslim\u2060 Say\u0131n.\u200ckaplan\u200c Ile"
+   ],
+   [
+    "\u00c7elik\u200cteslim\u200bTavro Tic. Ltd. \u015eti.\u200d2",
+    "\u00c7elik\u200cteslim\u200bTavro Tic. Ltd. \u015eti.\u200d2"
+   ],
+   [
+    "(\u200bbekliyor abi KELV\u200cOR\u200d33\u200c)",
+    "(\u200bbekliyor abi KELV\u200cOR\u200d33\u200c)"
+   ],
+   [
+    "Kaya Ali selam\u00ad 2",
+    "Ki\u015fi 5 selam\u00ad 2"
+   ],
+   [
+    "t\u2060amsel\u200cSelam\u00adGeldi",
+    "t\u2060amsel\u200cSelam\u00adGeldi"
+   ],
+   [
+    "bekliyor, Adana ar\u200da\u00e7\u200c ha\u2060n\u0131m SAB\u2060AH",
+    "bekliyor, Adana ar\u200da\u00e7\u200c ha\u2060n\u0131m SAB\u2060AH"
+   ],
+   [
+    "FAT\u200bMA! abi\u200bVe \u2060D\u200dORSE",
+    "FAT\u200bMA! abi\u200bVe \u2060D\u200dORSE"
+   ],
+   [
+    "D\u00ademir, V\u200beli\u200b FENNA\u200b y\u00fck",
+    "D\u00ademir, V\u200bKi\u015fi 6\u200b FENNA\u200b y\u00fck"
+   ],
+   [
+    "(\u200dSay\u00ad\u0131n\u200dyola\u200b Elif Ve\u200b)",
+    "(\u200dSay\u00ad\u0131n\u200dyola\u200b Ki\u015fi 7 Ve\u200b)"
+   ],
+   [
+    "(\u200dYola\u00ad! abi \u2060Kaplan\u200cnakliyat\u200b)",
+    "(\u200dYola\u00ad! abi \u2060Kaplan\u200cnakliyat\u200b)"
+   ],
+   [
+    "(\u200bKader \u200dS\u200cAYIN\u200c\u00e7\u0131kt\u0131\u2060tes\u200clim\u200cdorse zelvo\u200cUsta\u200d)",
+    "(\u200bKader \u200dS\u200cAYIN\u200c\u00e7\u0131kt\u0131\u2060tes\u200clim\u200cdorse zelvo\u200cUsta\u200d)"
+   ],
+   [
+    "VELKO Tic. Ltd. \u015eti.\u2060Geldi",
+    "VELKO Tic. Ltd. \u015eti.\u2060Geldi"
+   ],
+   [
+    "Adana \u200cLTD \u015eT\u0130\u00adve\u00ad2 Vel\u00adi\u200bSelim?\u2060TESLIM",
+    "Adana \u200cLTD \u015eT\u0130\u00adve\u00ad2 Vel\u00adi\u200bKi\u015fi 8?\u2060TESLIM"
+   ],
+   [
+    "sabah \u00addemi\u200dr Dorin F\u200cIYAT\u2060Fatma",
+    "sabah \u00addemi\u200dr Dorin F\u200cIYAT\u2060Ki\u015fi 9"
+   ],
+   [
+    "D\u00dcN\u00ad ara\u00e7 Ve\u200cli\u200b, abi\u200bKader Ay\u015fe\u2060, 2",
+    "D\u00dcN\u00ad ara\u00e7 Ve\u200cli\u200b, abi\u200bKi\u015fi 10\u2060, 2"
+   ],
+   [
+    "saba\u2060h\u200bsay\u0131n \u00adtavro \u2060ile",
+    "saba\u2060h\u200bsay\u0131n \u00adtavro \u2060ile"
+   ],
+   [
+    "ZELVO\u200c Ge\u200bldi\u2060 han\u0131\u200bm \u00adBekliyor Demir",
+    "ZELVO\u200c Ge\u200bldi\u2060 han\u0131\u200bm \u00adBekliyor Demir"
+   ],
+   [
+    "Fatma! TU\u2060N\u00c7 sabah\u00ady\u00fck\u00adHan\u0131m",
+    "Ki\u015fi 9! TU\u2060N\u00c7 sabah\u00ady\u00fck\u00adHan\u0131m"
+   ],
+   [
+    "Y\u00fck \u2060keste\u200dl\u2060 Bekli\u200cyor",
+    "Y\u00fck \u2060keste\u200dl\u2060 Bekli\u200cyor"
+   ],
+   [
+    "Yola Tun\u00e7\u200bselam dorse KAYSER\u200cI\u200c ar\u00advo",
+    "Yola Tun\u00e7\u200bselam dorse KAYSER\u200cI\u200c ar\u00advo"
+   ],
+   [
+    "Adana \u00adsel\u200bim\u00adltd \u015fti\u0307 Selam fiyat",
+    "Adana \u00adsel\u200bim\u00adltd \u015fti\u0307 Selam fiyat"
+   ]
+  ],
+  [
+   [
+    "(\u2060LTD \u015eT\u0130\u200cyola\u200b Veli\u00ad 2\u00ad! DORIN\u200d)",
+    "(\u2060LTD \u015eT\u0130\u200cyola\u200b Ki\u015fi 1\u00ad 2\u00ad! DORIN\u200d)"
+   ],
+   [
+    "(\u2060yola\u2060Dorse\u200c Y\u0131lmaz fiya\u200ct\u200btamsel\u00ad)",
+    "(\u2060yola\u2060Dorse\u200c Ki\u015fi 4 fiya\u200ct\u200bKi\u015fi 3\u00ad)"
+   ],
+   [
+    "33\u00adankara",
+    "33\u00adankara"
+   ],
+   [
+    "Veli bug\u00fcn\u2060sabah\u200dSelim\u200dy\u00fck",
+    "Ki\u015fi 1 bug\u00fcn\u2060sabah\u200dKi\u015fi 5\u200dy\u00fck"
+   ],
+   [
+    "Hasan\u2060do\u200crse Mersin",
+    "Ki\u015fi 6\u2060do\u200crse Mersin"
+   ],
+   [
+    "d\u00fcn \u200bVeli ze\u200blvo Han\u0131m",
+    "d\u00fcn \u200bKi\u015fi 1 ze\u200blvo Han\u0131m"
+   ],
+   [
+    "(\u00adKaya ke\u200dlvor Arad\u0131 yar\u0131n\u200chan\u0131m Tic. Ltd. \u015eti.\u200c)",
+    "(\u00adKaya ke\u200dlvor Arad\u0131 yar\u0131n\u200chan\u0131m Tic. Ltd. \u015eti.\u200c)"
+   ],
+   [
+    "Fe\u00adnna\u2060arvo\u2060, Abi\u200cKaplan YARIN\u200c tamam",
+    "Fe\u00adnna\u2060Ki\u015fi 2\u2060, Abi\u200cKaplan YARIN\u200c tamam"
+   ],
+   [
+    "\u0130stanbul brin\u200c Y\u00dcK t\u00adeslim",
+    "\u0130stanbul Ki\u015fi 3\u200c Y\u00dcK t\u00adeslim"
+   ],
+   [
+    "ile\u200dve arad\u0131\u00adVeli",
+    "ile\u200dve arad\u0131\u00adKi\u015fi 1"
+   ],
+   [
+    "dorse\u200b: K\u00adaraca HA\u200dNIM \u200bSELI\u00adM\u200b Bu\u200dg\u00fcn\u200d? br\u200cin",
+    "dorse\u200b: K\u00adaraca HA\u200dNIM \u200bSELI\u00adM\u200b Bu\u200dg\u00fcn\u200d? br\u200cin"
+   ],
+   [
+    "y\u00fck\u2060NAIME fiyat Dorin kestel yar\u0131n",
+    "y\u00fck\u2060Ki\u015fi 7 fiyat Dorin Ki\u015fi 2 yar\u0131n"
+   ],
+   [
+    "Tic. Ltd. \u015eti.\u200c selam\u200bA\u00adnkara\u2060Ara\u00e7\u200dbrin",
+    "Tic. Ltd. \u015eti.\u200c selam\u200bA\u00adnkara\u2060Ara\u00e7\u200dKi\u015fi 3"
+   ],
+   [
+    "(\u200dVelko\u200bsa\u2060bah\u200dmersin\u200c)",
+    "(\u200dVelko\u200bsa\u2060bah\u200dmersin\u200c)"
+   ],
+   [
+    "33\u200dDorin\u200dDe\u00admir \u00adtamam \u200bLTD \u015eT\u0130",
+    "33\u200dDorin\u200dDe\u00admir \u00adtamam \u200bLTD \u015eT\u0130"
+   ],
+   [
+    "(\u200dNAIME:\u200bYar\u0131n Arad\u0131\u2060 Bekliyo\u200cr\u200b)",
+    "(\u200dKi\u015fi 7:\u200bYar\u0131n Arad\u0131\u2060 Bekliyo\u200cr\u200b)"
+   ],
+   [
+    "sabah\u2060Dorin",
+    "sabah\u2060Dorin"
+   ],
+   [
+    "f\u200cenna\u200c? Yetkili:\u200d 33 \u200bali\u200b usta",
+    "f\u200cenna\u200c? Yetkili:\u200d 33 \u200bKi\u015fi 1\u200b usta"
+   ],
+   [
+    "(\u200bile \u200di\u0307\u2060stanbul\u200d, tamsel\u00ad)",
+    "(\u200bile \u200di\u0307\u2060stanbul\u200d, Ki\u015fi 3\u00ad)"
+   ],
+   [
+    "(\u200c\u00c7\u200cIKTI.\u200bZelvo \u00adTAMA\u00adM\u200d)",
+    "(\u200c\u00c7\u200cIKTI.\u200bZelvo \u00adTAMA\u00adM\u200d)"
+   ],
+   [
+    "2\u200c! \u0130stanbul Ve abi d\u00fcn",
+    "2\u200c! \u0130stanbul Ve abi d\u00fcn"
+   ],
+   [
+    "(\u00ad\u00c7\u0131kt\u0131 \u200ch\u2060an\u0131m\u200bSelam Say\u0131n\u00ad Fenna tamsel\u200dkaya fiyat\u200c)",
+    "(\u00ad\u00c7\u0131kt\u0131 \u200ch\u2060an\u0131m\u200bSelam Say\u0131n\u00ad Fenna Ki\u015fi 3\u200dkaya fiyat\u200c)"
+   ],
+   [
+    "yola\u2060Arad\u0131\u200bKemal\u200b\u0130stanbul",
+    "yola\u2060Arad\u0131\u200bKi\u015fi 8\u200b\u0130stanbul"
+   ],
+   [
+    "fiya\u2060t \u00e7\u0131kt\u0131?\u200csel\u200cam\u200cKaraca\u200d ali\u200dFa\u200btma",
+    "fiya\u2060t \u00e7\u0131kt\u0131?\u200csel\u200cam\u200cKaraca\u200d Ki\u015fi 1\u200dFa\u200btma"
+   ],
+   [
+    "kestel\u200cAr\u200cad\u0131 Demir yar\u0131n \u200dFenna",
+    "Ki\u015fi 2\u200cAr\u200cad\u0131 Ki\u015fi 9 yar\u0131n \u200dFenna"
+   ]
+  ],
+  [
+   [
+    "(\u206033. NAKLIY\u200cAT \u2060Kaya\u200b, tamam \u200dSelim\u200c \u0130stanbul\u200cBug\u00fc\u200bn\u00ad)",
+    "(\u206033. NAKLIY\u200cAT \u2060Ki\u015fi 4\u200b, tamam \u200dKi\u015fi 5\u200c \u0130stanbul\u200cBug\u00fc\u200bn\u00ad)"
+   ],
+   [
+    "(\u2060teslim \u00adAdana\u200b y\u0131lmaz \u200cYA\u2060RIN\u200dbey\u200bmehmet\u2060)",
+    "(\u2060teslim \u00adAdana\u200b y\u0131lmaz \u200cYA\u2060RIN\u200dbey\u200bKi\u015fi 6\u2060)"
+   ],
+   [
+    "i\u0307rtibat:,\u200dKonya\u200d2",
+    "i\u0307rtibat:,\u200dKonya\u200d2"
+   ],
+   [
+    "bug\u00fcn\u00admersin\u20602\u200c Dori\u200cn\u00ad Fatma",
+    "bug\u00fcn\u00admersin\u20602\u200c Dori\u200cn\u00ad Ki\u015fi 7"
+   ],
+   [
+    "(\u200bTamsel: ta\u200cmam! 33\u00ad Yola\u200b D\u200bemir: ABI\u200d)",
+    "(\u200bKi\u015fi 3: ta\u200cmam! 33\u00ad Yola\u200b D\u200bemir: ABI\u200d)"
+   ],
+   [
+    "bey\u2060tamam\u200c. te\u200bslim Ve\u00ad \u0130stanbul",
+    "bey\u2060tamam\u200c. te\u200bslim Ve\u00ad \u0130stanbul"
+   ],
+   [
+    "Kader\u200d bug\u00fcn",
+    "Kader\u200d bug\u00fcn"
+   ],
+   [
+    "Ile D\u00dcN\u200b ay\u200b\u015fe\u2060\u00e7\u0131\u2060kt\u0131\u2060. Mers\u200cin\u200b VELKO",
+    "Ile D\u00dcN\u200b ay\u200b\u015fe\u2060\u00e7\u0131\u2060kt\u0131\u2060. Mers\u200cin\u200b VELKO"
+   ],
+   [
+    "kelvor\u200c Ile\u00adyola bekliyor",
+    "kelvor\u200c Ile\u00adyola bekliyor"
+   ],
+   [
+    "33:\u200bVelko\u200dDENIZ Ankara\u2060bug\u00fcn D\u00fcn",
+    "33:\u200bVelko\u200dDENIZ Ki\u015fi 10\u2060bug\u00fcn D\u00fcn"
+   ],
+   [
+    "Naime\u200b \u0130stanbul\u200b. ile",
+    "Ki\u015fi 8\u200b \u0130stanbul\u200b. ile"
+   ],
+   [
+    "ankara kaplan\u200cvelko\u200dGeldi",
+    "Ki\u015fi 10 kaplan\u200cvelko\u200dGeldi"
+   ],
+   [
+    "(\u200d33 DEMIR\u00ad Adana Fiyat\u200c)",
+    "(\u200d33 DEMIR\u00ad Adana Fiyat\u200c)"
+   ],
+   [
+    "(\u200cUsta\u200bKony\u200da \u200bali\u200d TESLIM\u2060, Dorse?\u200barad\u0131 Kaya\u200d)",
+    "(\u200cUsta\u200bKony\u200da \u200bKi\u015fi 1\u200d TESLIM\u2060, Dorse?\u200barad\u0131 Ki\u015fi 4\u200d)"
+   ],
+   [
+    "konya\u200dAbi SABAH\u200dali velko",
+    "konya\u200dAbi SABAH\u200dKi\u015fi 1 velko"
+   ],
+   [
+    "ara\u00e7\u200b, Arad\u0131 Elif",
+    "ara\u00e7\u200b, Arad\u0131 Ki\u015fi 9"
+   ],
+   [
+    "(\u200cTamam\u200dBey\u200d ile\u00ads\u200belam M\u00adehmet\u2060)",
+    "(\u200cTamam\u200dBey\u200d ile\u00ads\u200belam M\u00adehmet\u2060)"
+   ],
+   [
+    "Geldi\u2060, abi \u200dDeniz Adana",
+    "Geldi\u2060, abi \u200dDeniz Adana"
+   ],
+   [
+    "i\u0307stanbul\u2060ara\u00e7\u2060 sabah\u00adKe\u2060mal A\u200crad\u0131",
+    "i\u0307stanbul\u2060ara\u00e7\u2060 sabah\u00adKe\u2060mal A\u200crad\u0131"
+   ],
+   [
+    "Fenna D\u00fcn\u00adfiyat i\u0307rtibat:\u200cGELD\u200cI\u00adVeli\u2060. Han\u0131m",
+    "Fenna D\u00fcn\u00adfiyat i\u0307rtibat:\u200cGELD\u200cI\u00adKi\u015fi 1\u2060. Han\u0131m"
+   ],
+   [
+    "y\u00fck Mehmet\u200bdorse\u200dabi",
+    "y\u00fck Ki\u015fi 6\u200bdorse\u200dabi"
+   ],
+   [
+    "ve\u200d, konya Nakliya\u200dt\u200dtamam\u200bBekliyor",
+    "ve\u200d, konya Nakliya\u200dt\u200dtamam\u200bBekliyor"
+   ],
+   [
+    "(\u200darvo.\u200bSelam sa\u2060y\u0131n\u200d2 Ankara Bey\u00ad)",
+    "(\u200dKi\u015fi 2.\u200bSelam sa\u2060y\u0131n\u200d2 Ki\u015fi 10 Bey\u00ad)"
+   ],
+   [
+    "arad\u0131\u2060kaplo",
+    "arad\u0131\u2060kaplo"
+   ],
+   [
+    "ta\u200cmam\u200cve\u00ad nakl\u200ciyat\u200d2\u200badana",
+    "ta\u200cmam\u200cve\u00ad nakl\u200ciyat\u200d2\u200badana"
+   ]
+  ]
+ ]
+}

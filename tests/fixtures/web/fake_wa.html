@@ -1,0 +1,95 @@
+<!doctype html><html><head><meta charset="utf-8"><title>(1) WhatsApp</title>
+<style>#pane-side,[data-testid=conversation-panel-messages]{height:300px;overflow:auto;border:1px solid #888}</style></head><body>
+<!-- Sahte WhatsApp Web: yalniz tests/test_browser_smoke.py icin; 14.11.2026'da gozlenen gercek DOM iskeletini taklit eder
+     (data-id yalniz karma, tail-in/out, data-pre-plain-text, image-thumb + blob, medya goruntuleyici). Uydurma veri. -->
+<div data-testid="chat-list-search-container"><input role="textbox" id="q"></div>
+<div id="pane-side"><div role="grid" id="grid"></div></div>
+<div id="main"><header><span dir="auto" data-testid="conversation-info-header-chat-title"></span></header>
+<div data-testid="conversation-panel-messages" id="msgs"></div>
+<div id="composer" contenteditable="true" data-tab="10"></div></div>
+<script>
+window.typedInComposer = 0;
+document.getElementById('composer').addEventListener('input', () => window.typedInComposer++);
+const grid = document.getElementById('grid'), msgsEl = document.getElementById('msgs');
+const chats = Array.from({length: 30}, (_, i) => 'Sohbet ' + String(i + 1).padStart(2, '0'));
+// Uydurma ek sohbetler: emoji sarili grup, cift bosluklu baslik, Turkce buyuk/kucuk harf (I/i), belirsiz cift, yavas arama
+chats.push('🚛🚛Örnek ÇUKUROVA Nakliyat 🚛🚛', 'Merkezi  Test   hibu', 'ILIK Liman Grubu', 'Deneme Grup A', 'Deneme Grup B', 'Yavaş Arama Grubu');
+// arama: WhatsApp gibi emoji/aksan/bosluk/buyuk-kucuk harfe duyarsiz; 'yavas' iceren sorguda sonuclar 2.6 sn gecikir (eski liste gorunur kalir)
+const fz = t => t.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ı/g, 'i').toLowerCase().replace(/[^a-z0-9]+/g, '');
+function renderChats(filter) {
+  grid.innerHTML = '';
+  chats.filter(c => !filter || fz(c).includes(fz(filter))).forEach(c => {
+    const r = document.createElement('div'); r.setAttribute('role', 'row');
+    r.innerHTML = '<div role="gridcell"><div data-testid="cell-frame-container"><div data-testid="cell-frame-title"><span dir="auto" title="' + c + '">' + c + '</span></div></div></div>';
+    r.onclick = () => openChat(c); grid.appendChild(r);
+  });
+}
+document.getElementById('q').addEventListener('input', e => {
+  const v = e.target.value;
+  if (fz(v).includes('yavas')) setTimeout(() => { if (document.getElementById('q').value === v) renderChats(v); }, 2600);
+  else renderChats(v);
+});
+renderChats('');
+function png(size) { return new Promise(res => { const c = document.createElement('canvas'); c.width = c.height = size;
+  c.getContext('2d').fillStyle = '#c33'; c.getContext('2d').fillRect(0, 0, size, size); c.toBlob(b => res(URL.createObjectURL(b)), 'image/png'); }); }
+// i % 7 === 3: fotograf (yalniz medya, damgasiz); i % 7 === 5: yuklenmemis fotograf (yalniz bulanik onizleme; goruntuleyici gerekir);
+// i % 7 === 6: yuklenmemis fotograf, gercek DOM gibi 'media-state-download' dugmeli (tiklayinca thumb elemani yeniden olusur, 120px blob gelir)
+const all = Array.from({length: 40}, (_, i) => ({i, day: i < 20 ? '13.11.2026' : '14.11.2026', out: i % 2 === 1,
+  who: i % 2 ? 'Deniz Test' : 'Naime', img: i % 7 === 3, pending: i % 7 === 5, dlbtn: i % 7 === 6,
+  hh: String(8 + Math.floor(i / 4)).padStart(2, '0'), mm: String((i % 4) * 10).padStart(2, '0')}));
+let loaded = 0;
+const svg = t => '<svg viewBox="0 0 8 13"><title>' + t + '</title></svg>';
+async function rowHtml(m) {
+  const t = m.hh + ':' + m.mm;
+  const tail = '<span data-testid="tail-' + (m.out ? 'out' : 'in') + '" data-icon="tail-' + (m.out ? 'out' : 'in') + '">' + svg('tail') + '</span>';
+  const tick = m.out ? '<div><span aria-hidden="false" aria-label=" Okundu ">' + svg('wds-ic-read') + '</span></div>' : '';
+  const meta = '<div><div data-testid="msg-meta" role="button"><span><span>' + t + '</span></span>' + tick + '</div></div>';
+  let body;
+  if (m.dlbtn) {
+    body = '<div role="button" data-testid="image-thumb" data-dl="1"><div data-testid="media-state-download"><span>136 kB</span></div><div data-testid="media-url-provider"><div><img src="data:image/jpeg;base64,/9j/4AAQ"></div></div></div>';
+  } else if (m.img || m.pending) {
+    const blob = m.img ? '<div><img draggable="true" src="' + await png(80) + '"></div>' : '';
+    body = '<div role="button" data-testid="image-thumb" data-pending="' + (m.pending ? 1 : 0) + '"><div data-testid="media-url-provider"><div><img src="data:image/jpeg;base64,/9j/4AAQ"></div>' + blob + '</div></div>';
+  } else {
+    body = '<div class="copyable-text" data-pre-plain-text="[' + t + ', ' + m.day + '] ' + m.who + ': "><div><span class="selectable-text copyable-text" data-testid="selectable-text"><span>Mesaj ' + m.i + '</span></span></div></div>';
+  }
+  const label = '<span aria-label="' + (m.out ? 'Sen' : 'Naime') + ':"></span>';
+  const id = 'AC' + String(m.i).padStart(30, '0');
+  return '<div role="row"><div data-id="' + id + '" data-testid="conv-msg-' + id + '"><div><div class="focusable-list-item"><div data-testid="msg-container">' + tail +
+    '<div>' + label + '<div>' + body + meta + '</div></div></div></div></div></div></div>';
+}
+async function prepend(count) {
+  const end = all.length - loaded, start = Math.max(0, end - count);
+  const slice = all.slice(start, end); let html = '', lastDay = null;
+  for (const m of slice) { if (m.day !== lastDay) { html += '<div><div><span>' + m.day + '</span></div></div>'; lastDay = m.day; } html += await rowHtml(m); }
+  const old = msgsEl.scrollHeight; const wrap = document.createElement('div'); wrap.innerHTML = html;
+  msgsEl.prepend(...wrap.childNodes); loaded += slice.length;
+  msgsEl.scrollTop += msgsEl.scrollHeight - old;
+}
+let loading = false;
+msgsEl.addEventListener('scroll', async () => { if (msgsEl.scrollTop < 5 && loaded < all.length && !loading) { loading = true; await new Promise(r => setTimeout(r, 300)); await prepend(10); loading = false; } });
+async function openChat(c) {
+  // gercek baslik: emoji <img alt> olarak cizilir (textContent'te yok), ardisik bosluklar tek gorunur
+  document.querySelector('[data-testid=conversation-info-header-chat-title]').innerHTML =
+    c.replace(/\s+/g, ' ').replace(/\p{Extended_Pictographic}/gu, m => '<img alt="' + m + '" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">');
+  msgsEl.innerHTML = ''; loaded = 0; await prepend(10); msgsEl.scrollTop = msgsEl.scrollHeight;
+}
+// indirme dugmesi: tiklaninca eski thumb elemani DOM'dan duser, yerine blob'lu yeni eleman gelir (gercek WhatsApp Web davranisi)
+document.addEventListener('click', async e => {
+  const b = e.target.closest && e.target.closest('[data-testid=media-state-download]');
+  if (!b) return;
+  const th = b.closest('[data-testid=image-thumb]'); const url = await png(120);
+  await new Promise(r => setTimeout(r, 400));
+  const n = document.createElement('div'); n.setAttribute('role', 'button'); n.setAttribute('data-testid', 'image-thumb');
+  n.innerHTML = '<div data-testid="media-url-provider"><div><img src="data:image/jpeg;base64,/9j/4AAQ"></div><div><img draggable="true" src="' + url + '"></div></div>';
+  th.replaceWith(n);
+});
+// medya goruntuleyici: yuklenmemis fotografa tiklaninca buyuk (300px) blob gorseli acar; Escape kapatir
+document.addEventListener('click', async e => {
+  const th = e.target.closest && e.target.closest('[data-testid=image-thumb]');
+  if (!th || e.target.closest('[data-testid=media-state-download]') || document.querySelector('[data-testid=media-viewer-modal]')) return;
+  const v = document.createElement('div'); v.setAttribute('data-testid', 'media-viewer-modal');
+  v.innerHTML = '<div data-testid="media-canvas"><img data-testid="media-image" src="' + await png(300) + '"></div>'; document.body.appendChild(v);
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { const v = document.querySelector('[data-testid=media-viewer-modal]'); if (v) v.remove(); } });
+</script></body></html>

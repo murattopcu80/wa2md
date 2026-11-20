@@ -1,0 +1,18 @@
+exports/
+out/
+*.zip
+__pycache__/
+.venv/
+profile/
+*.tmp
+wa-bundle-*.json
+
+# aracin inceleme dosyasi klasoru (olasi gercek adlar icerir; varsayilan ~/.local/state/wa2md/inceleme/, eski surumlerde cikti yaninda _inceleme/)
+_inceleme/
+inceleme/
+# ham WhatsApp Web paketleri ve disa aktarimlar
+Sohbet-*/
+*.egg-info/
+.idea/
+.vscode/
+.DS_Store

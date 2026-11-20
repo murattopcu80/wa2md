@@ -1,0 +1,6 @@
+[14.11.2026 13:45:10] Mehmet: <ek: 00000012-PHOTO-2026-11-14-13-45-10.jpg>
+[14.11.2026 13:46:00] Mehmet: Selam
+ikinci satır
+üçüncü satır
+[14.11.2026 13:47:00] Orhan: <ek: 00000013-AUDIO-2026-11-14-13-47-00.opus>
+[14.11.2026 13:48:00] Orhan: görüntü dahil edilmedi
