@@ -141,7 +141,7 @@ ROWS = [
     ("N7", None, ["Kaplo-Tavro Nakliyat Ltd. Şti."], ["[firma] Nakliyat Ltd. Şti."]),
     ("N7", None, ["kaplo nakliyat ltd şti"], ["[firma] nakliyat ltd şti"]),
     ("N7", None, ["kaplo-tavro lojistik a.ş."], ["[firma] lojistik a.ş."]),
-    ("N7", None, ["www.kaplo-nakliyat.com.tr"], ["www.[firma].com.tr"]),           # alan adi kurali, tire firma degil
+    ("N7", None, ["www.ornekfirma-nakliyat.com.tr"], ["www.[firma].com.tr"]),           # alan adi kurali, tire firma degil
     # ---- ilke 4 dislamalari: durdurma listesi (4a), yer listesi (4b), hitap obegi (4c); her biri ayni bicimde gercek ad maskelenir
     ("D4a", None, [f"Şehirler Arası Nakliyat\n{PHONE}"], ["Şehirler Arası Nakliyat", "[telefon]"]),
     ("D4a", None, [f"Uygun Fiyatlı Taşımacılık\n{PHONE}"], ["Uygun Fiyatlı Taşımacılık", "[telefon]"]),
@@ -178,16 +178,16 @@ ROWS = [
     ("A", None, ["\u0130rtibat: Hasan Tavro 0\ufe0f\u20e35\ufe0f\u20e30\ufe0f\u20e30\ufe0f\u20e3 - 0\ufe0f\u20e30\ufe0f\u20e30\ufe0f\u20e3"
                  " - 0\ufe0f\u20e30\ufe0f\u20e3 - 0\ufe0f\u20e30\ufe0f\u20e3"], ["\u0130rtibat: {L1} [telefon]"]),   # tus kapakli
     # ---- F / L9: alan adi ve yol
-    ("F", None, ["kaplo.panel.nakliyat.com"], ["[firma].panel.nakliyat.com"]),
-    ("F", None, ["https://kaplonakliyat.com/a(b)", "(bkz. https://kaplonakliyat.com/ilan/5)"],
+    ("F", None, ["ornekfirma.panel.nakliyat.com"], ["[firma].panel.nakliyat.com"]),
+    ("F", None, ["https://ornekfirmanakliyat.com/a(b)", "(bkz. https://ornekfirmanakliyat.com/ilan/5)"],
      ["https://[firma].com/[yol]", "(bkz. https://[firma].com/[yol])"]),
     ("F", None, ["https://www.ornek-lojistikhaber.com/haber/123"], ["https://www.[firma].com/[yol]"]),   # haber sitesi: kabul (sinir)
-    ("F", None, ["www.nakliyat.com", "nakliye.app.example.com", "https://github.com/ornek/nakliye-app/issues/12"],
-     ["www.nakliyat.com", "nakliye.app.example.com", "https://github.com/ornek/nakliye-app/issues/12"]),
+    ("F", None, ["www.nakliyat.com", "nakliye.app.example.com", "https://github.com/example-org/nakliye-app/issues/12"],
+     ["www.nakliyat.com", "nakliye.app.example.com", "https://github.com/example-org/nakliye-app/issues/12"]),
     ("F", PEOPLE + ("ornekvadi kara hat lojistik sanayi tic ve ltd sti",),           # gercek veri bicimi
      ["https://www.ornekvadi.com/ornek-liste.php?id=70231&sayfa=2"],
      ["https://www.{P:ornekvadi kara hat lojistik sanayi tic ve ltd sti}.com/[yol]"]),
-    ("N1", HK, ["Kaplo - Tel: 0500 111 11 11"], ["{P:Hasan Kaplo} - Tel: [telefon]"]),
+    ("N1", HK, ["Kaplo - Tel: 0500 000 11 11"], ["{P:Hasan Kaplo} - Tel: [telefon]"]),
     # ---- E: onceki incelemelerin kapali bulgulari (kapali kalmali)
     ("E", None, ["İRTİBAT İÇİN: Dorin Kaplo"], ["İRTİBAT İÇİN: {L1}"]),
     ("E", None, ["Telefon Numarası", "Cep Telefonu Faturası", "İletişim Bilgileri", f"Tel No: {PHONE}"],
@@ -195,7 +195,7 @@ ROWS = [
     ("E", None, [f"Dorin Kaplo Tel: {PHONE}"], ["{L1} Tel: [telefon]"]),
     ("E", None, ["Kaplo Ltd.Şti.", "Kaplo Nak. Ltd. Şti.", "Kaplo Nakliyattan", "Kaplo Nakliyeci"],
      ["[firma] Ltd.Şti.", "[firma] Nak. Ltd. Şti.", "[firma] Nakliyattan", "[firma] Nakliyeci"]),
-    ("E", None, ["KAPLONAKLİYAT.COM", f"KAPLONAKLİYAT.COM {PHONE}"], ["[firma].COM", "[firma].COM [telefon]"]),
+    ("E", None, ["ORNEKFIRMANAKLİYAT.COM", f"ORNEKFIRMANAKLİYAT.COM {PHONE}"], ["[firma].COM", "[firma].COM [telefon]"]),
     ("E", None, ["０５００－０００－００－００"], ["[telefon]"]),
     ("E", None, ["web.whatsapp.com/channel/0029VaXyZ12AbCdEfGhIjK3l", "https://web.whatsapp.com/channel/0029VaXyZ12AbCdEfGhIjK3l"],
      ["web.whatsapp.com/channel/[kullanıcı]", "https://web.whatsapp.com/channel/[kullanıcı]"]),
@@ -211,7 +211,7 @@ ROWS = [
                   f"Velmor-Nakliyat {PHONE}", "Velmor\u2010Nakliyat ödeme", "Velmor\u2011Lojistik ödeme"],
      ["[firma]-Nakliyat ödeme yaptı", "[firma]-LOJİSTİK LTD. ŞTİ.", "[firma]-Lojistik A.Ş. teklif verdi", "[firma]-Nakliyat [telefon]",
       "[firma]\u2010Nakliyat ödeme", "[firma]\u2011Lojistik ödeme"]),
-    ("B2", None, ["www.kaplo-nakliyat.com.tr", "Konya-Nakliyat geldi", "Adana - Nakliyat", "Kaplo Tavro-Nakliyat geldi"],
+    ("B2", None, ["www.ornekfirma-nakliyat.com.tr", "Konya-Nakliyat geldi", "Adana - Nakliyat", "Kaplo Tavro-Nakliyat geldi"],
      ["www.[firma].com.tr", "Konya-Nakliyat geldi", "Adana - Nakliyat", "[firma]-Nakliyat geldi"]),
     # ---- S3: iletisim adinin yayilmasi: parcalarindan biri ad sozlugundeyse parcalari da (sozlukte olmayan parca yalniz buyuk
     # harfli bicimiyle); hicbiri degilse yalniz tam obek, buyuk harfli bicimiyle; birim adi kisi degil
@@ -269,7 +269,7 @@ ROWS = [
     ("S9", None, ["Festival Lojistiği", "Kermes Nakliyesi", "Mahalle Nakliyecisi", "transport.example.com"],
      ["Festival Lojistiği", "Kermes Nakliyesi", "Mahalle Nakliyecisi", "transport.example.com"]),
     ("S9", None, ["Kaplo Nakliyat'a yük verdim", "Tavro Nakliyat ödemeyi yapmadı, dikkat edin", "Kestel ve Oğulları Nakliyat",
-                  f"Tavro Lojistiği {PHONE}", "Kaplo Lojistiği Ltd. Şti.", "Kaplo Nakliyatı aradı", f"kaplotransport.com {PHONE}"],
+                  f"Tavro Lojistiği {PHONE}", "Kaplo Lojistiği Ltd. Şti.", "Kaplo Nakliyatı aradı", f"ornekfirmatransport.com {PHONE}"],
      ["[firma] Nakliyat'a yük verdim", "[firma] Nakliyat ödemeyi yapmadı, dikkat edin", "[firma] Nakliyat",
       "[firma] Lojistiği [telefon]", "[firma] Lojistiği Ltd. Şti.", "[firma] Nakliyatı aradı", "[firma].com [telefon]"]),
     # ---- S8: yukleme sozcugu yalniz kisinin ozne olamayacagi bicimde guzergah kaniti; 'indirme/yükleme yaptı' kisidir
@@ -293,7 +293,7 @@ ROWS = [
     ("Z2", None, [f"İrtibat: Dorin Zelvo {PHONE}", ("Brin Tamsel", "Zelvo geldi")], ["İrtibat: {L1} [telefon]", "Zelvo geldi"]),  # S3b
     ("Z2", None, [f"İrtibat: Dorin Zelvo {PHONE}", f"İrtibat: Tarvo Zelvo {PHONE}", ("Brin Tamsel", "Zelvo bey aradı")],
      ["İrtibat: {L1} [telefon]", "İrtibat: {L2} [telefon]", "Kişi ? bey aradı"]),     # iki adda ortak parca: notr etiket
-    ("Z2", None, ["Tel: Sıcak Çorba 0532 111 22 33", ("Brin Tamsel", "sıcak çorba içtik"), ("Brin Tamsel", "Sıcak hava var"),
+    ("Z2", None, ["Tel: Sıcak Çorba 0500 000 11 22", ("Brin Tamsel", "sıcak çorba içtik"), ("Brin Tamsel", "Sıcak hava var"),
                   ("Brin Tamsel", "çorba soğudu")], ["Tel: {L1} [telefon]", "sıcak çorba içtik", "Sıcak hava var", "çorba soğudu"]),
     ("Z2", None, ["Zelvo bey aradı"], ["Zelvo bey aradı"]),               # ogrenilmis ad yok: main gibi (satir basi supheli)
     ("Z2", None, ["dün Zelvo bey aradı"], ["dün {L1} bey aradı"]),        # main gibi (cumle ortasi hitap)

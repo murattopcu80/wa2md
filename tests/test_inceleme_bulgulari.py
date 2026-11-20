@@ -247,8 +247,8 @@ class F06Surnames(unittest.TestCase):
 
 class F07Mentions(unittest.TestCase):
     def test_mentions_of_non_participants(self):
-        out, _ = md(chat(["@Mehmet toplantı kaçta?", "@Xandor bak, Xandor geldi", "@905321112233 ara", "ali@ornek.com"]))
-        for bad in ("Mehmet", "Xandor", "5321112233", "ali@"):
+        out, _ = md(chat(["@Mehmet toplantı kaçta?", "@Xandor bak, Xandor geldi", "@905000001122 ara", "ali@ornek.test"]))
+        for bad in ("Mehmet", "Xandor", "5000001122", "ali@"):
             self.assertNotIn(bad, out)
         self.assertIn("[telefon] ara", out)
         self.assertIn("[e-posta]", out)
@@ -340,10 +340,10 @@ class F12SystemLineComma(unittest.TestCase):
 
 class F13SocialHandles(unittest.TestCase):
     def test_handles_and_wa_me(self):
-        out, _ = md(chat(["instagram.com/mehmetyilmaz ve https://www.linkedin.com/in/kenan-celik bak",
-                          "x.com/ali_veli/status/1 ve wa.me/905321112233 ve tiktok.com/@kanalim",
+        out, _ = md(chat(["instagram.com/handle_one ve https://www.linkedin.com/in/handle-two bak",
+                          "x.com/handle_three/status/1 ve wa.me/905000001122 ve tiktok.com/@handle_four",
                           "instagram.com/p/Cx12 gönderi"]))
-        for bad in ("mehmetyilmaz", "kenan-celik", "ali_veli", "905321112233", "kanalim"):
+        for bad in ("handle_one", "handle-two", "handle_three", "905000001122", "handle_four"):
             self.assertNotIn(bad, out)
         self.assertIn("instagram.com/[kullanıcı] ve https://www.linkedin.com/in/[kullanıcı]", out)
         self.assertIn("wa.me/[telefon]", out)

@@ -423,9 +423,9 @@ class S7BareSocialHandle(unittest.TestCase):
     def test_handles_masked_other_at_rules_kept(self):
         for fmt, mk in FORMATS.items():
             with self.subTest(fmt=fmt):
-                line = "@xandor.plimm ve @xandor_plimm takip, @905321112233 ara, @Qelvin bak, mail ali@ornek.com, @ahmet."
+                line = "@xandor.plimm ve @xandor_plimm takip, @905000001122 ara, @Qelvin bak, mail ali@ornek.test, @ahmet."
                 out, _ = md(mk(GROUP + [("Melis Tarnu", line)], "Örnek Satranç Kulübü"))
-                for bad in ("xandor", "plimm", "905321112233", "Qelvin", "ali@", "ahmet"):
+                for bad in ("xandor", "plimm", "905000001122", "Qelvin", "ali@", "ahmet"):
                     self.assertNotIn(bad, body(out).lower() if bad.islower() else body(out))
                 self.assertIn("[kullanıcı] ve [kullanıcı] takip, @[telefon] ara, Kişi", out)
                 self.assertIn("mail [e-posta]", out)
@@ -585,7 +585,7 @@ class ProbeCasesThirdReview(unittest.TestCase):
 
     def test_turkish_number_change_and_comma_left_people_masked(self):
         rows = [(None, "Zarvo Kentel, Melis Tarnu ve Jorvik Plimm adlı kişileri ekledi"),
-                (None, "Qelvin Yorst, +90 532 111 22 33 numarasına geçti"), (None, "Ostra Vell, left"),
+                (None, "Qelvin Yorst, +90 500 000 11 22 numarasına geçti"), (None, "Ostra Vell, left"),
                 ("Zarvo Kentel", "Qelvin, Ostra gelin. Yorst ve Vell de"), ("Melis Tarnu", "Ostra'ya söyle")]
         out, a = md(android_tr(rows))
         for bad in ("Qelvin", "Yorst", "Ostra", "Vell", "532"):

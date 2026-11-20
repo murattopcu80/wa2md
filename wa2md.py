@@ -593,7 +593,7 @@ _SEP = r"[ \-.\u00a0\u2010-\u2015\u2212\uff0d]"   # sabit kaliplarin ayraci: bos
 # matematiksel kalin/cift cizgili/...) zaten kapsar; sabit rakamlar (0, 5, 90, [2-5]) icin ayni rakamin tam genislikli,
 # matematiksel (5 stil) ve segmentli bicimleri de sinifa girer (_dl). Tus kapagi ('0' + FE0F + 20E3) rakam sayilir.
 # 6. tur: telefonun icinde rakamdan ya da ayractan once gelen sifir genislikli karakter ve yumusak tire (_ZWP) rakama ve
-# ayraca katilir ('0532\u200b111 22 33'); yalniz telefon kaliplarinda, metin ve ad eslesmesi degismez. Dizinin bittigini
+# ayraca katilir ('0500\u200b000 11 22'); yalniz telefon kaliplarinda, metin ve ad eslesmesi degismez. Dizinin bittigini
 # denetleyen ileri bakislar (_DG0, _GS0) main'deki gibi bu karakterleri saymaz.
 _ZWP = r"[\u00ad\u200b\u200c\u200d\u2060]*"
 _KEYCAP = r"(?:\ufe0f?\u20e3)?"
@@ -628,10 +628,10 @@ _DATE_AHEAD = rf"(?!{_DG0}{{1,2}}[./]{_DG0}{{1,2}}[./]{_DG0}{{2,4}}(?!{_DG0}))" 
 _TRUNK = rf"\(?(?:(?:(?:\+|{_dl(0)}{{2}}){_GS_T}?)?{_dl(9)}{_dl(0)}{_GS_T}?(?:{_dl(0)}{_GS_T}?)?|(?:{_dl(0)}{_GS_T}?){{1,2}})"   # +90 0090 90 0
 # Telefon: (1) onekli (0/90/+90) TR numarasi, gruplama ve ayractan bagimsiz, BUTUN rakam dizisi: cep 9-10 ulusal hane
 # (4-2-4 gibi bir hanesi eksik yazim dahil), sabit hat 10; dizi orada biter (ardinda ayrac + rakam yok). Ondeki
-# yinelenen cep oneki ('0532 0532 000 00 00') ve ayrik santral/ulke oneki ('0 - 532...', '00 532...') diziyle birlikte
+# yinelenen cep oneki ('0500 0500 000 00 00') ve ayrik santral/ulke oneki ('0 - 500...', '00 500...') diziyle birlikte
 # maskelenir. A3 kismi maskesinin nedeni: sabit 3-3-2-2 kalibi uzun dizinin yalniz SONUNU esliyordu, onek acikta
-# kaliyordu. (2) sabit kaliplar (dizi bitmese de: '0532 000 00 00 2 araç'). (3) +<8-15 hane> ve 00 + 1-3 haneli ulke
-# kodu + ayrac + 6-12 hane ('0049 151 ...', butun dizi; ayracsiz '0012345678' referans numarasi olabilir, degil). Onekli bicimler bir rakam + tireden sonra da baslar ('...00-0533 ...' ikinci
+# kaliyordu. (2) sabit kaliplar (dizi bitmese de: '0500 000 00 00 2 araç'). (3) +<8-15 hane> ve 00 + 1-3 haneli ulke
+# kodu + ayrac + 6-12 hane ('0049 151 ...', butun dizi; ayracsiz '0012345678' referans numarasi olabilir, degil). Onekli bicimler bir rakam + tireden sonra da baslar ('...00-0500 ...' ikinci
 # numara) ve sozcuge yapisik da ('Tel0500...', 'ara0500...'); ondalik ('1.5...') ve tarih ('05.11.2026') degil.
 # Oneksiz bicimler (5xx..., (212)..., +...) harften sonra baslamaz.
 # ilke 5: butun obekleri iki haneli dizi telefon degildir ('05-06-07-08-09', '00.30, 01.30'); virgul, alt cizgi, orta nokta
@@ -647,7 +647,7 @@ _PHONE = (rf"(?=[\d+(])(?<![\d+])(?!{_TWO_GROUPS})(?!{_THOUSANDS})(?:"
           rf"|(?=[(+]|{_dl(0, 9)})(?<!\d[.,]){_TRUNK}\(?{_dl(2, 3, 4, 5, 8)}{_DG}{{2}}\)?{_SEP}?{_DG}{{3}}{_SEP}?{_DG}{{2}}{_SEP}?{_DG}{{2}}"
           rf"|(?<!\d[.,]){_dl(0)}{{2}}{_GS_T}?(?!{_dl(0)}){_DG}{{1,3}}{_GS}{_DG}(?:{_GS}?{_DG}){{5,11}}(?!{_GS0}?{_DG0})"   # 00 49 ...
           rf"|(?:(?<!\w){_GLUED})(?<!\d[.,\-]){_dl(5)}{_DG}{{2}}{_SEP}?{_DG}{{3}}{_SEP}?{_DG}{{2}}{_SEP}?{_DG}{{2}}"   # oneksiz TR cep
-          rf"|(?<!\w)(?<!\d[.,\-])\({_dl(2, 3, 4, 5)}{_DG}{{2}}\){_SEP}?{_DG}{{3}}{_SEP}?{_DG}{{2}}{_SEP}?{_DG}{{2}}"  # (212) 555 12 34
+          rf"|(?<!\w)(?<!\d[.,\-])\({_dl(2, 3, 4, 5)}{_DG}{{2}}\){_SEP}?{_DG}{{3}}{_SEP}?{_DG}{{2}}{_SEP}?{_DG}{{2}}"  # (322) 000 00 01
           rf"|(?<!\w)(?<!\d[.,\-])\+{_DG}(?:[ \-.() ]{{0,2}}{_DG}){{7,14}}"                              # +<8-15 hane>
           rf")(?!{_DG0})(?![.,]\d)")
 _IBAN = r"(?<![\w])[Tt][Rr]\d{2}(?: ?\d){22}(?!\d)"
@@ -740,7 +740,7 @@ def _is_strong_sector(k):
     return bool(_SECTOR_STRONG_KEY.fullmatch(k))
 
 
-# F: ciplak isletme alan adi ('www.kaploNakliyat.com.tr', 'nakliyat.kaplo.com.tr', 'www.kaplo.nakliyat.com'). Dar kural:
+# F: ciplak isletme alan adi ('www.ornekfirmaNakliyat.com.tr', 'nakliyat.ornekfirma.com.tr', 'www.ornekfirma.nakliyat.com'). Dar kural:
 # yalniz ticari uzantilar (.com/.net/.biz/.info/.tr, .com.tr...; .org/.gov/.edu degil); yalniz kayitli ad ve hemen ustundeki
 # alt alan (www/m on ekleri sayilmaz) bakilir; bunlardan birinde genel olmayan sektor sozcugu varsa, bu iki etiketten AYIRT
 # EDICI olan(lar) [firma] olur. Sektor sozcugunu cikarinca yalniz ek kalan etiket ('nakliyat', 'transportation') genel
@@ -1049,7 +1049,7 @@ _GRP_ONLY = [re.compile(p, re.I) for p in (
     r"^(?P<s>.+?),? gruptan ayrıldı\.?$",
     r"^(?P<s>.+?),? (?:artık yönetici|(?P<o>.+?) adlı kişiyi yönetici yaptı)",
 )]
-# grupta, grup adiyla gelen ad bicimli olay satiri ('Jorvik Plimm left', '+90 532 ... katıldı'): yalniz donusturmede
+# grupta, grup adiyla gelen ad bicimli olay satiri ('Jorvik Plimm left', '+90 500 ... katıldı'): yalniz donusturmede
 _GRP_WEAK = re.compile(r"^(?P<s>.+?),? (?:left|joined|was added|was removed|ayrıldı|katıldı|eklendi|çıkarıldı)\.?$", re.I)
 
 
@@ -2648,7 +2648,7 @@ class Anonymizer:
             return m.group(0)
         labels = host.split(".")
         if len(labels) > 1 and m.group("wbt").lower() == ".tr" and labels[-1].lower() in _TR_SLD_NC:
-            return m.group(0)                           # 'lojistikbirligi.org.tr': ticari olmayan ikinci duzey
+            return m.group(0)                           # 'ornek-lojistikbirligi.org.tr': ticari olmayan ikinci duzey
         i = 0
         while i < len(labels) - 1 and _key(labels[i]) in _WEB_PRE:
             i += 1
@@ -2657,7 +2657,7 @@ class Anonymizer:
         if not any(w in k for k in keys.values() for w in _WEB_KEYS):
             return m.group(0)
         hit = [c for c in cand if _web_distinct(keys[c])]
-        if not hit:                     # sektor etiketi genel ('kaplo.panel.nakliyat.com'): daha alttaki ayirt edici etiket
+        if not hit:                     # sektor etiketi genel ('ornekfirma.panel.nakliyat.com'): daha alttaki ayirt edici etiket
             hit = [c for c in range(i, max(i, len(labels) - 2)) if _web_distinct(_key(labels[c]))]
         if hit and not _WEB_STRONG.search(_key(host)) and not self._ad_ctx():   # S9: zayif sozcuk ('transport') ilan imi
             hit = [c for c in hit if _WEB_SQ.search(_key(labels[c]))]          # olmadan yalniz kendi etiketini kurar

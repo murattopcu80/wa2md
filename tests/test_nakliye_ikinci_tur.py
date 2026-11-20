@@ -163,16 +163,16 @@ class L5_SignatureLine(unittest.TestCase):
 
 class L6_Domains(unittest.TestCase):
     def test_masked(self):
-        for line, exp in (("KAPLONAKLİYAT.COM", "[firma].COM"), ("kaplonakliyat.COM", "[firma].COM"),
-                          ("nakliyat.kaplo.com.tr", "nakliyat.[firma].com.tr"),
-                          ("www.kaplo.nakliyat.com", "www.[firma].nakliyat.com"),
-                          ("HTTPS://WWW.KAPLO-LOJISTIK.COM.TR", "HTTPS://WWW.[firma].COM.TR")):
+        for line, exp in (("ORNEKFIRMANAKLİYAT.COM", "[firma].COM"), ("ornekfirmanakliyat.COM", "[firma].COM"),
+                          ("nakliyat.ornekfirma.com.tr", "nakliyat.[firma].com.tr"),
+                          ("www.ornekfirma.nakliyat.com", "www.[firma].nakliyat.com"),
+                          ("HTTPS://WWW.ORNEKFIRMA-LOJISTIK.COM.TR", "HTTPS://WWW.[firma].COM.TR")):
             out, _ = one(line)
             self.assertEqual(out, exp, line)
 
     def test_generic_or_platform_kept(self):
         for line in ("transportation.com", "www.nakliyat.com", "🌐 www.ornekpazar.com", "ornekbulut.tr", "nakliye.app.example.com",
-                     "lojistikbirligi.org.tr", "LOJISTIKBIRLIGI.ORG.TR"):
+                     "ornek-lojistikbirligi.org.tr", "ORNEK-LOJISTIKBIRLIGI.ORG.TR"):
             out, _ = one(line)
             self.assertEqual(out, line)
 
@@ -222,13 +222,13 @@ class L9_UrlRest(unittest.TestCase):
         self.assertEqual(out, f"bakın: {p}.com.tr/[yol].")
 
     def test_firm_host(self):
-        out, _ = one("www.kaplonakliyat.com.tr/ilan?id=5#x bakın")
+        out, _ = one("www.ornekfirmanakliyat.com.tr/ilan?id=5#x bakın")
         self.assertEqual(out, "www.[firma].com.tr/[yol] bakın")
-        out, _ = one("www.kaplonakliyat.com/")
+        out, _ = one("www.ornekfirmanakliyat.com/")
         self.assertEqual(out, "www.[firma].com/")
 
     def test_other_links_kept(self):
-        for line in ("https://github.com/ornek/proje/issues/12", "instagram.com/p/xyz", "https://docs.python.org/3/library/re.html"):
+        for line in ("https://github.com/example-org/proje/issues/12", "instagram.com/p/xyz", "https://docs.python.org/3/library/re.html"):
             out, _ = one(line)
             self.assertEqual(out, line)
 
@@ -317,7 +317,7 @@ class Performance(unittest.TestCase):
 
     def test_long_lines_linear(self):
         out, a = run([("Ali Veli", "selam")], PEOPLE + ("Plimm",))
-        for line in ("nakliyat" * 25000 + " a.com", "lojistik-" * 22000 + " a.com", "Plimm " + "Abc " * 100000,
+        for line in ("nakliyat" * 25000 + " a.example.com", "lojistik-" * 22000 + " a.example.com", "Plimm " + "Abc " * 100000,
                      "Tel: " + "Abc " * 50000, "Kişi 1 ve " * 20000 + "Nakliyat", "Kişi 1.com/x " * 15000):
             t = time.time()
             a.text(line)
