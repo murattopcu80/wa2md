@@ -380,11 +380,19 @@ def use_pack(pack):
     """Select the language pack (code or LanguagePack) for the following runs: rebuilds every pack-derived pattern,
     reloads the dictionaries and clears the caches that depend on the pack."""
     global _P, _L
-    _P = wa2md_lang.load_pack(pack) if isinstance(pack, str) else pack
-    _L = _P.labels
+    new = wa2md_lang.load_pack(pack) if isinstance(pack, str) else pack
+    wa2md_lang.check_pack(new)
+    old = _P
+    _P, _L = new, new.labels
     _LISTS.clear()
-    for fn in _BUILDERS:
-        fn()
+    try:
+        for fn in _BUILDERS:
+            fn()
+    except Exception:                 # a pattern of the new pack does not compile: keep the previous pack
+        _P, _L = old, old.labels
+        for fn in _BUILDERS:
+            fn()
+        raise
     for f in (_key, _is_sector, _is_strong_sector, title_event_line, _loose, _ordinary):
         f.cache_clear()
     return _P
