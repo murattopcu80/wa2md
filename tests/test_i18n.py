@@ -403,7 +403,7 @@ class MessageTable(unittest.TestCase):
         self.assertEqual(sorted(set(wa2md.MSG) - used), [])
 
     def test_javascript_table_has_both_languages(self):
-        with open(os.path.join(ROOT, "wa_collect.js"), encoding="utf-8") as f:
+        with open(os.path.join(ROOT, "wa2md_assets", "wa_collect.js"), encoding="utf-8") as f:
             js = f.read()
         block = js[js.index("const MSG = {"):js.index("let LANG")]
         entries = re.findall(r"^\s+(\w+): \{ en: \"[^\"]+\", tr: \"[^\"]+\" \},$", block, re.M)

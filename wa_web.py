@@ -37,7 +37,7 @@ import unicodedata
 import wa2md
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-COLLECT_JS = os.path.join(HERE, "wa_collect.js")
+COLLECT_JS = os.path.join(HERE, "wa2md_assets", "wa_collect.js")
 
 SYSTEM_SKIP = re.compile(r"uçtan uca şifrel|end-to-end encrypt|Bu sohbetteki mesajlar", re.I)
 KEY_RE = re.compile(r"^[A-Za-z0-9-]{1,40}$")

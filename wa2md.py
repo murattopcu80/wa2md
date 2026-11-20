@@ -10,6 +10,8 @@ The Turkish option names (--medya-yok, --belgeleri-kopyala, --ek-adlar, --incele
 --no-anonim) are accepted aliases. Help and console messages are English; --lang tr or WA2MD_LANG=tr selects Turkish
 (one table: MSG). The labels inside the Markdown output are still Turkish.
 """
+__version__ = "0.1.0"   # the ONE place of the version number (pyproject.toml reads it)
+
 import argparse
 import bisect
 import datetime as dt
