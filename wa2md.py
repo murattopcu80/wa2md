@@ -1749,7 +1749,7 @@ class Anonymizer:
         # 7. tur eki: yalniz iletisim/imza kanitiyla by_key'e giren anahtarlar. Ad kurallari (main) bunlari bilinmeyen
         # sayar (_known): main'in kaniti (Sayın, hitap, @anma, sozluk) geldiginde ad ayni etiketle her bicimiyle yayilir
         # (_strengthen); kanit bilineni yalniz guclendirir, mesaj sirasi sonucu degistirmez
-        self._k71 = set()
+        self._contact_keys = set()
         self.ctx_labels = _LabelMap(self._label_counts)  # sozcuk anlami da olan ad -> etiket (yalniz baglamli geciste)
         # ilan imi: mesajda telefon ya da alan olarak iletisim sozcugu var mi (ilan cok satirli bir mesajdir). Ticari ad,
         # etiket katilimi ve soyad kurallari bunu sorar (_ad_ctx; yalniz soruldugunda hesaplanir, mesaj kimligiyle saklanir;
@@ -1894,10 +1894,10 @@ class Anonymizer:
         degilse). Daha once sozlukle bulunmus tek ad + soyad ayni kisidir (ayni etiket); katilimci adi + baska soyad
         baska kisidir (yeni etiket)."""
         k = _key(disp)
-        c71 = why in ("iletişim", "imza")      # nakliye iletisim kaniti; oteki nedenler ad kurallarinin (main) kanitidir
+        by_contact = why in ("iletişim", "imza")      # nakliye iletisim kaniti; oteki nedenler ad kurallarinin (main) kanitidir
         known = k in self.by_key
         k0 = _key(disp.split()[0]) if len(disp.split()) == 2 else None
-        if known and not c71 and k not in self._k71 and not (k0 and why in ("anma", "hitap") and k0 in self._k71):
+        if known and not by_contact and k not in self._contact_keys and not (k0 and why in ("anma", "hitap") and k0 in self._contact_keys):
             return self.by_key[k]              # (Sayın/@ kaniti ad parcasini da yayar: once baska kanitla ogrenilmis olsa da)
         parts = disp.split()
         g, f, a = name_lists()
@@ -1910,8 +1910,8 @@ class Anonymizer:
         cap = part_cap and (why == "imza" or not any(_key(p) in self._pkeys for p in parts))
         if known:                              # 7. tur eki: kanit bilineni yalniz guclendirir, sira sonucu degistirmez
             lab = self.by_key[k]
-            if (not c71 and k in self._k71) or (not cap and k in self._capk):   # main'in kaniti ya da yalniz buyuk harfli
-                self._strengthen(k, disp, c71)              # adda guclu iletisim: ayni etiketle her bicimiyle; parcalar asagida
+            if (not by_contact and k in self._contact_keys) or (not cap and k in self._capk):   # main'in kaniti ya da yalniz buyuk harfli
+                self._strengthen(k, disp, by_contact)              # adda guclu iletisim: ayni etiketle her bicimiyle; parcalar asagida
         else:
             first = (self.by_key.get(k0) or self.ctx_labels.get(k0)) if k0 and k0 not in self._partof else None
             if first and first not in self._people and first != self.code and first != "Kişi ?":
@@ -1923,8 +1923,8 @@ class Anonymizer:
             self.by_key[k] = lab
             if cap:
                 self._capk.add(k)
-            if c71:
-                self._k71.add(k)
+            if by_contact:
+                self._contact_keys.add(k)
             if part_cap:
                 # tek parca yayilmaz; ama hitaptan hemen once ya da 'Sayın'dan hemen sonra tam adin etiketini alir ('Soyad
                 # bey aradı', 'Sayın Soyad'; _scan). Iki farkli adda ortak parca: notr etiket
@@ -1938,11 +1938,11 @@ class Anonymizer:
             if k0 not in self.by_key:
                 self.found[parts[0]] = lab
                 self.by_key[k0] = lab
-                if c71:
-                    self._k71.add(k0)
+                if by_contact:
+                    self._contact_keys.add(k0)
                 if self._compiled:
                     self._lazy.add(k0)
-            elif not c71 and k0 in self._k71:
+            elif not by_contact and k0 in self._contact_keys:
                 self._strengthen(k0, parts[0])
         if why == "iletişim" and len(parts) > 1 and not part_cap:   # ilke 3, S3a: guclu kanitli adin parcalari da ayni etiketle
             for p in parts:
@@ -1952,7 +1952,7 @@ class Anonymizer:
                     (self.found_cap if c else self.found)[p] = lab
                     self.by_key[pk] = lab
                     self._partof[pk] = k
-                    self._k71.add(pk)
+                    self._contact_keys.add(pk)
                     if c:
                         self._capk.add(pk)
                     if self._compiled:
@@ -1964,12 +1964,12 @@ class Anonymizer:
     def _known(self, k):
         """Ad kurallari (main) icin bilinen anahtar: yalniz nakliye iletisim/imza kanitiyla ogrenilen anahtar sayilmaz (main o
         anahtari bilmez; Sayın, hitap, @anma ve sozluk kurallari onu yine ogrenir, _learn guclendirir)."""
-        return k in self.by_key and k not in self._k71
+        return k in self.by_key and k not in self._contact_keys
 
-    def _strengthen(self, k, disp, c71=False):
+    def _strengthen(self, k, disp, by_contact=False):
         """Bilinen anahtar daha guclu kanitla yeniden bulundu (main'in kaniti ya da yalniz buyuk harfli adda guclu iletisim
         kaniti): ayni etiketle her bicimiyle yayilir (yalniz buyuk harfli bicimi (S3/S7) kalkar). Kanit bilineni hic
-        daraltmaz. c71: kanit yine iletisim kanitidir (anahtar main icin bilinmeyen kalir). -> etiket."""
+        daraltmaz. by_contact: kanit yine iletisim kanitidir (anahtar main icin bilinmeyen kalir). -> etiket."""
         lab = self.by_key[k]
         for d in [d for d in self.found_cap if _key(d) == k]:
             v = self.found_cap[d]
@@ -1977,8 +1977,8 @@ class Anonymizer:
             self.found[d] = v
         self.found[disp] = lab
         self._capk.discard(k)
-        if not c71:
-            self._k71.discard(k)
+        if not by_contact:
+            self._contact_keys.discard(k)
         if self._compiled:
             self._lazy.add(k)
         return lab
@@ -2479,7 +2479,7 @@ class Anonymizer:
                     i = pair(i, st, nxt, nb, weak=sl == 2)
                     continue
                 if self._known(k):            # bilinen tam ad (zayif imza da) rx'te tek etiket; ardindaki sozcuk main'deki
-                    continue                  # gibi kendi kurallarindan gecer. Yalniz iletisimle bilinen ad (_k71) asagidaki
+                    continue                  # gibi kendi kurallarindan gecer. Yalniz iletisimle bilinen ad (_contact_keys) asagidaki
                                               # ad kurallarindan da gecer (main'in kaniti onu guclendirir)
             sl = k in g and cap and k not in _TAKVIM | _CAPWORD and nxt and surname_like(nb, nk, k, i)
             if sl and not pfull(i):
@@ -2617,8 +2617,8 @@ class Anonymizer:
                     m = cm
             rep, end = self._sub(m), m.end()
             gn = next(({"name": "nm", "nsfx": "nn"}[g] for g in names if m.group(g)), None)
-            # yalniz iletisim kanitiyla bilinen ad (_k71; main onu bilmez, icindeki adi main eslerdi): oteki eslesmeler rx.sub
-            p = m.start(gn) if gn and rep != m.group(0) and _key(" ".join(m.group(gn).split())) in self._k71 else end
+            # yalniz iletisim kanitiyla bilinen ad (_contact_keys; main onu bilmez, icindeki adi main eslerdi): oteki eslesmeler rx.sub
+            p = m.start(gn) if gn and rep != m.group(0) and _key(" ".join(m.group(gn).split())) in self._contact_keys else end
             while p < end:
                 ext = None
                 for w in _GAP_WS.finditer(s, p, end):

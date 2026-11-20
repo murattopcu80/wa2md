@@ -45,11 +45,11 @@
     image_thumb: ['[data-testid="image-thumb"]'], // [V] role=button; albumde birden fazla
     image_blob: ['img[src^="blob:"]'], // [V] yuklenmis tam boy gorsel
     image_blur: ['img[src^="data:"]'], // [V] bulanik 30px onizleme (kaydedilmez)
-    gif_thumb: ['[data-testid="image-thumb-gif"]'], // [U] (bu sohbette gif yok) role=button; ici yalniz bulanik arka plan, video goruntuleyicide
+    gif_thumb: ['[data-testid="image-thumb-gif"]'], // [U] (ornek sohbette gif gorulmedi) role=button; ici yalniz bulanik arka plan, video goruntuleyicide
     download_btn: ['[data-testid="media-state-download"]', '[data-icon="media-download"]'], // [V] media-state-download: henuz inmemis fotograf (ustunde '136 kB'); tiklayinca ~1 sn'de blob gelir ve kucuk resim ogesi yeniden olusur. media-download: [U]
     viewer: ['[data-testid="media-viewer-modal"]'], // [V]
     viewer_img: ['[data-testid="media-image"]'], // [V] goruntuleyicideki buyuk gorsel
-    viewer_video: ['[data-testid="media-gif"] video', "video"], // [U] gif/video (bu sohbette yok)
+    viewer_video: ['[data-testid="media-gif"] video', "video"], // [U] gif/video (ornek sohbette gorulmedi)
     video: ["video", '[data-icon="media-play"]', '[data-testid="video-content"]'], // [U]
     audio: ["audio", '[data-icon="audio-play"]', '[data-testid="audio-play"]', '[data-icon="ptt-status"]'], // [U]
     document: ['[data-testid="document-thumb"]'], // [V] (title=dosya adi + ayrintilar)

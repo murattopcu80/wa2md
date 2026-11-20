@@ -28,7 +28,7 @@ aydın asya barış sevim ağa oğul
 akıl akın alim arı aslı atıf ayda aziz coşkun dara dindar evin fahri fikri gaye gözde halis harika ilmi imdat ışın işin
 kadim kani karın kerim konuk lara mazlum medeni meltem muteber nazlı nezaket oral oruç özgün parla rahman sadık sarp sefa
 servet sıla sıra sırrı şükran tali tekin türk ufuk ulaş umur vakıf vasıf veli yamaç yankı yiğit zatı zorlu zümrüt efe
-# --- Ek liste, 2026-11-15 (issue #70 inceleme bulgusu 8). Uc kaynak; her satir bir kaynaktan, tr-adlar.txt ile kesisim:
+# --- Ek liste, 2026-11-15. Uc kaynak; her satir bir kaynaktan, tr-adlar.txt ile kesisim:
 # Kaynak 1: Wikidata sozcukbirimleri (lexeme), Turkce, ozel ad olmayanlar. Lisans CC0 1.0. Alinma 2026-11-15.
 #   Sorgu: SELECT DISTINCT ?v WHERE { ?l a ontolex:LexicalEntry; dct:language wd:Q256; wikibase:lemma ?lem;
 #          wikibase:lexicalCategory ?c . FILTER(?c != wd:Q147276) BIND(STR(?lem) AS ?v) }   (4191 lemma, 21 kesisim)
