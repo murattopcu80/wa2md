@@ -146,9 +146,9 @@ MSG = {
                        "tr": "   şüpheli kalan: {n} sözcük ({first} öncelikli), {passes} geçiş -> {path} (çıktının "
                              "dışında; olası gerçek adlar içerir, paylaşma, yalnız sen bak)"},
     "review_zero": {"en": "   suspect remaining: 0", "tr": "   şüpheli kalan: 0"},
-    "limit_note": {"en": "Mode: removal of direct identifiers. The result is NOT anonymous (for example under GDPR or "
-                         "the Turkish KVKK) while content that identifies people remains in the text or photos, or "
-                         "while the original chat exists: names that are not in a dictionary and nicknames, photo "
+    "limit_note": {"en": "Mode: removal of direct identifiers. In the legal sense (for example under the Turkish KVKK) "
+                         "the result is NOT anonymous while content that identifies people remains in the text or photos, "
+                         "or while the original chat exists: names that are not in a dictionary and nicknames, photo "
                          "content (faces, screenshots; use --no-media for output without photos), the content of "
                          "copied attachments, exact timestamps, places and writing style can still identify people.",
                    "tr": "Mod: doğrudan tanımlayıcıların kaldırılması. KVKK açısından sonuç, metinde/fotoğraflarda "
@@ -270,8 +270,8 @@ MSG = {
                              "inflected forms like \"Naime'ye\"), names found in the name dictionary, with an honorific, in a "
                              "contact field or next to a phone are masked in message text too; the chat name only in the "
                              "title, in system lines and in file names. The real name <-> label mapping is written nowhere "
-                             "(file, console). This mode is 'removal of direct identifiers'; under GDPR / the Turkish KVKK "
-                             "it does NOT count as anonymous while content that identifies people remains in the "
+                             "(file, console). This mode is 'removal of direct identifiers'; in the legal sense (for example under the "
+                             "Turkish KVKK) it does NOT count as anonymous while content that identifies people remains in the "
                              "text/photos or while the original chat exists: names of non-participants, photo content (faces, "
                              "screenshots, documents; use --no-media if you will share), exact timestamps, places and writing "
                              "style can still identify a person. The labels are Turkish in this version (see README, "
