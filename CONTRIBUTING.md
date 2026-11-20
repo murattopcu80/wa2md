@@ -23,7 +23,7 @@ Python 3.9 or later and the standard library are enough:
 python -m unittest discover -s tests -v
 ```
 
-The browser tests (`tests/test_browser_smoke.py`) are skipped unless the optional `browser` extra (Playwright) and a Chrome are installed; the rest of the suite does not need them. The suite must pass on Linux, Windows and macOS; the continuous integration runs it on all three.
+To work on a checkout with the commands on your PATH use `pip install -e .`. The browser tests (`tests/test_browser_smoke.py`) are skipped unless the optional `browser` extra (`pip install ".[browser]"`, Playwright) and a Chrome are installed; the rest of the suite does not need them. The suite must pass on Linux, Windows and macOS; the continuous integration runs it on all three.
 
 ## Reporting a missed or wrongly masked item
 

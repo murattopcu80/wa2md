@@ -37,6 +37,18 @@ python wa2md.py "C:\Users\user\Downloads\WhatsApp Chat with Ali Veli.zip" --out 
 - **Use it only on chats you are entitled to process.** Make sure that you and the other participants are fine with the conversion, and keep the originals, the raw `wa-bundle-*.json` files and the output as safe as the original chat.
 - **Report misses with invented examples only.** See [CONTRIBUTING.md](CONTRIBUTING.md); a way to leave personal data unmasked contrary to the documented behaviour is a security problem ([SECURITY.md](SECURITY.md)).
 
+## Install (optional)
+
+`python wa2md.py ...` works straight from a checkout. To get commands on your PATH instead, install from the checkout (Python 3.9 or later, no third-party dependency):
+
+```
+pip install .
+wa2md --help        # same as python wa2md.py
+wa2md-web --help    # same as python wa_web.py (WhatsApp Web helper)
+```
+
+The dictionaries (`adlar/`) and the collector (`wa2md_assets/wa_collect.js`) are installed with it and found at run time. The experimental direct Chrome connection (`wa2md-web list` / `export`) needs the optional extra: `pip install ".[browser]"` (Playwright). Nothing is published to PyPI.
+
 ## Language support
 
 The project is going global: **English is the primary language and Turkish is a supported language** (decision recorded in [issue #1](../../issues/1); the Turkish README is [README.tr.md](README.tr.md)). **Full English support is being implemented** as language packs ([issue #2](../../issues/2)); Turkish-only detection is not the intended end state. This section describes the state of this branch exactly, what is ready and what is not:
@@ -85,11 +97,11 @@ These were already English and did not change: `--out`, `--only`, `--from`, `--t
 
 > **Important note (WhatsApp Web path):** This path only reads your own chats, in a browser tab that you logged in to yourself, and sends no data anywhere. Even so, automated collection from WhatsApp Web can conflict with WhatsApp's terms of service. The recommended path is WhatsApp's official "Export chat" feature (section 2 below). Using the Web path is entirely at your own responsibility. Files that belong to this path: `wa_web.py`, `wa_collect.js`, `tests/test_wa_web.py`, `tests/test_browser_smoke.py` and `tests/fixtures/web/`.
 
-The collection logic (finding the chat through the search box, scrolling to older messages, message parsing, photo blobs) is in a single file: `wa_collect.js`. No external connection to Chrome is needed; the code runs in your open WhatsApp Web tab.
+The collection logic (finding the chat through the search box, scrolling to older messages, message parsing, photo blobs) is in a single file: `wa2md_assets/wa_collect.js`. No external connection to Chrome is needed; the code runs in your open WhatsApp Web tab.
 
 ### Setup (once)
 
-Python 3 is enough (no extra package for the console path). Only for the experimental CDP path and the browser tests: `python -m venv .venv` and `.venv\Scripts\pip install -r requirements.txt`.
+Python 3 is enough (no extra package for the console path). Only for the experimental CDP path and the browser tests: `python -m venv .venv` and `.venv\Scripts\pip install -r requirements.txt` (or `pip install ".[browser]"`).
 
 ### Steps
 

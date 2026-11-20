@@ -35,6 +35,18 @@ python wa2md.py "C:\Users\kullanici\Downloads\WhatsApp Chat with Ali Veli.zip" -
 - **Yalnız işleme hakkınız olan sohbetlerde kullanın.** Sizin ve diğer katılımcıların dönüştürmeye uygun olduğundan emin olun; özgün dosyaları, ham `wa-bundle-*.json` dosyalarını ve çıktıyı özgün sohbet kadar güvende tutun.
 - **Kaçanları yalnız uydurma örneklerle bildirin.** Bkz. [CONTRIBUTING.md](CONTRIBUTING.md); kişisel veriyi belgelenen davranışın aksine maskesiz bırakan bir durum güvenlik sorunudur ([SECURITY.md](SECURITY.md)).
 
+## Kurulum (isteğe bağlı)
+
+`python wa2md.py ...` doğrudan depo klasöründen çalışır. Komutların PATH'te olmasını istersen depo klasöründen kur (Python 3.9+, üçüncü taraf bağımlılık yok):
+
+```
+pip install .
+wa2md --help        # python wa2md.py ile aynı
+wa2md-web --help    # python wa_web.py ile aynı (WhatsApp Web yardımcısı)
+```
+
+Sözlükler (`adlar/`) ve toplayıcı (`wa2md_assets/wa_collect.js`) birlikte kurulur ve çalışma anında bulunur. Deneysel doğrudan Chrome bağlantısı (`wa2md-web list` / `export`) isteğe bağlı eklentiyi ister: `pip install ".[browser]"` (Playwright). PyPI'ye hiçbir şey yayımlanmaz.
+
 ## Dil desteği
 
 Proje uluslararası hale geliyor: **birincil dil İngilizce, Türkçe desteklenen dil** (README'nin İngilizce hali: [README.md](README.md)). Bugünkü durum (hazır olanla eksik olan açıkça ayrılmıştır; tam İngilizce destek geliştiriliyor, bkz. [Dil paketleri sorunu #2](../../issues/2)):
@@ -66,11 +78,11 @@ Zaten İngilizce olanlar değişmedi: `--out`, `--only`, `--from`, `--to`, `--na
 
 > **Önemli not (WhatsApp Web yolu):** Bu yol yalnız senin kendi sohbetlerini, kendi girişini yaptığın tarayıcı sekmesinde okur ve hiçbir yere veri göndermez. Yine de WhatsApp Web'den otomatik toplama WhatsApp'ın kullanım koşullarıyla çakışabilir. Önerilen yol WhatsApp'ın resmi "Sohbeti dışa aktar" yoludur (aşağıdaki 2. bölüm). Web yolunun kullanımı tamamen kendi sorumluluğundadır. Bu yola ait dosyalar: `wa_web.py`, `wa_collect.js`, `tests/test_wa_web.py`, `tests/test_browser_smoke.py` ve `tests/fixtures/web/`.
 
-Toplama mantığı (sohbeti arama kutusundan bulma, eski mesajlara kaydırma, mesaj ayrıştırma, fotoğraf blob'ları) tek dosyada: `wa_collect.js`. Chrome'a dışarıdan bağlanmak gerekmez; kod senin açık WhatsApp Web sekmende çalışır.
+Toplama mantığı (sohbeti arama kutusundan bulma, eski mesajlara kaydırma, mesaj ayrıştırma, fotoğraf blob'ları) tek dosyada: `wa2md_assets/wa_collect.js`. Chrome'a dışarıdan bağlanmak gerekmez; kod senin açık WhatsApp Web sekmende çalışır.
 
 ### Kurulum (bir kez)
 
-Python 3 yeterli (konsol yolu için ek paket gerekmez). Yalnız deneysel CDP yolu ve tarayıcı testleri için: `python -m venv .venv` ve `.venv\Scripts\pip install -r requirements.txt`.
+Python 3 yeterli (konsol yolu için ek paket gerekmez). Yalnız deneysel CDP yolu ve tarayıcı testleri için: `python -m venv .venv` ve `.venv\Scripts\pip install -r requirements.txt` (ya da `pip install ".[browser]"`).
 
 ### Adımlar
 
