@@ -27,6 +27,14 @@ python wa2md.py "C:\Users\kullanici\Downloads\WhatsApp Chat with Ali Veli.zip" -
 python wa2md.py "C:\Users\kullanici\Downloads\WhatsApp Chat with Ali Veli.zip" --out C:\Users\kullanici\wa-out --medya-yok
 ```
 
+## Sınırlar ve sorumlu kullanım
+
+- **Tespit elinden geleni yapar (best-effort).** Buradaki anonimleştirme sezgiseldir (sözlükler, kalıplar ve bağlam kuralları). Doğrudan tanımlayıcıları kaldırır; sohbeti hukuki anlamda anonim yapmaz ve hiçbir anonimleştirici her şeyi bulamaz. Sözlükte olmayan adlar, olağandışı yazımlar, lakaplar, yerler, unvanlar ve yalnız bir araya geldiklerinde kişiyi belli eden ayrıntılar kaçar; sıradan sözcükler de bazen yanlışlıkla maskelenir.
+- **Paylaşmadan önce çıktının TAMAMINI okuyun.** İnceleme dosyası metinde kalan şüpheli sözcükleri listeler; yardımcıdır, garanti değildir.
+- **Medya anonimleştirilmez.** Fotoğraf, video ve ses kayıtları olduğu gibi kopyalanır (yüzler, belgeler, ekran görüntüleri); paylaşacağınız her şey için `--no-media` kullanın.
+- **Yalnız işleme hakkınız olan sohbetlerde kullanın.** Sizin ve diğer katılımcıların dönüştürmeye uygun olduğundan emin olun; özgün dosyaları, ham `wa-bundle-*.json` dosyalarını ve çıktıyı özgün sohbet kadar güvende tutun.
+- **Kaçanları yalnız uydurma örneklerle bildirin.** Bkz. [CONTRIBUTING.md](CONTRIBUTING.md); kişisel veriyi belgelenen davranışın aksine maskesiz bırakan bir durum güvenlik sorunudur ([SECURITY.md](SECURITY.md)).
+
 ## Dil desteği
 
 Proje uluslararası hale geliyor: **birincil dil İngilizce, Türkçe desteklenen dil** (README'nin İngilizce hali: [README.md](README.md)). Bugünkü durum (hazır olanla eksik olan açıkça ayrılmıştır; tam İngilizce destek geliştiriliyor, bkz. [Dil paketleri sorunu #2](../../issues/2)):

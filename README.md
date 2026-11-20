@@ -29,6 +29,14 @@ The output is anonymized by default. You need Python 3.9 or later and nothing el
 python wa2md.py "C:\Users\user\Downloads\WhatsApp Chat with Ali Veli.zip" --out C:\Users\user\wa-out --no-media
 ```
 
+## Limitations and responsible use
+
+- **Detection is best-effort.** Anonymization here is heuristic (dictionaries, patterns and context rules). It removes direct identifiers; it does not make a chat anonymous in the legal sense, and no anonymizer finds everything. Names that are not in the dictionaries, unusual spellings, nicknames, places, job titles, and details that identify a person only in combination will be missed, and ordinary words are sometimes masked by mistake.
+- **Read the entire output before you share it.** The review file lists suspicious words that stayed in the text; it is a help, not a guarantee.
+- **Media is not anonymized.** Photos, videos and voice notes are copied as they are (faces, documents, screenshots); use `--no-media` for anything you share.
+- **Use it only on chats you are entitled to process.** Make sure that you and the other participants are fine with the conversion, and keep the originals, the raw `wa-bundle-*.json` files and the output as safe as the original chat.
+- **Report misses with invented examples only.** See [CONTRIBUTING.md](CONTRIBUTING.md); a way to leave personal data unmasked contrary to the documented behaviour is a security problem ([SECURITY.md](SECURITY.md)).
+
 ## Language support
 
 The project is going global: **English is the primary language and Turkish is a supported language** (decision recorded in [issue #1](../../issues/1); the Turkish README is [README.tr.md](README.tr.md)). **Full English support is being implemented** as language packs ([issue #2](../../issues/2)); Turkish-only detection is not the intended end state. This section describes the state of this branch exactly, what is ready and what is not:
