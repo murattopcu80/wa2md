@@ -251,6 +251,12 @@ MSG = {
                              "mesajlar eksik."},
     "web_stopped": {"en": "   Note: the collection was stopped early; older messages are not included.",
                     "tr": "   Not: toplama erken durduruldu; daha eski mesajlar dahil değil."},
+    "web_seal_no_key": {"en": "the key of these sealed bundles is not in the user state folder (bundles from another computer "
+                               "or user, or the key was already used and deleted).",
+                        "tr": "bu mühürlü paketlerin anahtarı kullanıcı durum klasöründe yok (başka bilgisayarın ya da "
+                              "kullanıcının paketleri, ya da anahtar kullanılıp silinmiş)."},
+    "web_seal_bad": {"en": "sealed bundle part {no} failed the integrity check (damaged file or wrong key).",
+                     "tr": "mühürlü paket parçası {no} bütünlük denetimini geçemedi (bozuk dosya ya da yanlış anahtar)."},
     "web_deleted": {"en": "   {n} converted bundle file(s) deleted (--keep-bundles keeps them).",
                     "tr": "   Dönüştürülen {n} paket dosyası silindi (--keep-bundles saklar)."},
     "web_delete_failed": {"en": "   {n} bundle file(s) could not be deleted; delete them by hand (they hold the unmasked chat).",

@@ -24,10 +24,13 @@ messages as "read" (the other side sees blue ticks). Message texts are untrusted
 import argparse
 import base64
 import datetime as dt
+import hashlib
+import hmac
 import json
 import mimetypes
 import os
 import re
+import secrets
 import shutil
 import subprocess
 import sys
@@ -265,6 +268,85 @@ def filter_messages(msgs, date_from=None, date_to=None, max_messages=None):
     return msgs
 
 
+# ------------------------------------------------------------------ SECTION: muhur (issue #21)
+# Toplayici satirlari ve sohbet adini sekmede, indirmeden once sifreler (wa_collect.js seal(); ayni belirtim):
+#   kEnc = HMAC(K, "wa2md-seal-1 enc"), kMac = HMAC(K, "wa2md-seal-1 mac"); blok i = HMAC(kEnc, nonce16 || be32(i));
+#   ct = utf8(JSON) XOR anahtar akisi; tag = HMAC(kMac, "wa2md-seal-1\0" || kid || "\0" || nonce || ct). HMAC-SHA256.
+# Standart kutuphanede AES yok: PRF (HMAC-SHA256) sayac kipi + sifrele-sonra-MAC. Anahtar (32 bayt) snippet'te uretilir ve
+# kullanici durum klasorunde (indirilenler ve cikti klasorunun disi) tutulur; import basariyla bitince silinir.
+SEAL_ALG = "wa2md-seal-1"
+KID_RE = re.compile(r"^[0-9a-f]{16}$")
+
+
+def _seal_subkeys(key):
+    return (hmac.digest(key, SEAL_ALG.encode() + b" enc", "sha256"), hmac.digest(key, SEAL_ALG.encode() + b" mac", "sha256"))
+
+
+def _xor_stream(k_enc, nonce, data):
+    n = len(data)
+    ks = b"".join(hmac.digest(k_enc, nonce + i.to_bytes(4, "big"), "sha256") for i in range((n + 31) // 32))[:n]
+    return (int.from_bytes(data, "big") ^ int.from_bytes(ks, "big")).to_bytes(n, "big") if n else b""
+
+
+def _seal_tag(k_mac, kid, nonce, ct):
+    return hmac.digest(k_mac, SEAL_ALG.encode() + b"\0" + kid.encode("ascii") + b"\0" + nonce + ct, "sha256")
+
+
+def seal(obj, key, kid, nonce=None):
+    """Python esi (testler ve bilinen cevap): JSON.stringify ile ayni bayt dizisi (ensure_ascii=False, ayiricisiz)."""
+    nonce = nonce or secrets.token_bytes(16)
+    k_enc, k_mac = _seal_subkeys(key)
+    ct = _xor_stream(k_enc, nonce, json.dumps(obj, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
+    b64 = lambda b: base64.b64encode(b).decode("ascii")
+    return {"alg": SEAL_ALG, "kid": kid, "nonce": b64(nonce), "ct": b64(ct), "tag": b64(_seal_tag(k_mac, kid, nonce, ct))}
+
+
+def unseal(sealed, key):
+    """Muhurlu yuk -> nesne. Butunluk denetimi (sabit zamanli) gecmezse ValueError."""
+    if not isinstance(sealed, dict) or sealed.get("alg") != SEAL_ALG or not KID_RE.match(str(sealed.get("kid", ""))):
+        raise ValueError("seal")
+    nonce, ct, tag = (base64.b64decode(sealed.get(k, ""), validate=True) for k in ("nonce", "ct", "tag"))
+    k_enc, k_mac = _seal_subkeys(key)
+    if len(nonce) != 16 or not hmac.compare_digest(tag, _seal_tag(k_mac, sealed["kid"], nonce, ct)):
+        raise ValueError("seal")
+    return json.loads(_xor_stream(k_enc, nonce, ct).decode("utf-8"))
+
+
+def _key_dir():
+    return os.path.join(wa2md.state_dir(), "keys")
+
+
+def new_seal(store=True):
+    """Kosu anahtari -> {"kid", "key"(hex)}. store: kullanici durum klasorune yaz (0600; konsol yolu). CDP yolunda
+    anahtar yalniz bellekte kalir (store=False)."""
+    kid, key = secrets.token_hex(8), secrets.token_bytes(32)
+    if store:
+        os.makedirs(_key_dir(), exist_ok=True)
+        fd = os.open(os.path.join(_key_dir(), kid + ".key"), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, "w", encoding="ascii") as f:
+            f.write(key.hex())
+    return {"kid": kid, "key": key.hex()}
+
+
+def load_key(kid):
+    """Durum klasorundeki anahtar | None."""
+    if not KID_RE.match(kid or ""):
+        return None
+    try:
+        with open(os.path.join(_key_dir(), kid + ".key"), encoding="ascii") as f:
+            return bytes.fromhex(f.read().strip())
+    except (OSError, ValueError):
+        return None
+
+
+def drop_key(kid):
+    if KID_RE.match(kid or ""):
+        try:
+            os.remove(os.path.join(_key_dir(), kid + ".key"))
+        except OSError:
+            pass
+
+
 # ------------------------------------------------------------------ SECTION: paket okuma + import
 def ext_for(mime, kind="image"):
     mime = (mime or "").split(";")[0].strip().lower()
@@ -305,12 +387,13 @@ def find_bundle_files(inputs):
     return sessions
 
 
-def load_session(parts, staging):
+def load_session(parts, staging, keys=None):
     """Bir oturumun parcalarini sirayla oku: medyayi staging'e yaz, satir parcasini don. Satir parcasi son parcadir
     (final); o yoksa en yeni ara kayittir (snapshot, issue #20: sekme kapanmis ya da toplama yarida kalmis).
     Gerekli parcalar: bicim 2'de satir parcasinin kendisi ve dayandigi medya parcalari (mediaParts; eski ara kayitlar
-    gerekmez), bicim 1'de 1..total. -> (satir_parcasi, {anahtar: (yol, uzanti)}, tamam_mi)"""
-    final, snap, files = None, None, {}
+    gerekmez), bicim 1'de 1..total. Muhurlu parca (issue #21) bellekte acilir: keys(kid) -> anahtar | None.
+    -> (satir_parcasi, {anahtar: (yol, uzanti)}, tamam_mi, muhur_kimligi | None)"""
+    final, snap, files, kid = None, None, {}, None
     for no in sorted(parts):
         with open(parts[no], encoding="utf-8") as f:
             part = json.load(f)
@@ -325,6 +408,16 @@ def load_session(parts, staging):
             with open(path, "wb") as out:
                 out.write(base64.b64decode(item.get("b64", "")))
             files[key] = (path, ext)
+        if part.get("sealed") is not None:
+            kid = str((part["sealed"] or {}).get("kid", "")) if isinstance(part["sealed"], dict) else ""
+            key = keys(kid) if keys else None
+            if key is None:
+                raise ValueError(wa2md.t("web_seal_no_key"))
+            try:
+                inner = unseal(part.pop("sealed"), key)
+            except (ValueError, TypeError, UnicodeDecodeError, json.JSONDecodeError):
+                raise ValueError(wa2md.t("web_seal_bad", no=no)) from None
+            part["chat"], part["rows"] = inner.get("chat"), inner.get("rows")
         if part.get("final"):
             final = part
         elif part.get("snapshot") and isinstance(part.get("rows"), list):
@@ -340,16 +433,21 @@ def load_session(parts, staging):
     missing = sorted(i for i in need if i not in parts)
     if missing:
         raise ValueError(wa2md.t("web_missing_parts", parts=", ".join(str(i) for i in missing)))
-    return head, files, final is not None
+    return head, files, final is not None, kid
 
 
 def import_bundles(inputs, out_dir, date_from=None, date_to=None, max_messages=None, anonim=False,
                    chat_start=1, no_media=False, ref_start=1, extra_names=None, review_dir=None, no_dict=False,
-                   keep_bundles=False):
+                   keep_bundles=False, seal_keys=None):
     """Paketleri Markdown'a cevir (wa2md.write_chat; wa2md ile ayni secenekler: ek adlar, inceleme klasoru, sozluksuz).
     Grup karari tarih/sayi suzgecinden ONCE tum paketten verilir (wa2md.is_group). Basariyla yazilan oturumun paket
-    dosyalari silinir (maskelenmemis sohbeti tasirlar; keep_bundles saklar; issue #20). -> (yazilan, atlanan)"""
+    dosyalari silinir (maskelenmemis sohbeti tasirlar; keep_bundles saklar; issue #20). Muhurlu paketin anahtari
+    seal_keys'te (CDP: yalniz bellekte) ya da kullanici durum klasorunde aranir; durum klasorundeki anahtar, onunla muhurlu
+    bu kosudaki her oturum basariyla yazilinca silinir (issue #21; atlanan oturum varsa anahtar kalir: onun paketleri hala
+    o anahtarla acilir). -> (yazilan, atlanan)"""
     sessions = find_bundle_files(inputs)
+    seal_keys = seal_keys or {}
+    used_kids = set()                 # basariyla yazilan muhurlu oturumlarin anahtar kimlikleri
     if not sessions:
         print(f"{wa2md.t('err')}: " + wa2md.t("web_no_bundles"), file=sys.stderr)
         return 0, 1
@@ -360,7 +458,7 @@ def import_bundles(inputs, out_dir, date_from=None, date_to=None, max_messages=N
         ref = wa2md.t("ref_input", n=ref_start + k)
         try:
             try:
-                final, files, complete = load_session(parts, staging)
+                final, files, complete, kid = load_session(parts, staging, lambda k: seal_keys.get(k) or load_key(k))
             except (ValueError, OSError, json.JSONDecodeError) as e:
                 msg = e if not red else (e if type(e) is ValueError else wa2md.safe_error(e))
                 print(f"{wa2md.t('err')} [{ref if red else sid}]: {msg}", file=sys.stderr)
@@ -393,6 +491,8 @@ def import_bundles(inputs, out_dir, date_from=None, date_to=None, max_messages=N
             elif final.get("stopped"):
                 print(wa2md.t("web_stopped"))
             done += 1
+            if kid:
+                used_kids.add(kid)
             if not keep_bundles:
                 _delete_bundles(parts.values())
         except Exception as e:  # noqa: BLE001 - anonimde iz/yol (ad icerir) yerine yalniz tur
@@ -402,6 +502,9 @@ def import_bundles(inputs, out_dir, date_from=None, date_to=None, max_messages=N
             failed += 1
         finally:
             shutil.rmtree(staging, ignore_errors=True)
+    if not failed and not keep_bundles:   # anahtar yalniz her oturum yazildiysa ve paketler silindiyse gider
+        for kid in used_kids - set(seal_keys):
+            drop_key(kid)
     print(wa2md.t("web_done", done=done, failed=failed))
     return done, failed
 
@@ -454,6 +557,7 @@ def cmd_snippet(args):
         print(f"{wa2md.t('err')}: " + wa2md.t("web_chats_empty"), file=sys.stderr)
         return 2
     opts = collector_opts(args, chats)
+    opts["seal"] = new_seal()   # issue #21: satirlar sekmede muhurlenir; anahtar kullanici durum klasorunde
     # ensure_ascii=True: Turkce karakterler \u kacisi olur; pano/konsol ASCII kalir
     js = "window.__WA_OPTS = " + json.dumps(opts, ensure_ascii=True) + ";\n" + read_collector()
     copied = copy_to_clipboard(js)
@@ -534,7 +638,7 @@ def list_chats(page):
     return page.evaluate("() => window.__waCollect.listChats()")
 
 
-def export_chat_cdp(page, name, args, staging):
+def export_chat_cdp(page, name, args, staging, seal_cfg=None):
     """Ayni wa_collect.js'i sayfada calistirir; paketleri staging'e yazar. -> sonuc dict"""
     os.makedirs(staging, exist_ok=True)
     hold = getattr(page, "_wa_hold", None)
@@ -551,6 +655,8 @@ def export_chat_cdp(page, name, args, staging):
     hold["dir"] = staging
     inject_collector(page)
     opts = collector_opts(args, [name])
+    if seal_cfg:
+        opts["seal"] = seal_cfg   # yalniz bellekte (CDP): staging'e de muhurlu parca yazilir
     return page.evaluate(
         "async (o) => { o.emit = (p, n) => window.waEmit(JSON.stringify(p), n);"
         " return await window.__waCollect.run(o); }", opts)
@@ -595,6 +701,9 @@ def cmd_export(args):
         if rc:
             return rc
 
+    seal_cfg = new_seal(store=False)
+    keys = {seal_cfg["kid"]: bytes.fromhex(seal_cfg["key"])}
+
     def go(page):
         done = failed = 0
         red = wa2md.redact_console(args)
@@ -602,7 +711,7 @@ def cmd_export(args):
             staging = tempfile.mkdtemp(prefix="wa_cdp_")
             try:
                 try:
-                    status = export_chat_cdp(page, name, args, staging)
+                    status = export_chat_cdp(page, name, args, staging, seal_cfg)
                 except NotReady:
                     raise
                 except Exception as e:  # noqa: BLE001
@@ -622,7 +731,7 @@ def cmd_export(args):
                 d, f = import_bundles([staging], args.out, args.date_from, args.date_to, args.max_messages,
                                       anonim=getattr(args, "anonim", True), chat_start=done + 1,
                                       no_media=bool(getattr(args, "no_media", False)),
-                                      ref_start=i, **anon_kwargs(args))
+                                      ref_start=i, seal_keys=keys, **anon_kwargs(args))
                 done += d
                 failed += f
             finally:

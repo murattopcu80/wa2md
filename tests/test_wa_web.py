@@ -220,6 +220,8 @@ class Snippet(unittest.TestCase):
         self.assertIn("__waCollect", out)  # toplayici dosyanin kendisi gomulu
         self.assertIn("allow pasting", err)
         self.assertEqual(opts["checkpointMin"], 10)   # issue #20: varsayilan ara kayit araligi
+        seal = opts["seal"]                             # issue #21: kosu anahtari durum klasorunde
+        self.assertEqual(wa_web.load_key(seal["kid"]), bytes.fromhex(seal["key"]))
 
     def test_checkpoint_minutes_option(self):
         rc, out, _ = self.run_snippet("--chats", "Naime", "--checkpoint-minutes", "0")
@@ -397,6 +399,78 @@ class Bundles(unittest.TestCase):
         self.assertEqual(res, (0, 2))
         self.assertTrue(os.path.exists(no_final) and os.path.exists(empty))
 
+    # ---- issue #21: sealed bundles (rows and chat title encrypted in the tab)
+    def sealed_part(self, no, rows, cfg, session="abc123", chat="Naime", **extra):
+        p = {"format": "wa-web-bundle", "version": 2, "session": session, "part": no, "final": True, "total": no,
+             "media": [], "mediaParts": [], "today": "2026-11-16", "opts": {},
+             "sealed": wa_web.seal({"chat": chat, "rows": rows}, bytes.fromhex(cfg["key"]), cfg["kid"])}
+        p.update(extra)
+        path = os.path.join(self.tmp, f"wa-bundle-sealed-{session}-{no:03d}.json")
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(p, f)
+        return path
+
+    def key_path(self, cfg):
+        return os.path.join(wa_web._key_dir(), cfg["kid"] + ".key")
+
+    def test_seal_round_trip_and_tamper_check(self):
+        key, kid = bytes(range(32)), "000000000000000a"
+        obj = {"chat": "Naime Çağ 🚚", "rows": [synth(1, text="Şifre: x")]}
+        box = wa_web.seal(obj, key, kid)
+        self.assertEqual(wa_web.unseal(box, key), obj)
+        bad = dict(box, ct=base64.b64encode(bytes([base64.b64decode(box["ct"])[0] ^ 1]) + base64.b64decode(box["ct"])[1:]).decode())
+        with self.assertRaises(ValueError):
+            wa_web.unseal(bad, key)
+        with self.assertRaises(ValueError):
+            wa_web.unseal(box, bytes(32))
+
+    def test_sealed_bundle_holds_no_text_imports_and_drops_its_key(self):
+        cfg = wa_web.new_seal()
+        self.assertTrue(os.path.isfile(self.key_path(cfg)))
+        if os.name == "posix":
+            self.assertEqual(os.stat(self.key_path(cfg)).st_mode & 0o777, 0o600)
+        p = self.sealed_part(1, [synth(1, stamp="[14:05, 14.11.2026] Naime: ", text="Gizli metin 12345")], cfg)
+        with open(p, encoding="utf-8") as f:
+            raw = f.read()
+        self.assertNotIn("Gizli", raw)
+        self.assertNotIn("Naime", raw)                       # sohbet adi ne baslikta ne dosya adinda
+        res, out, err = self.run_import(self.tmp)
+        self.assertEqual(res, (1, 0), err)
+        self.assertIn("Gizli metin 12345", self.md())
+        self.assertFalse(os.path.exists(p))
+        self.assertFalse(os.path.exists(self.key_path(cfg)))   # anahtar kullanildi: eski kopyalar artik acilmaz
+
+    def test_sealed_bundle_without_its_key_fails_and_keeps_files(self):
+        cfg = wa_web.new_seal(store=False)
+        p = self.sealed_part(1, [synth(1, stamp="[14:05, 14.11.2026] A: ", text="x")], cfg)
+        res, out, err = self.run_import(p)
+        self.assertEqual(res, (0, 1))
+        self.assertIn("anahtarı kullanıcı durum klasöründe yok", err)
+        self.assertTrue(os.path.exists(p))
+        res, out, err = self.run_import(p, seal_keys={cfg["kid"]: bytes.fromhex(cfg["key"])})   # CDP: bellekteki anahtar
+        self.assertEqual(res, (1, 0), err)
+
+    def test_key_stays_while_a_session_of_the_run_failed(self):
+        cfg = wa_web.new_seal()
+        self.sealed_part(1, [synth(1, stamp="[14:05, 14.11.2026] A: ", text="x")], cfg, session="aaa111")
+        self.sealed_part(2, [synth(1, stamp="[14:05, 14.11.2026] B: ", text="y")], cfg, session="bbb222", total=2,
+                         mediaParts=[1])                      # medya parcasi 1 eksik
+        res, out, err = self.run_import(self.tmp)
+        self.assertEqual(res, (1, 1))
+        self.assertTrue(os.path.exists(self.key_path(cfg)))
+
+    def test_damaged_sealed_part_is_reported(self):
+        cfg = wa_web.new_seal()
+        p = self.sealed_part(1, [synth(1, stamp="[14:05, 14.11.2026] A: ", text="x")], cfg)
+        with open(p, encoding="utf-8") as f:
+            part = json.load(f)
+        part["sealed"]["tag"] = base64.b64encode(bytes(32)).decode()
+        with open(p, "w", encoding="utf-8") as f:
+            json.dump(part, f)
+        res, out, err = self.run_import(p)
+        self.assertEqual(res, (0, 1))
+        self.assertIn("bütünlük denetimini geçemedi", err)
+
     def test_no_bundle_found(self):
         res, _, err = self.run_import(self.tmp)
         self.assertEqual(res, (0, 1))
@@ -554,6 +628,20 @@ class CollectorDom(unittest.TestCase):
             return b64 === btoa(bin);
         }""")
         self.assertTrue(out)
+
+    def test_js_seal_matches_the_python_reference(self):
+        # issue #21: bir belirtim, iki uygulama (sekme muhurler, Python acar): sabit anahtar ve nonce ile bayt bayt ayni
+        key, kid, nonce = bytes(range(32)), "00000000000000bb", bytes(range(16))
+        obj = {"chat": "Naime Çağ 🚚", "rows": [synth(i, text=f"Mesaj {i} şifre: Ab{i}") for i in range(900)]}  # >64 KB: 2048 blok sinirini gecer
+        # WebCrypto yalniz guvenli baglamda (web.whatsapp.com gibi https): sahte https sayfasi (ag yok)
+        self.page.route("https://wa2md.test/**", lambda r: r.fulfill(status=200, content_type="text/html", body="<body></body>"))
+        self.page.goto("https://wa2md.test/")
+        self.page.evaluate(wa_web.read_collector())
+        js = self.page.evaluate("async ([o, cfg, n]) => await __waCollect.seal(o, cfg, n)",
+                                [obj, {"kid": kid, "key": key.hex()}, list(nonce)])
+        self.assertGreater(len(base64.b64decode(js["ct"])), 2048 * 32)
+        self.assertEqual(js, wa_web.seal(obj, key, kid, nonce))
+        self.assertEqual(wa_web.unseal(js, key), obj)
 
     def test_merge_order_inserts_before_and_after_anchors(self):
         o = self.page.evaluate("""() => { const o = ['c', 'd'];

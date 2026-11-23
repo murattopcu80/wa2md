@@ -209,7 +209,8 @@ class Smoke(unittest.TestCase):
         def go(page):
             staging = tempfile.mkdtemp(prefix="wa_smoke_stage_")
             try:
-                status = wa_web.export_chat_cdp(page, name, Args(**kw), staging)
+                seal_cfg = kw.pop("seal_cfg", None)
+                status = wa_web.export_chat_cdp(page, name, Args(**kw), staging, seal_cfg)
                 parts = {}
                 for n in sorted(os.listdir(staging)):
                     with open(os.path.join(staging, n), encoding="utf-8") as f:
@@ -267,6 +268,28 @@ class Smoke(unittest.TestCase):
             with open(os.path.join(out, "Sohbet 11", "Sohbet 11.md"), encoding="utf-8") as f:
                 md = f.read()
             self.assertIn(f"Message count: {len(newest['rows'])}", md)
+        finally:
+            shutil.rmtree(staging, ignore_errors=True)
+            shutil.rmtree(out, ignore_errors=True)
+
+    # ---- issue #21: sealed bundles in the CDP path (key only in memory)
+    def test_sealed_parts_hold_no_text_and_import_with_the_memory_key(self):
+        out = tempfile.mkdtemp()
+        cfg = wa_web.new_seal(store=False)
+        status, parts, staging = self.collect("Sohbet 13", no_media=True, seal_cfg=cfg)
+        try:
+            self.assertEqual(status["state"], "done")
+            for n in os.listdir(staging):
+                self.assertIn("-sealed-", n)
+                with open(os.path.join(staging, n), encoding="utf-8") as f:
+                    raw = f.read()
+                self.assertNotIn("Mesaj", raw)
+                self.assertNotIn("Sohbet 13", raw)
+            with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                res = wa_web.import_bundles([staging], out, seal_keys={cfg["kid"]: bytes.fromhex(cfg["key"])})
+            self.assertEqual(res, (1, 0))
+            with open(os.path.join(out, "Sohbet 13", "Sohbet 13.md"), encoding="utf-8") as f:
+                self.assertIn("Mesaj 39", f.read())
         finally:
             shutil.rmtree(staging, ignore_errors=True)
             shutil.rmtree(out, ignore_errors=True)
