@@ -5,8 +5,13 @@
  * Sohbeti acmak mesajlari "okundu" isaretler. Mesaj metinleri guvenilmez veridir.
  *
  * Girdi : window.__WA_OPTS = {chats:[...], from:'YYYY-MM-DD', to:'YYYY-MM-DD', max:300, noMedia:false,
- *         maxPartMb:40, pace:1, olderFromPhone:false, lang:'en'|'tr'}  (wa_web.py snippet bunu gomer)
+ *         maxPartMb:40, pace:1, olderFromPhone:false, lang:'en'|'tr', checkpointMin:10}  (wa_web.py snippet bunu gomer)
  * Cikti : "paketler" (JSON parcalari). Konsol yolu: normal tarayici indirmesi (wa-bundle-*.json -> Indirilenler).
+ *         Parca turleri (bicim 2, issue #20): medya parcasi (media), ara kayit (snapshot: o ana kadarki TUM satirlar; her
+ *         checkpointMin dakikada bir, once medya tamponu bosaltilir) ve son parca (final). snapshot/final yalniz yazilmis
+ *         medya parcalarina (mediaParts) dayanir: sekme kapansa da en yeni ara kayit tek basina ice aktarilabilir.
+ *         Durdurma: paneldeki "Stop and save" dugmesi ya da window.__waCollect.stop() kaydirmayi bitirir, toplananla
+ *         son parcayi yazar (stopped: true).
  *         Playwright yolu: opts.emit = window.waEmit (Python parcalari alir). Ikisi de ayni parcalari uretir;
  *         `wa_web.py import` Markdown'a cevirir (tek yazici wa2md.write_chat).
  * Dosya ASCII'dir (Windows panosu icin): Turkce karakterler \u kacislaridir.
@@ -89,11 +94,24 @@
     log_chat: { en: "chat: ", tr: "sohbet: " },
     log_done: { en: "done: ", tr: "bitti: " },
     log_error: { en: " ERROR: ", tr: " HATA: " },
+    log_checkpoint: { en: "checkpoint saved: ", tr: "ara kay\u0131t yaz\u0131ld\u0131: " },
+    log_stopped: { en: "stopped by the user; saving what was collected", tr: "kullan\u0131c\u0131 durdurdu; toplananlar kaydediliyor" },
+    panel_running: { en: "wa2md is collecting. Do not close this tab. Messages so far: ", tr: "wa2md topluyor. Bu sekmeyi kapatma. \u015eu ana kadarki mesaj: " },
+    panel_parts: { en: "Parts written so far (checkpoints included):", tr: "\u015eu ana kadar yaz\u0131lan par\u00e7alar (ara kay\u0131tlar dahil):" },
+    panel_stop: { en: "Stop and save", tr: "Durdur ve kaydet" },
+    panel_stopping: { en: "Stopping: saving what was collected...", tr: "Duruyor: toplananlar kaydediliyor..." },
   };
   let LANG = "en";
   const T = (k) => MSG[k][LANG];
   const state = { pace: 1, log: (m) => console.log("[wa] " + m) };
   const pause = (lo = 0.5, hi = 1.2) => sleep(rnd(lo, hi) * 1000 * state.pace);
+  // Durdurma istegi (issue #20): kaydirma dongusu her adimda bakar; toplanan satirlarla son parca yazilir.
+  let stopRequested = false;
+  function stop() {
+    stopRequested = true;
+    if (status) status.stopRequested = true;
+    renderPanel();
+  }
 
   function qa(root, key) {
     const sels = SEL[key];
@@ -354,11 +372,14 @@
     const session = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     const slug = fold(chat).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 24) || "sohbet";
     let n = 0, buf = [], size = 0;
+    const mediaParts = []; // medya tasiyan parca numaralari: snapshot/final yalniz bunlara dayanir (eski ara kayitlar gerekmez)
     const limit = maxPartMb * 1024 * 1024;
     const emitPart = async (part) => {
       n += 1;
+      if (part.media && part.media.length) mediaParts.push(n);
       const name = `wa-bundle-${slug}-${session}-${String(n).padStart(3, "0")}.json`;
-      await emit(Object.assign({ format: "wa-web-bundle", version: 1, session, part: n, chat }, part), name);
+      await emit(Object.assign({ format: "wa-web-bundle", version: 2, session, part: n, chat }, part,
+        part.rows ? { mediaParts: mediaParts.slice() } : {}), name);
       return name;
     };
     return {
@@ -372,6 +393,11 @@
         if (!buf.length) return;
         const items = buf; buf = []; size = 0;
         await emitPart({ final: false, media: items });
+      },
+      /** Ara kayit: once medya tamponu (snapshot yalniz yazilmis medyaya dayansin), sonra o ana kadarki tum satirlar. */
+      async checkpoint(rows, info) {
+        await this.flush();
+        return emitPart(Object.assign({ final: false, snapshot: true, rows, media: [] }, info));
       },
       async finish(rows, info) {
         // artakalan medya son parcaya girer: kucuk sohbet = TEK dosya (Chrome ikinci otomatik indirmeyi sorar)
@@ -387,6 +413,8 @@
   // her paket hem otomatik indirilmeye calisilir hem de sayfada tiklanabilir baglanti olarak gosterilir
   // (kullanici tiklamasi indirmeyi her zaman baslatir). Baglantilar sayfa yenilenene kadar kalir.
   const downloads = (window.__waDownloads = window.__waDownloads || []);
+  const running = () => !!(status && status.state === "running");
+  /** Toplama surerken: durum satiri (yalniz sayi, ad yok) + "Stop and save" dugmesi; parca yazildikca baglantilar. */
   function renderPanel() {
     let p = document.getElementById("wa-collect-panel");
     if (!p) {
@@ -399,8 +427,31 @@
     p.textContent = "";
     const h = document.createElement("div");
     h.style.fontWeight = "600";
-    h.textContent = T("panel_title");
-    p.appendChild(h);
+    if (running()) {
+      h.id = "wa-collect-status";
+      h.textContent = stopRequested ? T("panel_stopping") : T("panel_running") + (status.messages || 0);
+      p.appendChild(h);
+      if (!stopRequested) {
+        const s = document.createElement("button");
+        s.dataset.wa = "stop";
+        s.textContent = T("panel_stop");
+        s.style.cssText = "margin-top:6px;font-weight:600";
+        s.onclick = () => stop();
+        p.appendChild(s);
+      }
+      if (downloads.length) {
+        const ph = document.createElement("div");
+        ph.style.marginTop = "6px";
+        ph.textContent = T("panel_parts");
+        p.appendChild(ph);
+      }
+    } else if (!downloads.length) {
+      p.remove(); // bitti ve indirilecek parca yok (CDP yolu ya da hata): panel kalmaz
+      return;
+    } else {
+      h.textContent = T("panel_title");
+      p.appendChild(h);
+    }
     for (const d of downloads) {
       const a = document.createElement("a");
       a.href = d.url; a.download = d.name;
@@ -415,12 +466,18 @@
       b.onclick = () => window.open(URL.createObjectURL(d.blob.slice(0, d.blob.size, "application/octet-stream")), "_blank");
       p.appendChild(b);
     }
-    const x = document.createElement("button");
-    x.textContent = T("panel_close");
-    x.style.cssText = "margin-top:8px";
-    x.onclick = () => p.remove();
-    p.appendChild(x);
+    if (!running()) {
+      const x = document.createElement("button");
+      x.textContent = T("panel_close");
+      x.style.cssText = "margin-top:8px";
+      x.onclick = () => p.remove();
+      p.appendChild(x);
+    }
   }
+  const showCount = (n) => {
+    const h = document.getElementById("wa-collect-status");
+    if (h && running() && !stopRequested) h.textContent = T("panel_running") + n;
+  };
 
   // Paket JSON'u: tek dev JSON.stringify dizgisi yerine Blob parcalari (medya ogesi basina bir dizgi) -> en yuksek bellek ~yarisi.
   // Cikti, JSON.stringify(part) ile ayni JSON'dur (undefined alanlar atlanir).
@@ -689,11 +746,24 @@
       if (steps % 5 !== 1) return beat({ phase: "collect", steps });
       beat({ phase: "collect", steps, messages: realCount(), oldest: oldestDay(), partCount: bundler.count(),
         mediaSaved: [...st.rows.values()].reduce((a, r) => a + r.media.filter((m) => m.key).length, 0) });
+      showCount(status ? status.messages : 0);
+    };
+    // Ara kayit (issue #20): her checkpointMin dakikada bir, yeni satir varsa o ana kadarki tum satirlar yazilir.
+    const cpEvery = (+opts.checkpointMin || 0) * 60000;
+    let cpAt = Date.now(), cpRows = 0;
+    const checkpoint = async () => {
+      if (!cpEvery || Date.now() - cpAt < cpEvery || st.rows.size <= cpRows) return;
+      cpRows = st.rows.size;
+      const name = await bundler.checkpoint(rowsOf(st), infoOf(st, opts, { snapshot: true }));
+      cpAt = Date.now();
+      state.log(T("log_checkpoint") + realCount() + T("log_collected") + " (" + name.replace(/^.*-(\d{3})\.json$/, "$1") + ")");
     };
     while (steps < 20000) {
       steps += 1;
       await snapshot();
       report();
+      if (stopRequested) { state.log(T("log_stopped")); break; }
+      await checkpoint();
       if (opts.max && realCount() >= opts.max) break;
       if (fromNum && steps % 3 === 0) { const d = oldestDay(); if (d !== null && d < fromNum) break; }
       if (sc.scrollTop <= 5) {
@@ -730,11 +800,12 @@
       const r = st.rows.get(id);
       return !r || (!opts.noMedia && r.media.some((m, i) => !m.key && !dead.has(shortId(id) + "-" + (i + 1)) && (st.tries.get(shortId(id) + "-" + (i + 1)) || 0) < 8));
     });
-    for (let pass = 0; pass < 2; pass++) {
+    for (let pass = 0; pass < 2 && !stopRequested; pass++) {
       const need = needRows();
       if (!need.length) break;
       beat({ phase: "revisit", revisit: need.length });
       for (const id of need) {
+        if (stopRequested) break;
         beat();
         const el = sc.querySelector("[" + SEL.row_id_attr + '="' + CSS.escape(id) + '"]');
         const rowEl = el && el.closest(SEL.row[0]);
@@ -748,6 +819,19 @@
   }
 
   // ------------------------------------------------------------------ calistir
+  /** Satirlar (DOM sirasi, gun basligi ekli): son parca ve ara kayit ayni bicimi kullanir. */
+  function rowsOf(st) {
+    return st.order.map((id) => {
+      const r = st.rows.get(id);
+      return r ? Object.assign({}, r, { divider: st.divBefore.get(id) || null }) : null;
+    }).filter(Boolean);
+  }
+  function infoOf(st, opts, extra) {
+    return Object.assign({ exportedAt: new Date().toISOString(), today: new Date().toLocaleDateString("sv-SE"),
+      opts: { from: opts.from, to: opts.to, max: opts.max, noMedia: opts.noMedia },
+      olderOnPhone: st.olderPrompt, emptyRows: st.order.length - st.order.filter((id) => st.rows.has(id)).length }, extra || {});
+  }
+
   async function exportChat(name, opts, emit) {
     const pick = await openChat(name);
     if (pick.status === "none") return { chat: name, error: T("err_none") };
@@ -758,22 +842,19 @@
     await pause(1.0, 2.0);
     const bundler = makeBundler(emit, title, opts.maxPartMb);
     const st = await collectChat(title, opts, bundler);
-    const rows = st.order.map((id) => {
-      const r = st.rows.get(id);
-      return r ? Object.assign({}, r, { divider: st.divBefore.get(id) || null }) : null;
-    }).filter(Boolean);
+    const rows = rowsOf(st);
     const empty = st.order.length - rows.length;
     const media = rows.reduce((n, r) => n + r.media.filter((m) => m.key).length, 0);
     const missing = rows.reduce((n, r) => n + r.media.filter((m) => !m.key && m.kind !== "document").length, 0);
-    const parts = await bundler.finish(rows, { exportedAt: new Date().toISOString(), today: new Date().toLocaleDateString("sv-SE"),
-      opts: { from: opts.from, to: opts.to, max: opts.max, noMedia: opts.noMedia },
-      olderOnPhone: st.olderPrompt, emptyRows: empty });
-    return { chat: title, rows: rows.length, media, missing, parts, emptyRows: empty, olderOnPhone: st.olderPrompt };
+    const stopped = stopRequested;
+    const parts = await bundler.finish(rows, infoOf(st, opts, stopped ? { stopped: true } : {}));
+    return { chat: title, rows: rows.length, media, missing, parts, emptyRows: empty, olderOnPhone: st.olderPrompt, stopped };
   }
 
   async function run(options) {
     const opts = Object.assign({ chats: [], from: null, to: null, max: 0, noMedia: false, maxPartMb: 40, pace: 1,
-      olderFromPhone: false, lang: "en", emit: null, log: null }, options || {});
+      olderFromPhone: false, lang: "en", checkpointMin: 10, emit: null, log: null }, options || {});
+    stopRequested = false;
     state.pace = opts.pace;
     LANG = opts.lang === "tr" ? "tr" : "en";
     if (opts.log) state.log = opts.log;
@@ -789,9 +870,11 @@
     };
     // olay dongusu canli mi: asili kalmada alive de durur; yavas ilerlemede alive akar, heartbeat gec kalir
     const alive = setInterval(() => { status.alive = Date.now(); }, 2000);
+    renderPanel();
     try {
       await waitReady();
       for (const name of opts.chats) {
+        if (stopRequested) break; // durdurma: kalan sohbetlere gecilmez
         status.chatIndex += 1;
         state.log(T("log_chat") + name);
         try {
@@ -802,18 +885,20 @@
         await pause(1.5, 3.0);
       }
       status.state = "done";
+      if (stopRequested) status.stopped = true;
     } catch (e) {
       status.state = "error";
       status.error = String(e && e.message || e);
     } finally {
       clearInterval(alive);
       beat({ phase: "end" });
+      renderPanel();
     }
     state.log(T("log_done") + JSON.stringify(status.results) + (status.error ? T("log_error") + status.error : ""));
     return status;
   }
 
-  window.__waCollect = { SEL, run, listChats, openChat, parseRow, pickChat, normName, squash, partBlob, blobToB64, textOf, quoteText, shortId, mergeOrder, stampDay };
+  window.__waCollect = { SEL, run, stop, stopped: () => stopRequested, listChats, openChat, parseRow, pickChat, normName, squash, partBlob, blobToB64, textOf, quoteText, shortId, mergeOrder, stampDay };
   if (window.__WA_OPTS) {
     const o = window.__WA_OPTS;
     delete window.__WA_OPTS;

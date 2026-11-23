@@ -52,7 +52,8 @@ try:
     from playwright.sync_api import sync_playwright
 except ImportError:  # pragma: no cover
     sync_playwright = None
-CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
+# WA2MD_TEST_CHROME: path of a Chrome / Chromium for the browser tests (default: the usual Windows install)
+CHROME = os.environ.get("WA2MD_TEST_CHROME") or r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 TODAY = dt.date(2026, 11, 16)  # Pazartesi
 
 
@@ -218,6 +219,13 @@ class Snippet(unittest.TestCase):
                          ("2026-11-01", None, 50, True, False))
         self.assertIn("__waCollect", out)  # toplayici dosyanin kendisi gomulu
         self.assertIn("allow pasting", err)
+        self.assertEqual(opts["checkpointMin"], 10)   # issue #20: varsayilan ara kayit araligi
+
+    def test_checkpoint_minutes_option(self):
+        rc, out, _ = self.run_snippet("--chats", "Naime", "--checkpoint-minutes", "0")
+        self.assertEqual(rc, 0)
+        opts = json.loads(out.split(";\n", 1)[0][len("window.__WA_OPTS = "):])
+        self.assertEqual(opts["checkpointMin"], 0)
 
     def test_empty_chats_rejected(self):
         rc, _, err = self.run_snippet("--chats", " , ")
@@ -235,11 +243,14 @@ class Bundles(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
-    def part(self, no, final=False, rows=None, media=None, total=None, session="abc123", chat="Naime"):
+    def part(self, no, final=False, rows=None, media=None, total=None, session="abc123", chat="Naime", **extra):
         p = {"format": "wa-web-bundle", "version": 1, "session": session, "part": no, "chat": chat, "final": final,
              "media": media or []}
         if final:
             p.update({"total": total or no, "rows": rows or [], "today": "2026-11-16", "opts": {}})
+        elif rows is not None:   # ara kayit (snapshot)
+            p["rows"] = rows
+        p.update(extra)
         path = os.path.join(self.tmp, f"wa-bundle-naime-{session}-{no:03d}.json")
         with open(path, "w", encoding="utf-8") as f:
             json.dump(p, f)
@@ -323,6 +334,91 @@ class Bundles(unittest.TestCase):
         self.assertNotIn("eski", md)
         self.assertIn("yeni", md)
 
+    # ---- issue #20: checkpoints, stop, deleting converted bundles
+    def snap(self, no, rows, media_parts, **extra):
+        """Ara kayit parcasi (bicim 2): o ana kadarki tum satirlar; yalniz yazilmis medya parcalarina dayanir."""
+        return self.part(no, rows=rows, version=2, snapshot=True, mediaParts=media_parts, today="2026-11-16", opts={},
+                         **extra)
+
+    def test_unfinished_collection_imports_the_newest_checkpoint(self):
+        r1 = synth(1, stamp="[14:05, 14.11.2026] Naime: ", text="Bak", media=[{"kind": "image", "key": "AAAA0001-1", "label": ""}])
+        r2 = synth(2, stamp="[14:06, 14.11.2026] Naime: ", text="Ikinci ara kayitta")
+        self.part(1, media=[self.img("AAAA0001-1")], version=2)
+        self.snap(2, [r1], [1])
+        self.snap(3, [r1, r2], [1])                      # son parca yok: sekme kapandi
+        res, out, err = self.run_import(self.tmp)
+        self.assertEqual(res, (1, 0), err)
+        self.assertIn("2 mesaj, 1 medya kopyalandı, 0 medya eksik", out)
+        self.assertIn("en yeni ara kayıt (parça 3) kullanıldı", out)
+        self.assertIn("Ikinci ara kayitta", self.md())
+
+    def test_final_part_needs_only_its_media_parts_not_older_checkpoints(self):
+        r1 = synth(1, stamp="[14:05, 14.11.2026] Naime: ", text="Bak", media=[{"kind": "image", "key": "AAAA0001-1", "label": ""}])
+        a = self.part(1, media=[self.img("AAAA0001-1")], version=2)
+        b = self.part(4, final=True, total=4, rows=[r1], version=2, mediaParts=[1])   # 2 ve 3: indirilmemis eski ara kayitlar
+        res, out, err = self.run_import(a, b)
+        self.assertEqual(res, (1, 0), err)
+        self.assertNotIn("ara kayıt", out)
+
+    def test_checkpoint_without_its_media_part_is_reported(self):
+        self.snap(2, [synth(1, stamp="[14:05, 14.11.2026] A: ", text="x")], [1])
+        res, out, err = self.run_import(self.tmp)
+        self.assertEqual(res, (0, 1))
+        self.assertIn("Eksik paket parçası: 1", err)
+
+    def test_stopped_collection_is_noted(self):
+        p = self.part(1, final=True, rows=[synth(1, stamp="[14:05, 14.11.2026] A: ", text="x")], version=2, mediaParts=[],
+                      stopped=True)
+        res, out, err = self.run_import(p)
+        self.assertEqual(res, (1, 0), err)
+        self.assertIn("toplama erken durduruldu", out)
+
+    def test_converted_bundles_are_deleted_unless_kept(self):
+        rows = [synth(1, stamp="[14:05, 14.11.2026] A: ", text="x")]
+        a = self.part(1, media=[self.img("K1")])
+        b = self.part(2, final=True, total=2, rows=rows)
+        res, out, err = self.run_import(self.tmp)
+        self.assertEqual(res, (1, 0), err)
+        self.assertFalse(os.path.exists(a) or os.path.exists(b))
+        self.assertIn("Dönüştürülen 2 paket dosyası silindi", out)
+        self.assertNotIn("naime", out.lower().split("silindi")[1])   # konsola dosya adi (sohbet adi) yazilmaz
+        a = self.part(1, media=[self.img("K1")])
+        b = self.part(2, final=True, total=2, rows=rows)
+        shutil.rmtree(self.out)
+        res, out, err = self.run_import(self.tmp, keep_bundles=True)
+        self.assertEqual(res, (1, 0), err)
+        self.assertTrue(os.path.exists(a) and os.path.exists(b))
+        self.assertNotIn("silindi", out)
+
+    def test_incomplete_session_keeps_its_parts_until_the_final_part_arrives(self):
+        """Issue #20 review: only a checkpoint reached the folder (Chrome blocked the second download): converting it
+        must not delete the parts; the final part downloaded later then imports and gives the complete chat."""
+        r1 = synth(1, stamp="[14:05, 14.11.2026] Naime: ", text="Bak", media=[{"kind": "image", "key": "AAAA0001-1", "label": ""}])
+        r2 = synth(2, stamp="[14:06, 14.11.2026] Naime: ", text="Ikinci")
+        r3 = synth(3, stamp="[14:07, 14.11.2026] Naime: ", text="Ucuncu satir")
+        a = self.part(1, media=[self.img("AAAA0001-1")], version=2)
+        b = self.snap(2, [r1, r2], [1])
+        res, out, err = self.run_import(self.tmp)
+        self.assertEqual(res, (1, 0), err)
+        self.assertTrue(os.path.exists(a) and os.path.exists(b))          # parts stay: the session is not finished
+        self.assertNotIn("silindi", out)
+        self.assertNotIn("Ucuncu satir", self.md())
+        c = self.part(3, final=True, total=3, rows=[r1, r2, r3], version=2, mediaParts=[1])
+        shutil.rmtree(self.out)
+        res, out, err = self.run_import(self.tmp)
+        self.assertEqual(res, (1, 0), err)
+        self.assertNotIn("Eksik paket", err)
+        self.assertIn("Ucuncu satir", self.md())
+        self.assertEqual(len(os.listdir(os.path.join(self.out, "Naime", "media"))), 1)
+        self.assertFalse(any(os.path.exists(p) for p in (a, b, c)))        # now complete: all three deleted
+
+    def test_failed_sessions_keep_their_bundles(self):
+        no_final = self.part(1, media=[self.img("K1")], session="aaa111")
+        empty = self.part(1, final=True, rows=[synth(1, stamp="[14:05, 13.11.2026] A: ", text="eski")], session="bbb222")
+        res, out, err = self.run_import(self.tmp, date_from=dt.date(2026, 11, 14))
+        self.assertEqual(res, (0, 2))
+        self.assertTrue(os.path.exists(no_final) and os.path.exists(empty))
+
     def test_no_bundle_found(self):
         res, _, err = self.run_import(self.tmp)
         self.assertEqual(res, (0, 1))
@@ -338,6 +434,92 @@ class Bundles(unittest.TestCase):
         md = self.md()
         self.assertIn("_(dosya eksik: 20261114-1405-", md)
         self.assertIn("_belge indirilemedi: rapor.pdf_", md)
+
+
+class CdpFailure(unittest.TestCase):
+    """Issue #20 review: a CDP collection that fails (tab closed, collector error) keeps what was collected."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.out = os.path.join(self.tmp, "out")
+        self.args = type("A", (), {"chats": "Naime", "out": self.out, "anonim": False, "date_from": None, "date_to": None,
+                                   "max_messages": None, "no_media": False})()
+        self.orig = (wa_web.run_with_page, wa_web.export_chat_cdp)
+        wa_web.run_with_page = lambda args, fn: fn(object())
+
+    def tearDown(self):
+        wa_web.run_with_page, wa_web.export_chat_cdp = self.orig
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def parts(self, staging, snapshot=True):
+        rows = [synth(1, stamp="[14:05, 14.11.2026] Naime: ", text="Ilk satir"), synth(2, stamp="[14:06, 14.11.2026] Naime: ", text="Ikinci satir")]
+        if snapshot:
+            p = {"format": "wa-web-bundle", "version": 2, "session": "cdp111", "part": 1, "chat": "Naime", "final": False,
+                 "snapshot": True, "rows": rows, "media": [], "mediaParts": [], "today": "2026-11-16", "opts": {}}
+        else:
+            p = {"format": "wa-web-bundle", "version": 2, "session": "cdp111", "part": 1, "chat": "Naime", "final": False,
+                 "media": []}
+        with open(os.path.join(staging, "wa-bundle-naime-cdp111-001.json"), "w", encoding="utf-8") as f:
+            json.dump(p, f)
+
+    def export(self):
+        with redirect_stdout(io.StringIO()) as o, redirect_stderr(io.StringIO()) as e:
+            try:
+                rc = wa_web.cmd_export(self.args)
+            except RuntimeError as ex:
+                rc = ex
+        return rc, o.getvalue(), e.getvalue()
+
+    def test_tab_closed_after_a_checkpoint_converts_the_checkpoint(self):
+        kept = []
+
+        def fake(page, name, args, staging):
+            kept.append(staging)
+            self.parts(staging)
+            raise RuntimeError("Target closed")                  # the tab was closed mid-collection
+        wa_web.export_chat_cdp = fake
+        rc, out, err = self.export()
+        self.assertIsInstance(rc, RuntimeError)
+        with open(os.path.join(self.out, "Naime", "Naime.md"), encoding="utf-8") as f:
+            self.assertIn("Ikinci satir", f.read())
+        self.assertIn("ara kayıt", out)
+        self.assertNotIn("Dönüştürülemeyen", out)
+        self.assertNotIn("yerinde kalır", out)                   # the parts are deleted in this path: do not say they stay
+        self.assertFalse(wa_web.find_bundle_files([kept[0]]))
+
+    def test_collector_error_after_a_checkpoint_converts_it_and_counts_the_chat_as_failed(self):
+        def fake(page, name, args, staging):
+            self.parts(staging)
+            return {"state": "error", "error": "boom", "results": []}
+        wa_web.export_chat_cdp = fake
+        rc, out, err = self.export()
+        self.assertEqual(rc, 0)                                   # one chat was written from the checkpoint
+        self.assertTrue(os.path.isfile(os.path.join(self.out, "Naime", "Naime.md")))
+        self.assertIn("Bitti: 1 sohbet yazıldı, 1 atlandı/hatalı", out)
+
+    def test_parts_that_cannot_be_converted_stay_on_disk_and_the_path_is_printed(self):
+        kept = []
+
+        def fake(page, name, args, staging):
+            kept.append(staging)
+            self.parts(staging, snapshot=False)                   # only a media part reached the folder
+            return {"state": "error", "error": "boom", "results": []}
+        wa_web.export_chat_cdp = fake
+        rc, out, err = self.export()
+        self.assertEqual(rc, 1)
+        self.assertTrue(os.path.isfile(os.path.join(kept[0], "wa-bundle-naime-cdp111-001.json")))
+        self.assertIn(kept[0], out)
+        shutil.rmtree(kept[0], ignore_errors=True)
+
+    def test_clean_failure_without_parts_leaves_no_folder(self):
+        kept = []
+
+        def fake(page, name, args, staging):
+            kept.append(staging)
+            return {"state": "error", "error": "boom", "results": []}
+        wa_web.export_chat_cdp = fake
+        self.export()
+        self.assertFalse(os.path.exists(kept[0]))
 
 
 # ------------------------------------------------------------------ wa_collect.js (gercek Chrome)

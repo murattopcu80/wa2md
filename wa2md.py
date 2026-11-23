@@ -245,6 +245,28 @@ MSG = {
     "web_no_final": {"en": "Final bundle part not found: the collection may have been cut short.",
                      "tr": "Son paket (final) bulunamadı: toplama yarıda kesilmiş olabilir."},
     "web_missing_parts": {"en": "Missing bundle part(s): {parts}", "tr": "Eksik paket parçası: {parts}"},
+    "web_incomplete": {"en": "   Note: the collection did not finish; the newest checkpoint (part {no}) was used, messages "
+                             "collected after it are missing.",
+                       "tr": "   Not: toplama bitmedi; en yeni ara kayıt (parça {no}) kullanıldı, ondan sonra toplanan "
+                             "mesajlar eksik."},
+    "web_stopped": {"en": "   Note: the collection was stopped early; older messages are not included.",
+                    "tr": "   Not: toplama erken durduruldu; daha eski mesajlar dahil değil."},
+    "web_deleted": {"en": "   {n} converted bundle file(s) deleted (--keep-bundles keeps them).",
+                    "tr": "   Dönüştürülen {n} paket dosyası silindi (--keep-bundles saklar)."},
+    "web_parts_kept": {"en": "   The collection has no final part: the bundle files stay where they are; import them "
+                             "again together with the final part if it turns up.",
+                       "tr": "   Toplamanın son parçası yok: paket dosyaları yerinde kalır; son parça bulunursa "
+                             "onunla birlikte yeniden içe aktarın."},
+    "web_salvage": {"en": "   The collection did not finish: converting what was collected (checkpoints).",
+                    "tr": "   Toplama bitmedi: toplananlar (ara kayıtlar) dönüştürülüyor."},
+    "web_parts_left": {"en": "   Bundle parts that could not be converted are kept in {path} (they hold the chat); "
+                             "convert them with: wa_web.py import \"{path}\" --out <folder>, then delete them.",
+                       "tr": "   Dönüştürülemeyen paket parçaları {path} klasöründe duruyor (sohbeti içerir); "
+                             "şu komutla dönüştürün: wa_web.py import \"{path}\" --out <klasör>, sonra silin."},
+    "web_run_stopped": {"en": "Stopped by the user: {n} remaining chat(s) were not collected.",
+                        "tr": "Kullanıcı durdurdu: kalan {n} sohbet toplanmadı."},
+    "web_delete_failed": {"en": "   {n} bundle file(s) could not be deleted; delete them by hand (they hold the unmasked chat).",
+                          "tr": "   {n} paket dosyası silinemedi; elle silin (maskelenmemiş sohbeti içerir)."},
     "web_no_bundles": {"en": "wa-bundle-*.json not found.", "tr": "wa-bundle-*.json bulunamadı."},
     "web_skipped_media": {"en": "   {n} video/audio/document items could not be downloaded, written as placeholder lines.",
                           "tr": "   {n} video/ses/belge indirilemedi, yer tutucu satır olarak yazıldı."},
@@ -379,6 +401,14 @@ MSG = {
                                        "anonymized (faces, screenshots, documents), recommended for output you will share",
                                  "tr": "medyayı çıktıya koyma (paketteki fotoğraflar kopyalanmaz); fotoğraflar anonimleştirilmez "
                                        "(yüzler, ekran görüntüleri, belgeler), paylaşılacak çıktı için önerilir"},
+    "help_keep_bundles": {"en": "keep the bundle files after a successful conversion (default: they are deleted, "
+                                "because they hold the unmasked chat)",
+                          "tr": "başarılı dönüştürmeden sonra paket dosyalarını sakla (varsayılan: silinir, çünkü "
+                                "maskelenmemiş sohbeti içerirler)"},
+    "help_checkpoint_minutes": {"en": "write a checkpoint part with all rows collected so far every N minutes "
+                                      "(default 10, 0 = off); an unfinished collection can be imported from it",
+                                "tr": "her N dakikada bir o ana kadar toplanan tüm satırlarla bir ara kayıt parçası yaz "
+                                      "(varsayılan 10, 0 = kapalı); bitmemiş bir toplama ondan içe aktarılabilir"},
     "help_older_from_phone": {"en": "at the start of the chat click the 'get older messages from your phone' button "
                                     "(default: do not click)",
                               "tr": "sohbet başında 'telefondaki eski mesajları al' düğmesine tıkla (varsayılan: tıklama)"},

@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- WhatsApp Web collector: checkpoint parts every 10 minutes (`--checkpoint-minutes`) and a **Stop and save** button; `import` converts an unfinished collection from its newest checkpoint ([#20](../../issues/20)).
+
 - Initial public release: converts WhatsApp chat exports (phone export zip or folder, and the WhatsApp Web collector path through `wa_web.py`) to Markdown with media; anonymization of direct identifiers is on by default (person names, phone numbers, e-mail addresses, IBAN, national ID numbers, plates, trade names, domain names, usernames, passwords and one-time codes), with an offline name and place dictionary built from Wikidata (CC0 1.0).
 - English as the primary language ([#1](../../issues/1)): English `README.md` and Turkish `README.tr.md`; English option names with the Turkish names kept as aliases (`--no-media`/`--medya-yok`, `--copy-documents`/`--belgeleri-kopyala`, `--extra-names`/`--ek-adlar`, `--review-dir`/`--inceleme-dizini`, `--no-dictionary`/`--sozluksuz`, `--anonymize`/`--anonim`); English console and help messages by default, Turkish with `--lang tr` or `WA2MD_LANG=tr`; a console warning when media is copied in anonymous mode.
 - Community files: security policy, contributing guide, code of conduct, issue forms and a pull request template.
@@ -22,6 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- `wa_web.py import` deletes the bundle files of every chat it converted successfully, because they hold the unmasked chat; `--keep-bundles` keeps them ([#20](../../issues/20), stop-gap for [#21](../../issues/21)). Bundle format 2: snapshot parts and `mediaParts`; format 1 bundles are still read. A session without a final part (only checkpoints arrived) keeps its files until the final part has been imported. On the CDP path a failed collection is converted from its checkpoints and **Stop and save** ends the whole run.
 - **Output labels are English by default** and follow `--lang` / `WA2MD_LANG`: `Chat-N`, `Person N`, `[phone]`, `[company]`, `[path]`, `[email]`, `[user]`, `[password]`, `[code]`, `Participants:`, `attachments.md`, `Chat-N-suspect-names.txt`. **To keep the previous Turkish labels (`Sohbet-N`, `Kişi N`, `[telefon]`, ...) use `--lang tr` or `WA2MD_LANG=tr`**; with `--packs tr --lang tr` the Markdown output is byte-identical to the previous version except that an IBAN of any country is now masked whole as `[iban]`.
 - Internal statistics and review-reason ids are English (`dictionary`, `honorific`, `place_unclear`, ...); the console shows them in the selected language as before.
 - Test data uses reserved example numbers and names only.

@@ -17,7 +17,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 import wa_web  # noqa: E402
 
-CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
+# WA2MD_TEST_CHROME: path of a Chrome / Chromium for the browser tests (default: the usual Windows install)
+CHROME = os.environ.get("WA2MD_TEST_CHROME") or r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 try:
     from playwright.sync_api import sync_playwright
 except ImportError:  # pragma: no cover
@@ -34,6 +35,7 @@ class Args:
         self.date_from = self.date_to = None
         self.out = None
         self.older_from_phone = False
+        self.checkpoint_minutes = 10
         self.__dict__.update(kw)
 
 
@@ -68,7 +70,11 @@ class Smoke(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        subprocess.run(["taskkill", "/PID", str(cls.proc.pid), "/T", "/F"], capture_output=True)
+        if os.name == "nt":
+            subprocess.run(["taskkill", "/PID", str(cls.proc.pid), "/T", "/F"], capture_output=True)
+        else:
+            cls.proc.kill()
+            cls.proc.wait(timeout=30)
         shutil.rmtree(cls.udd, ignore_errors=True)
 
     def run_flow(self, fn):
@@ -105,7 +111,7 @@ class Smoke(unittest.TestCase):
             md_path = os.path.join(out, "Sohbet 03", "Sohbet 03.md")
             with open(md_path, encoding="utf-8") as f:
                 md = f.read()
-            self.assertIn("Mesaj sayısı: 40", md)
+            self.assertIn("Message count: 40", md)
             self.assertIn("## 2026-11-13", md)
             self.assertIn("## 2026-11-14", md)
             self.assertIn("**Naime** 08:00\nMesaj 0", md)
@@ -176,8 +182,8 @@ class Smoke(unittest.TestCase):
             with open(os.path.join(out, "Sohbet 07", "Sohbet 07.md"), encoding="utf-8") as f:
                 md = f.read()
             self.assertNotIn("## 2026-11-13", md)
-            self.assertIn("Mesaj sayısı: 20", md)
-            self.assertIn("_(medya dahil edilmemiş)_", md)
+            self.assertIn("Message count: 20", md)
+            self.assertIn("_(media not included)_", md)
             self.assertFalse(os.path.exists(os.path.join(out, "Sohbet 07", "media")))
         finally:
             shutil.rmtree(out, ignore_errors=True)
@@ -189,11 +195,103 @@ class Smoke(unittest.TestCase):
             self.assertEqual(res, (1, 0))
             with open(os.path.join(out, "Sohbet 05", "Sohbet 05.md"), encoding="utf-8") as f:
                 md = f.read()
-            self.assertIn("Mesaj sayısı: 15", md)
+            self.assertIn("Message count: 15", md)
             self.assertIn("Mesaj 39", md)  # en yeni mesajlar tutulur
             self.assertNotIn("Mesaj 24\n", md)
         finally:
             shutil.rmtree(out, ignore_errors=True)
+
+    # ---- issue #20: stop control and checkpoints
+    def collect(self, name, **kw):
+        """Toplama + ham parcalar (import yok): (durum, {dosya adi: parca})."""
+        import json
+
+        def go(page):
+            staging = tempfile.mkdtemp(prefix="wa_smoke_stage_")
+            try:
+                status = wa_web.export_chat_cdp(page, name, Args(**kw), staging)
+                parts = {}
+                for n in sorted(os.listdir(staging)):
+                    with open(os.path.join(staging, n), encoding="utf-8") as f:
+                        parts[n] = json.load(f)
+                return status, parts, staging
+            except BaseException:
+                shutil.rmtree(staging, ignore_errors=True)
+                raise
+        return self.run_flow(go)
+
+    def test_stop_button_saves_what_was_collected(self):
+        out = tempfile.mkdtemp()
+        try:
+            # paneldeki "Stop and save" dugmesine ilk kaydirma adimindan sonra basilir (kullanici gibi)
+            self.run_flow(lambda page: page.evaluate("""() => { const iv = setInterval(() => {
+                const b = document.querySelector('#wa-collect-panel button[data-wa=stop]');
+                if (b && window.__waStatus && window.__waStatus.phase === 'collect') { b.click(); clearInterval(iv); }
+            }, 10); }"""))
+            status, parts, staging = self.collect("Sohbet 09", no_media=True)
+            try:
+                result = status["results"][0]
+                self.assertEqual(status["state"], "done")
+                self.assertTrue(status.get("stopped") and result.get("stopped"))
+                self.assertTrue(0 < result["rows"] < 40, result)          # 40 mesajin yalniz ilk yuklenenleri
+                final = [p for p in parts.values() if p.get("final")]
+                self.assertEqual(len(final), 1)
+                self.assertTrue(final[0]["stopped"])
+                with redirect_stdout(io.StringIO()) as o, redirect_stderr(io.StringIO()):
+                    res = wa_web.import_bundles([staging], out)
+                self.assertEqual(res, (1, 0))
+                self.assertIn("stopped early", o.getvalue())
+                self.assertEqual(os.listdir(staging), [])                 # donusturulen paketler silindi
+            finally:
+                shutil.rmtree(staging, ignore_errors=True)
+        finally:
+            shutil.rmtree(out, ignore_errors=True)
+
+    def test_checkpoints_make_an_unfinished_collection_importable(self):
+        out = tempfile.mkdtemp()
+        status, parts, staging = self.collect("Sohbet 11", checkpoint_minutes=0.0001)   # her adimda ara kayit
+        try:
+            self.assertEqual(status["state"], "done")
+            snaps = sorted((n for n, p in parts.items() if p.get("snapshot")), key=lambda n: parts[n]["part"])
+            self.assertGreaterEqual(len(snaps), 2, list(parts))
+            for n in snaps:   # ara kayit yalniz kendinden once yazilmis medya parcalarina dayanir
+                p = parts[n]
+                self.assertTrue(all(i < p["part"] and parts_media(parts, i) for i in p["mediaParts"]), p["mediaParts"])
+            final = next(n for n, p in parts.items() if p.get("final"))
+            os.remove(os.path.join(staging, final))                   # sekme kapandi: son parca hic yazilmadi
+            newest = parts[snaps[-1]]
+            with redirect_stdout(io.StringIO()) as o, redirect_stderr(io.StringIO()):
+                res = wa_web.import_bundles([staging], out)
+            self.assertEqual(res, (1, 0))
+            self.assertIn(f"newest checkpoint (part {newest['part']}) was used", o.getvalue())
+            with open(os.path.join(out, "Sohbet 11", "Sohbet 11.md"), encoding="utf-8") as f:
+                md = f.read()
+            self.assertIn(f"Message count: {len(newest['rows'])}", md)
+        finally:
+            shutil.rmtree(staging, ignore_errors=True)
+            shutil.rmtree(out, ignore_errors=True)
+
+    def test_stop_ends_the_whole_run_not_only_the_current_chat(self):
+        """Issue #20 review: with several chats, "Stop and save" must not let Python start the next chat."""
+        out = tempfile.mkdtemp()
+        try:
+            self.run_flow(lambda page: page.evaluate("""() => { const iv = setInterval(() => {
+                const b = document.querySelector('#wa-collect-panel button[data-wa=stop]');
+                if (b && window.__waStatus && window.__waStatus.phase === 'collect') { b.click(); clearInterval(iv); }
+            }, 10); }"""))
+            args = Args(out=out, user_data_dir=self.udd, chats="Sohbet 09,Sohbet 03,Sohbet 07", anonim=False, no_media=True)
+            with redirect_stdout(io.StringIO()) as o, redirect_stderr(io.StringIO()) as e:
+                rc = wa_web.cmd_export(args)
+            self.assertEqual(rc, 0, e.getvalue())
+            self.assertEqual(sorted(os.listdir(out)), ["Sohbet 09"])      # the chats after the stopped one were not collected
+            self.assertIn("Stopped by the user: 2 remaining chat(s) were not collected", o.getvalue())
+            self.assertIn("Done: 1 chats written, 0 skipped/failed.", o.getvalue())
+        finally:
+            shutil.rmtree(out, ignore_errors=True)
+
+
+def parts_media(parts, no):
+    return any(p["part"] == no and p.get("media") for p in parts.values())
 
 
 if __name__ == "__main__":
