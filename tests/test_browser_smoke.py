@@ -17,7 +17,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 import wa_web  # noqa: E402
 
-CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
+# WA2MD_TEST_CHROME: path of a Chrome / Chromium for the browser tests (default: the usual Windows install)
+CHROME = os.environ.get("WA2MD_TEST_CHROME") or r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 try:
     from playwright.sync_api import sync_playwright
 except ImportError:  # pragma: no cover
@@ -68,7 +69,11 @@ class Smoke(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        subprocess.run(["taskkill", "/PID", str(cls.proc.pid), "/T", "/F"], capture_output=True)
+        if os.name == "nt":
+            subprocess.run(["taskkill", "/PID", str(cls.proc.pid), "/T", "/F"], capture_output=True)
+        else:
+            cls.proc.kill()
+            cls.proc.wait(timeout=30)
         shutil.rmtree(cls.udd, ignore_errors=True)
 
     def run_flow(self, fn):
@@ -105,7 +110,7 @@ class Smoke(unittest.TestCase):
             md_path = os.path.join(out, "Sohbet 03", "Sohbet 03.md")
             with open(md_path, encoding="utf-8") as f:
                 md = f.read()
-            self.assertIn("Mesaj sayısı: 40", md)
+            self.assertIn("Message count: 40", md)
             self.assertIn("## 2026-11-13", md)
             self.assertIn("## 2026-11-14", md)
             self.assertIn("**Naime** 08:00\nMesaj 0", md)
@@ -176,8 +181,8 @@ class Smoke(unittest.TestCase):
             with open(os.path.join(out, "Sohbet 07", "Sohbet 07.md"), encoding="utf-8") as f:
                 md = f.read()
             self.assertNotIn("## 2026-11-13", md)
-            self.assertIn("Mesaj sayısı: 20", md)
-            self.assertIn("_(medya dahil edilmemiş)_", md)
+            self.assertIn("Message count: 20", md)
+            self.assertIn("_(media not included)_", md)
             self.assertFalse(os.path.exists(os.path.join(out, "Sohbet 07", "media")))
         finally:
             shutil.rmtree(out, ignore_errors=True)
@@ -189,7 +194,7 @@ class Smoke(unittest.TestCase):
             self.assertEqual(res, (1, 0))
             with open(os.path.join(out, "Sohbet 05", "Sohbet 05.md"), encoding="utf-8") as f:
                 md = f.read()
-            self.assertIn("Mesaj sayısı: 15", md)
+            self.assertIn("Message count: 15", md)
             self.assertIn("Mesaj 39", md)  # en yeni mesajlar tutulur
             self.assertNotIn("Mesaj 24\n", md)
         finally:

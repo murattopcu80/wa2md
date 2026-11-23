@@ -52,7 +52,8 @@ try:
     from playwright.sync_api import sync_playwright
 except ImportError:  # pragma: no cover
     sync_playwright = None
-CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
+# WA2MD_TEST_CHROME: path of a Chrome / Chromium for the browser tests (default: the usual Windows install)
+CHROME = os.environ.get("WA2MD_TEST_CHROME") or r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 TODAY = dt.date(2026, 11, 16)  # Pazartesi
 
 
