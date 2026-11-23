@@ -257,6 +257,8 @@ MSG = {
                               "kullanıcının paketleri, ya da anahtar kullanılıp silinmiş)."},
     "web_seal_bad": {"en": "sealed bundle part {no} failed the integrity check (damaged file or wrong key).",
                      "tr": "mühürlü paket parçası {no} bütünlük denetimini geçemedi (bozuk dosya ya da yanlış anahtar)."},
+    "web_key_kept": {"en": "   Key kept: {done} of {total} sessions of this run are imported; the key is deleted when the last one is.",
+                     "tr": "   Anahtar duruyor: bu koşunun {total} oturumundan {done} tanesi içe aktarıldı; sonuncusunda anahtar silinir."},
     "web_deleted": {"en": "   {n} converted bundle file(s) deleted (--keep-bundles keeps them).",
                     "tr": "   Dönüştürülen {n} paket dosyası silindi (--keep-bundles saklar)."},
     "web_parts_kept": {"en": "   The collection has no final part: the bundle files stay where they are; import them "

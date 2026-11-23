@@ -13,7 +13,7 @@
  *         Durdurma: paneldeki "Stop and save" dugmesi ya da window.__waCollect.stop() kaydirmayi bitirir, toplananla
  *         son parcayi yazar (stopped: true).
  *         Muhur (issue #21): opts.seal = {kid, key} verilirse satirlar ve sohbet adi sekmede, indirmeden ONCE sifrelenir
- *         (wa2md-seal-1: HMAC-SHA256 sayac kipi + sifrele-sonra-MAC; WebCrypto). Diske maskelenmemis metin yazilmaz;
+ *         (wa2md-seal-2: HMAC-SHA256 sayac kipi + sifrele-sonra-MAC; WebCrypto). Diske maskelenmemis metin yazilmaz;
  *         `import` Python'da acar ve tek maskeleyiciyle (wa2md.write_chat) maskeler. Medya (fotograf) eskisi gibi kalir.
  *         Playwright yolu: opts.emit = window.waEmit (Python parcalari alir). Ikisi de ayni parcalari uretir;
  *         `wa_web.py import` Markdown'a cevirir (tek yazici wa2md.write_chat).
@@ -371,9 +371,11 @@
   }
 
   // ------------------------------------------------------------------ muhur (issue #21)
-  // wa2md-seal-1 (Python karsiligi: wa_web.seal / wa_web.unseal; ayni belirtim, bilinen cevap testi ikisini karsilastirir):
-  //   kEnc = HMAC(K, "wa2md-seal-1 enc"), kMac = HMAC(K, "wa2md-seal-1 mac"); blok i = HMAC(kEnc, nonce16 || be32(i));
-  //   ct = utf8(JSON) XOR anahtar akisi; tag = HMAC(kMac, "wa2md-seal-1\0" || kid || "\0" || nonce || ct).
+  // wa2md-seal-2 (Python karsiligi: wa_web.seal / wa_web.unseal; ayni belirtim, bilinen cevap testi ikisini karsilastirir):
+  //   kEnc = HMAC(K, "wa2md-seal-2 enc"), kMac = HMAC(K, "wa2md-seal-2 mac"); blok i = HMAC(kEnc, nonce16 || be32(i));
+  //   ct = utf8(JSON) XOR anahtar akisi; tag = HMAC(kMac, "wa2md-seal-2\0" || kid || "\0" || aad || "\0" || nonce || ct).
+  //   aad = session \0 parca no \0 final(0|1) \0 snapshot(0|1) \0 medya parcalari (virgullu) = parca basliginin dogrulanan
+  //   alanlari (wa_web.header_aad): eski bir ara kayit basligi degistirilerek "tam" parca gibi acilamaz.
   const utf8 = new TextEncoder();
   const unhex = (h) => new Uint8Array(String(h).match(/../g).map((x) => parseInt(x, 16)));
   function b64of(u8) {
@@ -383,10 +385,10 @@
   }
   const hmacKey = (raw) => crypto.subtle.importKey("raw", raw, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const hmac = async (key, data) => new Uint8Array(await crypto.subtle.sign("HMAC", key, data));
-  async function seal(obj, cfg, nonce) {
+  async function seal(obj, cfg, nonce, aad) {
     const master = await hmacKey(unhex(cfg.key));
-    const kEnc = await hmacKey(await hmac(master, utf8.encode("wa2md-seal-1 enc")));
-    const kMac = await hmacKey(await hmac(master, utf8.encode("wa2md-seal-1 mac")));
+    const kEnc = await hmacKey(await hmac(master, utf8.encode("wa2md-seal-2 enc")));
+    const kMac = await hmacKey(await hmac(master, utf8.encode("wa2md-seal-2 mac")));
     const iv = nonce ? Uint8Array.from(nonce) : crypto.getRandomValues(new Uint8Array(16));
     const pt = utf8.encode(JSON.stringify(obj));
     const ct = new Uint8Array(pt.length);
@@ -405,10 +407,10 @@
       });
       await yieldNow();
     }
-    const head = utf8.encode("wa2md-seal-1\0" + cfg.kid + "\0");
+    const head = utf8.encode("wa2md-seal-2\0" + cfg.kid + "\0" + (aad || "") + "\0");
     const macIn = new Uint8Array(head.length + iv.length + ct.length);
     macIn.set(head); macIn.set(iv, head.length); macIn.set(ct, head.length + iv.length);
-    return { alg: "wa2md-seal-1", kid: cfg.kid, nonce: b64of(iv), ct: b64of(ct), tag: b64of(await hmac(kMac, macIn)) };
+    return { alg: "wa2md-seal-2", kid: cfg.kid, nonce: b64of(iv), ct: b64of(ct), tag: b64of(await hmac(kMac, macIn)) };
   }
 
   // ------------------------------------------------------------------ paketleme
@@ -426,7 +428,8 @@
       let body = Object.assign({}, part, part.rows ? { mediaParts: mediaParts.slice() } : {});
       if (sealCfg) { // satirlar + sohbet adi yalniz muhurlu yukte; baslikta ad yok
         if (body.rows) {
-          const sealed = await seal({ chat, rows: body.rows }, sealCfg);
+          const aad = [session, n, body.final ? 1 : 0, body.snapshot ? 1 : 0, (body.mediaParts || []).join(",")].join("\0");
+          const sealed = await seal({ chat, rows: body.rows }, sealCfg, null, aad);
           delete body.rows;
           body.sealed = sealed;
         }

@@ -4,6 +4,7 @@ list/export (CDP tasimasi) + wa_collect.js akisini kosar. Kullanicinin gercek Ch
 Chrome/playwright yoksa atlanir. (Bu test CDP tasimasinin KENDI Chrome'umuzla calistigini gosterir; kullanicinin
 Chrome'una baglanti dogrulanmadi.)"""
 import io
+import json
 import os
 import shutil
 import subprocess
@@ -290,6 +291,36 @@ class Smoke(unittest.TestCase):
             self.assertEqual(res, (1, 0))
             with open(os.path.join(out, "Sohbet 13", "Sohbet 13.md"), encoding="utf-8") as f:
                 self.assertIn("Mesaj 39", f.read())
+        finally:
+            shutil.rmtree(staging, ignore_errors=True)
+            shutil.rmtree(out, ignore_errors=True)
+
+    def test_sealed_checkpoints_are_authenticated_with_their_header_and_import_without_the_final_part(self):
+        out = tempfile.mkdtemp()
+        cfg = wa_web.new_seal(store=False)
+        status, parts, staging = self.collect("Sohbet 11", no_media=True, seal_cfg=cfg, checkpoint_minutes=0.0001)
+        try:
+            snaps = sorted((n for n, p in parts.items() if p.get("snapshot")), key=lambda n: parts[n]["part"])
+            self.assertGreaterEqual(len(snaps), 2, list(parts))
+            self.assertTrue(all("sealed" in parts[n] and "rows" not in parts[n] for n in snaps))
+            final = next(n for n, p in parts.items() if p.get("final"))
+            os.remove(os.path.join(staging, final))                   # tab closed: no final part
+            keys = {cfg["kid"]: bytes.fromhex(cfg["key"])}
+            with redirect_stdout(io.StringIO()) as o, redirect_stderr(io.StringIO()) as e:
+                res = wa_web.import_bundles([staging], out, seal_keys=keys)
+            self.assertEqual(res, (1, 0), e.getvalue())
+            self.assertIn("newest checkpoint", o.getvalue())
+            self.assertTrue(os.path.isfile(os.path.join(out, "Sohbet 11", "Sohbet 11.md")))
+            # the header is part of the MAC: relabel the newest checkpoint as a final part and it no longer opens
+            path = os.path.join(staging, snaps[-1])
+            relabelled = dict(parts[snaps[-1]], final=True, total=parts[snaps[-1]]["part"])
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(relabelled, f)
+            shutil.rmtree(out)
+            with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()) as e:
+                res = wa_web.import_bundles([staging], out, seal_keys=keys)
+            self.assertEqual(res, (0, 1))
+            self.assertIn("integrity check", e.getvalue())
         finally:
             shutil.rmtree(staging, ignore_errors=True)
             shutil.rmtree(out, ignore_errors=True)
