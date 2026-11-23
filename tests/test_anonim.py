@@ -425,6 +425,39 @@ class NameForms(unittest.TestCase):
             shutil.rmtree(tmp, ignore_errors=True)
 
 
+SURNAME_WORDS_CHAT = """14.11.2026 10:00 - Velko Darsun: Açık Bey merhaba
+14.11.2026 10:01 - Brin Tamsel: dükkan açık mı
+14.11.2026 10:02 - Velko Darsun: kapı açık kalmış
+14.11.2026 10:03 - Brin Tamsel: Beyaz Hanım aradı, beyaz araba mı
+14.11.2026 10:04 - Velko Darsun: Kısa Hanım aradı, kısa bir not
+14.11.2026 10:05 - Brin Tamsel: Mehmet Bey geldi, mehmet nerede
+14.11.2026 10:06 - Velko Darsun: Açık olan pencereyi kapat. Sayın Ayşe Açık, Ayşe Açık'a sor
+"""
+
+
+class SurnameWords(unittest.TestCase):
+    """Issue #22: a surname that is also an everyday word (Açık, Beyaz, Kısa; adlar/sozcuk-adlar.txt) is masked only
+    where the context marks it as a name (honorific, full name); the ordinary word stays (invented chat)."""
+
+    def setUp(self):
+        msgs, _ = wa2md.parse(SURNAME_WORDS_CHAT)
+        self.a = wa2md.Anonymizer("Velko Darsun", msgs)   # Kişi 1 = Velko Darsun, Kişi 2 = Brin Tamsel
+        self.out = [self.a.text(" ".join(v for k, v in wa2md.message_parts(m) if k == "text")) for m in msgs]
+
+    def test_ordinary_word_stays_after_an_honorific(self):
+        self.assertEqual(self.out[0], "Kişi 3 Bey merhaba")
+        self.assertEqual(self.out[1], "dükkan açık mı")
+        self.assertEqual(self.out[2], "kapı açık kalmış")
+        self.assertEqual(self.out[3], "Kişi 4 Hanım aradı, beyaz araba mı")
+        self.assertEqual(self.out[4], "Kişi 5 Hanım aradı, kısa bir not")
+
+    def test_given_name_still_spreads_in_lower_case(self):
+        self.assertEqual(self.out[5], "Kişi 6 Bey geldi, Kişi 6 nerede")
+
+    def test_sentence_start_stays_and_full_name_is_masked(self):
+        self.assertEqual(self.out[6], "Açık olan pencereyi kapat. Sayın Kişi 7, Kişi 7'a sor")
+
+
 class Credentials(unittest.TestCase):
     """Parola / gizli anahtar maskeleme (sezgisel). Tum degerler uydurmadir."""
 

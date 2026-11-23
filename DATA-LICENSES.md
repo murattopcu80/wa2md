@@ -10,7 +10,7 @@ licence (CC BY-SA and similar) is copied in.** Each file's header repeats its so
 | `adlar/tr-adlar.txt` | 2,190 | Wikidata Query Service (given names of Turkish citizens, given-name items), 2026-11-14 | CC0 1.0 |
 | `adlar/tr-soyadlar.txt` | 4,819 | Wikidata Query Service (surnames of Turkish citizens, surname items), 2026-11-14 | CC0 1.0 |
 | `adlar/tr-yerler.txt` | 984 | Wikidata Query Service (Turkish provinces and districts), 2026-11-15 | CC0 1.0 |
-| `adlar/sozcuk-adlar.txt` | 32 lines | this project's own hand-compiled list (file header), 2026-11-14 | MIT (as the code) |
+| `adlar/sozcuk-adlar.txt` | 35 lines | this project's own hand-compiled list (file header), 2026-11-14; surname words added 2026-11-23 (#22) | MIT (as the code) |
 | `adlar/en-given.txt` | 5,888 | Wikidata Query Service (given names of UK and US citizens), 2026-11-20 | CC0 1.0 |
 | `adlar/en-given-more.txt` | 2,513 | Wikidata via the QLever endpoint (given names of citizens of 16 countries), 2026-11-20; filtered with `en-common.txt` and hand-reviewed word lists in `tools/build_en_lists.py` | CC0 1.0 |
 | `adlar/en-surnames.txt` | 6,732 | US Census Bureau, Frequently Occurring Surnames from the 2010 Census | public domain (US federal government work, 17 U.S.C. 105) |

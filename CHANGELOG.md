@@ -26,4 +26,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Internal statistics and review-reason ids are English (`dictionary`, `honorific`, `place_unclear`, ...); the console shows them in the selected language as before.
 - Test data uses reserved example numbers and names only.
 
+### Fixed
+
+- Turkish: a surname that is also an everyday word (`Açık`, `Beyaz`, `Kısa`, ...) and was found once next to an honorific (`Açık Bey`) no longer turns every ordinary use (`kapı açık`) into a person label; 44 such words were added to the word-name list `adlar/sozcuk-adlar.txt` ([#22](../../issues/22)).
+
 [Unreleased]: ../../commits/main
