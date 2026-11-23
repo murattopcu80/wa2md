@@ -306,9 +306,11 @@ def find_bundle_files(inputs):
 
 
 def load_session(parts, staging):
-    """Bir oturumun parcalarini sirayla oku: medyayi staging'e yaz, son parcadaki satirlari don.
-    -> (final_dict, {anahtar: (yol, uzanti)})"""
-    final, files = None, {}
+    """Bir oturumun parcalarini sirayla oku: medyayi staging'e yaz, satir parcasini don. Satir parcasi son parcadir
+    (final); o yoksa en yeni ara kayittir (snapshot, issue #20: sekme kapanmis ya da toplama yarida kalmis).
+    Gerekli parcalar: bicim 2'de satir parcasinin kendisi ve dayandigi medya parcalari (mediaParts; eski ara kayitlar
+    gerekmez), bicim 1'de 1..total. -> (satir_parcasi, {anahtar: (yol, uzanti)}, tamam_mi)"""
+    final, snap, files = None, None, {}
     for no in sorted(parts):
         with open(parts[no], encoding="utf-8") as f:
             part = json.load(f)
@@ -325,19 +327,28 @@ def load_session(parts, staging):
             files[key] = (path, ext)
         if part.get("final"):
             final = part
+        elif part.get("snapshot") and isinstance(part.get("rows"), list):
+            snap = part                    # parcalar sirayla okunur: en yeni ara kayit kalir
         del part
-    if final is None:
+    head = final or snap
+    if head is None:
         raise ValueError(wa2md.t("web_no_final"))
-    missing = [i for i in range(1, final["total"] + 1) if i not in parts]
+    if isinstance(head.get("mediaParts"), list):
+        need = {int(i) for i in head["mediaParts"]} | {int(head.get("part", 0))}
+    else:
+        need = set(range(1, int(head.get("total") or 0) + 1))
+    missing = sorted(i for i in need if i not in parts)
     if missing:
         raise ValueError(wa2md.t("web_missing_parts", parts=", ".join(str(i) for i in missing)))
-    return final, files
+    return head, files, final is not None
 
 
 def import_bundles(inputs, out_dir, date_from=None, date_to=None, max_messages=None, anonim=False,
-                   chat_start=1, no_media=False, ref_start=1, extra_names=None, review_dir=None, no_dict=False):
+                   chat_start=1, no_media=False, ref_start=1, extra_names=None, review_dir=None, no_dict=False,
+                   keep_bundles=False):
     """Paketleri Markdown'a cevir (wa2md.write_chat; wa2md ile ayni secenekler: ek adlar, inceleme klasoru, sozluksuz).
-    Grup karari tarih/sayi suzgecinden ONCE tum paketten verilir (wa2md.is_group). -> (yazilan, atlanan)"""
+    Grup karari tarih/sayi suzgecinden ONCE tum paketten verilir (wa2md.is_group). Basariyla yazilan oturumun paket
+    dosyalari silinir (maskelenmemis sohbeti tasirlar; keep_bundles saklar; issue #20). -> (yazilan, atlanan)"""
     sessions = find_bundle_files(inputs)
     if not sessions:
         print(f"{wa2md.t('err')}: " + wa2md.t("web_no_bundles"), file=sys.stderr)
@@ -349,7 +360,7 @@ def import_bundles(inputs, out_dir, date_from=None, date_to=None, max_messages=N
         ref = wa2md.t("ref_input", n=ref_start + k)
         try:
             try:
-                final, files = load_session(parts, staging)
+                final, files, complete = load_session(parts, staging)
             except (ValueError, OSError, json.JSONDecodeError) as e:
                 msg = e if not red else (e if type(e) is ValueError else wa2md.safe_error(e))
                 print(f"{wa2md.t('err')} [{ref if red else sid}]: {msg}", file=sys.stderr)
@@ -377,7 +388,13 @@ def import_bundles(inputs, out_dir, date_from=None, date_to=None, max_messages=N
                 print(wa2md.t("web_skipped_media", n=skipped))
             if final.get("olderOnPhone"):
                 print(wa2md.t("web_older_on_phone"))
+            if not complete:
+                print(wa2md.t("web_incomplete", no=final.get("part")))
+            elif final.get("stopped"):
+                print(wa2md.t("web_stopped"))
             done += 1
+            if not keep_bundles:
+                _delete_bundles(parts.values())
         except Exception as e:  # noqa: BLE001 - anonimde iz/yol (ad icerir) yerine yalniz tur
             if not red:
                 raise
@@ -389,12 +406,28 @@ def import_bundles(inputs, out_dir, date_from=None, date_to=None, max_messages=N
     return done, failed
 
 
+def _delete_bundles(paths):
+    """Donusturulen oturumun paket dosyalarini sil; konsola yalniz sayilar (dosya adi sohbet adini tasir)."""
+    gone = bad = 0
+    for p in paths:
+        try:
+            os.remove(p)
+            gone += 1
+        except OSError:
+            bad += 1
+    if gone:
+        print(wa2md.t("web_deleted", n=gone))
+    if bad:
+        print(wa2md.t("web_delete_failed", n=bad), file=sys.stderr)
+
+
 # ------------------------------------------------------------------ SECTION: komut satiri -> toplayici secenekleri
 def collector_opts(args, chats):
     return {"chats": chats, "from": args.date_from.isoformat() if args.date_from else None,
             "to": args.date_to.isoformat() if args.date_to else None, "max": args.max_messages or 0,
             "noMedia": bool(args.no_media), "olderFromPhone": bool(getattr(args, "older_from_phone", False)),
-            "pace": float(os.environ.get("WA_PACE", "1")), "lang": wa2md.current_lang()}
+            "pace": float(os.environ.get("WA_PACE", "1")), "lang": wa2md.current_lang(),
+            "checkpointMin": max(0.0, float(getattr(args, "checkpoint_minutes", 10) or 0))}
 
 
 def read_collector():
@@ -443,7 +476,8 @@ def cmd_import(args):
         if rc:
             return rc
     done, _ = import_bundles(args.paths, args.out, args.date_from, args.date_to, args.max_messages,
-                             anonim=args.anonim, no_media=args.no_media, **anon_kwargs(args))
+                             anonim=args.anonim, no_media=args.no_media, keep_bundles=args.keep_bundles,
+                             **anon_kwargs(args))
     return 0 if done else 1
 
 
@@ -614,6 +648,7 @@ def add_filter_args(p, with_media=True):
         p.add_argument("--no-media", "--medya-yok", dest="no_media", action="store_true",
                        help=wa2md.t("help_web_no_media"))
         p.add_argument("--older-from-phone", action="store_true", help=wa2md.t("help_older_from_phone"))
+        p.add_argument("--checkpoint-minutes", type=float, default=10, metavar="N", help=wa2md.t("help_checkpoint_minutes"))
 
 
 def build_parser():
@@ -631,6 +666,8 @@ def build_parser():
     add_filter_args(im, with_media=False)
     im.add_argument("--no-media", "--medya-yok", dest="no_media", action="store_true",
                     help=wa2md.t("help_web_import_no_media"))
+    im.add_argument("--keep-bundles", "--paketleri-sakla", dest="keep_bundles", action="store_true",
+                    help=wa2md.t("help_keep_bundles"))
     wa2md.add_anonim_args(im)
     wa2md.add_lang_arg(im)
     lc = sub.add_parser("list", help=wa2md.t("help_list"))

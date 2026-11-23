@@ -35,6 +35,7 @@ class Args:
         self.date_from = self.date_to = None
         self.out = None
         self.older_from_phone = False
+        self.checkpoint_minutes = 10
         self.__dict__.update(kw)
 
 
@@ -199,6 +200,80 @@ class Smoke(unittest.TestCase):
             self.assertNotIn("Mesaj 24\n", md)
         finally:
             shutil.rmtree(out, ignore_errors=True)
+
+    # ---- issue #20: stop control and checkpoints
+    def collect(self, name, **kw):
+        """Toplama + ham parcalar (import yok): (durum, {dosya adi: parca})."""
+        import json
+
+        def go(page):
+            staging = tempfile.mkdtemp(prefix="wa_smoke_stage_")
+            try:
+                status = wa_web.export_chat_cdp(page, name, Args(**kw), staging)
+                parts = {}
+                for n in sorted(os.listdir(staging)):
+                    with open(os.path.join(staging, n), encoding="utf-8") as f:
+                        parts[n] = json.load(f)
+                return status, parts, staging
+            except BaseException:
+                shutil.rmtree(staging, ignore_errors=True)
+                raise
+        return self.run_flow(go)
+
+    def test_stop_button_saves_what_was_collected(self):
+        out = tempfile.mkdtemp()
+        try:
+            # paneldeki "Stop and save" dugmesine ilk kaydirma adimindan sonra basilir (kullanici gibi)
+            self.run_flow(lambda page: page.evaluate("""() => { const iv = setInterval(() => {
+                const b = document.querySelector('#wa-collect-panel button[data-wa=stop]');
+                if (b && window.__waStatus && window.__waStatus.phase === 'collect') { b.click(); clearInterval(iv); }
+            }, 10); }"""))
+            status, parts, staging = self.collect("Sohbet 09", no_media=True)
+            try:
+                result = status["results"][0]
+                self.assertEqual(status["state"], "done")
+                self.assertTrue(status.get("stopped") and result.get("stopped"))
+                self.assertTrue(0 < result["rows"] < 40, result)          # 40 mesajin yalniz ilk yuklenenleri
+                final = [p for p in parts.values() if p.get("final")]
+                self.assertEqual(len(final), 1)
+                self.assertTrue(final[0]["stopped"])
+                with redirect_stdout(io.StringIO()) as o, redirect_stderr(io.StringIO()):
+                    res = wa_web.import_bundles([staging], out)
+                self.assertEqual(res, (1, 0))
+                self.assertIn("stopped early", o.getvalue())
+                self.assertEqual(os.listdir(staging), [])                 # donusturulen paketler silindi
+            finally:
+                shutil.rmtree(staging, ignore_errors=True)
+        finally:
+            shutil.rmtree(out, ignore_errors=True)
+
+    def test_checkpoints_make_an_unfinished_collection_importable(self):
+        out = tempfile.mkdtemp()
+        status, parts, staging = self.collect("Sohbet 11", checkpoint_minutes=0.0001)   # her adimda ara kayit
+        try:
+            self.assertEqual(status["state"], "done")
+            snaps = sorted((n for n, p in parts.items() if p.get("snapshot")), key=lambda n: parts[n]["part"])
+            self.assertGreaterEqual(len(snaps), 2, list(parts))
+            for n in snaps:   # ara kayit yalniz kendinden once yazilmis medya parcalarina dayanir
+                p = parts[n]
+                self.assertTrue(all(i < p["part"] and parts_media(parts, i) for i in p["mediaParts"]), p["mediaParts"])
+            final = next(n for n, p in parts.items() if p.get("final"))
+            os.remove(os.path.join(staging, final))                   # sekme kapandi: son parca hic yazilmadi
+            newest = parts[snaps[-1]]
+            with redirect_stdout(io.StringIO()) as o, redirect_stderr(io.StringIO()):
+                res = wa_web.import_bundles([staging], out)
+            self.assertEqual(res, (1, 0))
+            self.assertIn(f"newest checkpoint (part {newest['part']}) was used", o.getvalue())
+            with open(os.path.join(out, "Sohbet 11", "Sohbet 11.md"), encoding="utf-8") as f:
+                md = f.read()
+            self.assertIn(f"Message count: {len(newest['rows'])}", md)
+        finally:
+            shutil.rmtree(staging, ignore_errors=True)
+            shutil.rmtree(out, ignore_errors=True)
+
+
+def parts_media(parts, no):
+    return any(p["part"] == no and p.get("media") for p in parts.values())
 
 
 if __name__ == "__main__":
