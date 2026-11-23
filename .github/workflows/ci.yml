@@ -25,7 +25,14 @@ jobs:
           python-version: ${{ matrix.python }}
       - name: Show versions
         run: python --version
+      - name: Install Playwright for the browser tests (Linux, newest Python only)
+        # The tests drive the Google Chrome that the runner image already has (no browser download); without this step the
+        # known-answer seal test and the sealed CDP round trip would be skipped in CI. Playwright needs Python 3.10+.
+        if: matrix.os == 'ubuntu-24.04' && matrix.python == '3.x'
+        run: python -m pip install ".[browser]"
       - name: Run the test suite
+        env:
+          WA2MD_TEST_CHROME: ${{ (matrix.os == 'ubuntu-24.04' && matrix.python == '3.x') && '/usr/bin/google-chrome' || '' }}
         run: python -m unittest discover -s tests -v
       - name: Install the package and run the commands
         run: |
