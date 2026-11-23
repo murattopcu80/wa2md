@@ -28,6 +28,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
-- Turkish: a surname that is also an everyday word (`Açık`, `Beyaz`, `Kısa`, ...) and was found once next to an honorific (`Açık Bey`) no longer turns every ordinary use (`kapı açık`) into a person label; 44 such words were added to the word-name list `adlar/sozcuk-adlar.txt` ([#22](../../issues/22)).
+- Turkish: a surname that is also an everyday word (`Açık`, `Beyaz`, `Kısa`, ...; 44 words in the word-name list `adlar/sozcuk-adlar.txt`) that was learned from an honorific (`Açık Bey`) or a mention (`@Açık`) is now masked in its capitalised forms, apostrophe suffixes included (`Açık'a`, `dün Açık geldi`, as before), but no longer in the all-lower-case ordinary word (`kapı açık`). Other names, real surnames and given names that are words are masked in every form as before ([#22](../../issues/22)).
 
 [Unreleased]: ../../commits/main

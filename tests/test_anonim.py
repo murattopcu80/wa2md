@@ -431,13 +431,19 @@ SURNAME_WORDS_CHAT = """14.11.2026 10:00 - Velko Darsun: Açık Bey merhaba
 14.11.2026 10:03 - Brin Tamsel: Beyaz Hanım aradı, beyaz araba mı
 14.11.2026 10:04 - Velko Darsun: Kısa Hanım aradı, kısa bir not
 14.11.2026 10:05 - Brin Tamsel: Mehmet Bey geldi, mehmet nerede
-14.11.2026 10:06 - Velko Darsun: Açık olan pencereyi kapat. Sayın Ayşe Açık, Ayşe Açık'a sor
+14.11.2026 10:06 - Velko Darsun: Açık'a söyledim, dün Açık geldi, Açık Bey'e ilet, açık'a bak
+14.11.2026 10:07 - Brin Tamsel: Sayın Ayşe Açık, Ayşe Açık'a sor
+14.11.2026 10:08 - Velko Darsun: @Yavaş nerede
+14.11.2026 10:09 - Brin Tamsel: Yavaş'ı aradım, yavaş gel, yavaş'a söyle
+14.11.2026 10:10 - Velko Darsun: Karakoç Bey merhaba
+14.11.2026 10:11 - Brin Tamsel: karakoç'u aradım, karakoç gel
 """
 
 
 class SurnameWords(unittest.TestCase):
-    """Issue #22: a surname that is also an everyday word (Açık, Beyaz, Kısa; adlar/sozcuk-adlar.txt) is masked only
-    where the context marks it as a name (honorific, full name); the ordinary word stays (invented chat)."""
+    """Issue #22: a surname that is also an everyday word (Açık, Beyaz, Kısa; adlar/sozcuk-adlar.txt) and was learned from
+    an honorific or a mention is masked in its capitalised forms (apostrophe suffixes included, as on main); the
+    all-lower-case everyday word stays (invented chat)."""
 
     def setUp(self):
         msgs, _ = wa2md.parse(SURNAME_WORDS_CHAT)
@@ -451,11 +457,22 @@ class SurnameWords(unittest.TestCase):
         self.assertEqual(self.out[3], "Kişi 4 Hanım aradı, beyaz araba mı")
         self.assertEqual(self.out[4], "Kişi 5 Hanım aradı, kısa bir not")
 
+    def test_capitalised_and_apostrophe_forms_are_masked_as_on_main(self):
+        self.assertEqual(self.out[6], "Kişi 3'a söyledim, dün Kişi 3 geldi, Kişi 3 Bey'e ilet, açık'a bak")
+
+    def test_full_name_with_the_word_as_surname_is_masked(self):
+        self.assertEqual(self.out[7], "Sayın Kişi 7, Kişi 7'a sor")
+
+    def test_mention_follows_the_same_rule(self):
+        self.assertEqual(self.out[8], "Kişi 8 nerede")
+        self.assertEqual(self.out[9], "Kişi 8'ı aradım, yavaş gel, yavaş'a söyle")
+
     def test_given_name_still_spreads_in_lower_case(self):
         self.assertEqual(self.out[5], "Kişi 6 Bey geldi, Kişi 6 nerede")
 
-    def test_sentence_start_stays_and_full_name_is_masked(self):
-        self.assertEqual(self.out[6], "Açık olan pencereyi kapat. Sayın Kişi 7, Kişi 7'a sor")
+    def test_real_surname_is_masked_in_lower_case_as_on_main(self):
+        self.assertEqual(self.out[10], "Kişi 9 Bey merhaba")
+        self.assertEqual(self.out[11], "Kişi 9'u aradım, Kişi 9 gel")
 
 
 class Credentials(unittest.TestCase):

@@ -2177,6 +2177,11 @@ class Anonymizer:
         cap = part_cap and (why == "signature" or not any(_key(p) in self._pkeys for p in parts))
         lower_word = _LISTS.get("lw" if _P.lower_case_context else "c", ())  # English: lower case of a common word is the word
         cap = cap or bool(lower_word and len(parts) == 1 and k in lower_word)   # ('Miles' masked, '120 miles' stays)
+        # Issue #22: a one-word surname that is also an everyday word (word-name list, no given name: 'Açık', 'Yavaş') learned
+        # from an honorific or a mention spreads only in its capitalised forms ("Açık'a", 'dün Açık geldi'): the lower-case
+        # word ('kapı açık') stays. A given name that is a word stays as before (a lower-case 'yetkin yardim' after
+        # '@Yetkin Yardim' is a person: tests/fixtures/etkilesim_main.json), and so does every other learned name.
+        cap = cap or bool(why in ("honorific", "mention") and len(parts) == 1 and k in a and k not in g)
         if known:                              # 7. tur eki: kanit bilineni yalniz guclendirir, sira sonucu degistirmez
             lab = self.by_key[k]
             if (not by_contact and k in self._contact_keys) or (not cap and k in self._capk):   # main'in kaniti ya da yalniz buyuk harfli
@@ -2808,7 +2813,7 @@ class Anonymizer:
                     emit(st, st + len(base), k, base, "ctx" if k in a else "rx", "honorific")
                 elif cap and k not in _HON_STOP and k not in _TAKVIM and not _HON_ORG.fullmatch(nk):
                     if k in f:                # soyad + hitap (Karakoç Hoca, Şimşek abi): satir basinda da
-                        act = "ctx" if k in a else "rx"
+                        act = "rx"            # a word-name ('Açık Bey') too: _learn spreads it in its capitalised forms only
                     else:                     # satir basinda bilinmeyen sozcuk supheli; ogrenilmis adin parcasi (_capparts) o yerde
                         act = ("ctx" if k in self._capparts else "review") if ini else "rx"
                     emit(st, st + len(base), k, base, act, "honorific")
