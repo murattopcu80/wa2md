@@ -622,7 +622,10 @@ class CdpFailure(unittest.TestCase):
         return rc, o.getvalue(), e.getvalue()
 
     def test_tab_closed_after_a_checkpoint_converts_the_checkpoint(self):
+        kept = []
+
         def fake(page, name, args, staging, seal_cfg=None):
+            kept.append(staging)
             self.parts(staging)
             raise RuntimeError("Target closed")                  # the tab was closed mid-collection
         wa_web.export_chat_cdp = fake
@@ -632,6 +635,8 @@ class CdpFailure(unittest.TestCase):
             self.assertIn("Ikinci satir", f.read())
         self.assertIn("ara kayıt", out)
         self.assertNotIn("Dönüştürülemeyen", out)
+        self.assertNotIn("yerinde kalır", out)                   # the parts are deleted in this path: do not say they stay
+        self.assertFalse(wa_web.find_bundle_files([kept[0]]))
 
     def test_collector_error_after_a_checkpoint_converts_it_and_counts_the_chat_as_failed(self):
         def fake(page, name, args, staging, seal_cfg=None):

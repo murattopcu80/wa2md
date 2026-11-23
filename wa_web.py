@@ -496,11 +496,12 @@ def load_session(parts, staging, keys=None):
 
 def import_bundles(inputs, out_dir, date_from=None, date_to=None, max_messages=None, anonim=False,
                    chat_start=1, no_media=False, ref_start=1, extra_names=None, review_dir=None, no_dict=False,
-                   keep_bundles=False, seal_keys=None):
+                   keep_bundles=False, seal_keys=None, keep_incomplete=True):
     """Paketleri Markdown'a cevir (wa2md.write_chat; wa2md ile ayni secenekler: ek adlar, inceleme klasoru, sozluksuz).
     Grup karari tarih/sayi suzgecinden ONCE tum paketten verilir (wa2md.is_group). Basariyla yazilan oturumun paket
     dosyalari silinir, son parcasi olmayan (yalniz ara kayit) oturumunki silinmez (maskelenmemis sohbeti tasirlar;
-    keep_bundles saklar; issue #20). Muhurlu paketin anahtari seal_keys'te (CDP: yalniz bellekte) ya da kullanici durum
+    keep_bundles saklar; issue #20; keep_incomplete=False: son parca gelmeyecek (CDP yolu), ara kayit donusunce silinir).
+    Muhurlu paketin anahtari seal_keys'te (CDP: yalniz bellekte) ya da kullanici durum
     klasorunde aranir; durum klasorundeki anahtar, kosunun HER oturumu son parcasiyla ice aktarilip paketleri silinince
     silinir (anahtar dosyasi kosunun oturum sayisini tutar; issue #21: eksik oturum ya da yalniz bir kismi verilen
     kosuda anahtar kalir, onun paketleri hala o anahtarla acilir). -> (yazilan, atlanan)"""
@@ -552,8 +553,10 @@ def import_bundles(inputs, out_dir, date_from=None, date_to=None, max_messages=N
             if complete and not keep_bundles:
                 if _delete_bundles(parts.values()) == 0 and kid and kid not in seal_keys:
                     _session_key_note(session_imported(kid, sid))   # the key goes once every session of the run is imported
-            elif not complete:
+            elif not complete and keep_incomplete:
                 print(wa2md.t("web_parts_kept"))  # eksik oturum: son parca sonradan inebilir, parcalar yerinde kalir
+            elif not complete and not keep_bundles:
+                _delete_bundles(parts.values())   # son parca gelmeyecek: ara kayit donustu, parcalar gerekmez
         except Exception as e:  # noqa: BLE001 - anonimde iz/yol (ad icerir) yerine yalniz tur
             if not red:
                 raise
@@ -772,10 +775,8 @@ def _salvage_staging(staging, args, chat_start, ref_no, seal_keys=None):
     d, _ = import_bundles([staging], args.out, args.date_from, args.date_to, args.max_messages,
                           anonim=getattr(args, "anonim", True), chat_start=chat_start,
                           no_media=bool(getattr(args, "no_media", False)), ref_start=ref_no, seal_keys=seal_keys,
-                          **anon_kwargs(args))
-    if d:   # the checkpoint is converted and no final part will follow in this path: the parts are not needed any more
-        _delete_bundles(p for parts in find_bundle_files([staging]).values() for p in parts.values())
-    return d
+                          keep_incomplete=False, **anon_kwargs(args))
+    return d   # no final part follows in this path: import_bundles deleted the parts it converted
 
 
 def _remove_staging(staging):
