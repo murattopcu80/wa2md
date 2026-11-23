@@ -259,6 +259,10 @@ MSG = {
                      "tr": "mühürlü paket parçası {no} bütünlük denetimini geçemedi (bozuk dosya ya da yanlış anahtar)."},
     "web_key_kept": {"en": "   Key kept: {done} of {total} sessions of this run are imported; the key is deleted when the last one is.",
                      "tr": "   Anahtar duruyor: bu koşunun {total} oturumundan {done} tanesi içe aktarıldı; sonuncusunda anahtar silinir."},
+    "web_key_kept_bundles": {"en": "   Key kept: sealed bundle files of this run that were not converted are still in the input; "
+                                   "the key is deleted when they are.",
+                             "tr": "   Anahtar duruyor: bu koşunun dönüştürülmemiş mühürlü paket dosyaları girdide duruyor; "
+                                   "onlar dönüşünce anahtar silinir."},
     "web_seal_format": {"en": "sealed bundle part {no} uses the seal format {alg}, which this version does not read (it is not a "
                               "damaged file); import it with the version of wa2md that wrote it.",
                         "tr": "mühürlü paket parçası {no} bu sürümün okumadığı mühür biçimini ({alg}) kullanıyor (bozuk dosya "

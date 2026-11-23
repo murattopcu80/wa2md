@@ -13,6 +13,7 @@ import tempfile
 import time
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
+from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
@@ -342,6 +343,50 @@ class Smoke(unittest.TestCase):
             self.assertIn("Done: 1 chats written, 0 skipped/failed.", o.getvalue())
         finally:
             shutil.rmtree(out, ignore_errors=True)
+
+
+    def collect_run(self, chats, seal_cfg, **kw):
+        """One collector run over several chats (the console path: one snippet for N chats), sealed, no import:
+        (status, {file name: part}); the parts are read back and the staging folder is removed."""
+        orig = wa_web.collector_opts
+
+        def go(page):
+            staging = tempfile.mkdtemp(prefix="wa_smoke_stage_")
+            try:
+                with mock.patch.object(wa_web, "collector_opts", lambda a, c: orig(a, chats)):
+                    status = wa_web.export_chat_cdp(page, chats[0], Args(no_media=True, **kw), staging, seal_cfg)
+                parts = {}
+                for n in sorted(os.listdir(staging)):
+                    with open(os.path.join(staging, n), encoding="utf-8") as f:
+                        parts[n] = json.load(f)
+                return status, parts
+            finally:
+                shutil.rmtree(staging, ignore_errors=True)
+        return self.run_flow(go)
+
+    def test_final_part_header_says_how_many_chats_the_run_started(self):
+        """Issue #21 review: a chat that is not found is not counted; the header (authenticated) carries the count."""
+        cfg = wa_web.new_seal(store=False)
+        status, parts = self.collect_run(["Sohbet 09", "hic yok boyle bir sohbet", "Sohbet 03"], cfg)
+        finals = [p for p in parts.values() if p.get("final")]
+        self.assertEqual(len(finals), 2, status)                   # the missing chat has no session
+        # the last chat's final part knows no further chat will start (2 started); the first one only knows 3 were asked
+        self.assertEqual(sorted(p["runChats"] for p in finals), [2, 3])
+        key = bytes.fromhex(cfg["key"])
+        for p in finals:                                           # runChats is under the MAC: the parts open with it
+            self.assertTrue(wa_web.unseal(p["sealed"], key, wa_web.header_aad(p))["rows"])
+
+    def test_final_part_header_after_a_stop_counts_only_the_chats_started(self):
+        cfg = wa_web.new_seal(store=False)
+        self.run_flow(lambda page: page.evaluate("""() => { const iv = setInterval(() => {
+            const b = document.querySelector('#wa-collect-panel button[data-wa=stop]');
+            if (b && window.__waStatus && window.__waStatus.phase === 'collect') { b.click(); clearInterval(iv); }
+        }, 10); }"""))
+        status, parts = self.collect_run(["Sohbet 09", "Sohbet 03", "Sohbet 07"], cfg)
+        finals = [p for p in parts.values() if p.get("final")]
+        self.assertEqual(len(finals), 1, status)                   # chats 2 and 3 were never started
+        self.assertTrue(finals[0]["stopped"])
+        self.assertEqual(finals[0]["runChats"], 1)
 
 
 def parts_media(parts, no):

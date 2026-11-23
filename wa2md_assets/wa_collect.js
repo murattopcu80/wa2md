@@ -375,7 +375,8 @@
   //   kEnc = HMAC(K, "wa2md-seal-2 enc"), kMac = HMAC(K, "wa2md-seal-2 mac"); blok i = HMAC(kEnc, nonce16 || be32(i));
   //   ct = utf8(JSON) XOR anahtar akisi; tag = HMAC(kMac, "wa2md-seal-2\0" || kid || "\0" || aad || "\0" || nonce || ct).
   //   aad = session \0 parca no \0 final(0|1) \0 snapshot(0|1) \0 medya parcalari (virgullu) = parca basliginin dogrulanan
-  //   alanlari (wa_web.header_aad): eski bir ara kayit basligi degistirilerek "tam" parca gibi acilamaz.
+  //   alanlari (wa_web.header_aad): eski bir ara kayit basligi degistirilerek "tam" parca gibi acilamaz. Son parcada
+  //   runChats (kosuda baslayan sohbet sayisi) varsa \0 runChats eklenir; yoksa eklenmez (runChats'siz eski parcalar acilir).
   const utf8 = new TextEncoder();
   const unhex = (h) => new Uint8Array(String(h).match(/../g).map((x) => parseInt(x, 16)));
   function b64of(u8) {
@@ -385,6 +386,11 @@
   }
   const hmacKey = (raw) => crypto.subtle.importKey("raw", raw, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const hmac = async (key, data) => new Uint8Array(await crypto.subtle.sign("HMAC", key, data));
+  function headerAad(part) {
+    const a = [part.session, part.part, part.final ? 1 : 0, part.snapshot ? 1 : 0, (part.mediaParts || []).join(",")];
+    if (part.runChats != null) a.push(part.runChats);
+    return a.join("\0");
+  }
   async function seal(obj, cfg, nonce, aad) {
     const master = await hmacKey(unhex(cfg.key));
     const kEnc = await hmacKey(await hmac(master, utf8.encode("wa2md-seal-2 enc")));
@@ -414,7 +420,10 @@
   }
 
   // ------------------------------------------------------------------ paketleme
-  function makeBundler(emit, chat, maxPartMb, sealCfg) {
+  // run: {asked, index, started} of the whole run (run()); the final part of a sealed chat carries runChats = the number of
+  // chats the run started (known once no further chat will start: stop pressed or the last requested chat), else the number
+  // requested (an upper bound). `import` uses it to know when every session of the run is imported (issue #21).
+  function makeBundler(emit, chat, maxPartMb, sealCfg, run) {
     const session = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     // muhurlu pakette dosya adinda da sohbet adi yok
     const slug = sealCfg ? "sealed" : (fold(chat).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 24) || "sohbet");
@@ -426,9 +435,11 @@
       if (part.media && part.media.length) mediaParts.push(n);
       const name = `wa-bundle-${slug}-${session}-${String(n).padStart(3, "0")}.json`;
       let body = Object.assign({}, part, part.rows ? { mediaParts: mediaParts.slice() } : {});
+      if (n === 1 && run) run.started += 1;   // the chat has a session from its first part on
       if (sealCfg) { // satirlar + sohbet adi yalniz muhurlu yukte; baslikta ad yok
         if (body.rows) {
-          const aad = [session, n, body.final ? 1 : 0, body.snapshot ? 1 : 0, (body.mediaParts || []).join(",")].join("\0");
+          if (body.final && run) body.runChats = stopRequested || run.index >= run.asked ? run.started : run.asked;
+          const aad = headerAad(Object.assign({ session, part: n }, body));
           const sealed = await seal({ chat, rows: body.rows }, sealCfg, null, aad);
           delete body.rows;
           body.sealed = sealed;
@@ -887,7 +898,7 @@
       olderOnPhone: st.olderPrompt, emptyRows: st.order.length - st.order.filter((id) => st.rows.has(id)).length }, extra || {});
   }
 
-  async function exportChat(name, opts, emit) {
+  async function exportChat(name, opts, emit, run) {
     const pick = await openChat(name);
     if (pick.status === "none") return { chat: name, error: T("err_none") };
     if (pick.status === "ambiguous") return { chat: name, error: T("err_ambiguous") + pick.count + T("err_ambiguous_end") };
@@ -895,7 +906,7 @@
     const title = pick.title;
     beat({ phase: "opened" });
     await pause(1.0, 2.0);
-    const bundler = makeBundler(emit, title, opts.maxPartMb, opts.seal && opts.seal.kid && opts.seal.key ? opts.seal : null);
+    const bundler = makeBundler(emit, title, opts.maxPartMb, opts.seal && opts.seal.kid && opts.seal.key ? opts.seal : null, run);
     const st = await collectChat(title, opts, bundler);
     const rows = rowsOf(st);
     const empty = st.order.length - rows.length;
@@ -926,14 +937,16 @@
     // olay dongusu canli mi: asili kalmada alive de durur; yavas ilerlemede alive akar, heartbeat gec kalir
     const alive = setInterval(() => { status.alive = Date.now(); }, 2000);
     renderPanel();
+    const runInfo = { asked: opts.chats.length, index: 0, started: 0 };
     try {
       await waitReady();
       for (const name of opts.chats) {
         if (stopRequested) break; // durdurma: kalan sohbetlere gecilmez
         status.chatIndex += 1;
+        runInfo.index = status.chatIndex;
         state.log(T("log_chat") + name);
         try {
-          status.results.push(await exportChat(name, opts, emit));
+          status.results.push(await exportChat(name, opts, emit, runInfo));
         } catch (e) {
           status.results.push({ chat: name, error: T("err_collect") + String(e && e.message || e).slice(0, 200) });
         }
@@ -953,7 +966,7 @@
     return status;
   }
 
-  window.__waCollect = { SEL, run, stop, stopped: () => stopRequested, seal, listChats, openChat, parseRow, pickChat, normName, squash, partBlob, blobToB64, textOf, quoteText, shortId, mergeOrder, stampDay };
+  window.__waCollect = { SEL, run, stop, stopped: () => stopRequested, seal, headerAad, listChats, openChat, parseRow, pickChat, normName, squash, partBlob, blobToB64, textOf, quoteText, shortId, mergeOrder, stampDay };
   if (window.__WA_OPTS) {
     const o = window.__WA_OPTS;
     delete window.__WA_OPTS;

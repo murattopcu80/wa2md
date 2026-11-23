@@ -292,14 +292,20 @@ def _xor_stream(k_enc, nonce, data):
 
 
 def header_aad(part):
-    """Parca basliginin dogrulanan alanlari (wa_collect.js ayni dizgiyi kurar): session, parca no, final, snapshot, mediaParts."""
+    """Parca basliginin dogrulanan alanlari (wa_collect.js headerAad ayni dizgiyi kurar): session, parca no, final, snapshot,
+    mediaParts, varsa runChats (kosuda baslayan sohbet sayisi; yoksa alan da yok: runChats'siz parcalar acilir)."""
     try:
         no = int(part.get("part") or 0)
         media = ",".join(str(int(i)) for i in (part.get("mediaParts") or []))
     except (TypeError, ValueError):
         return "\0invalid"          # hicbir muhurle eslesmez
-    return "\0".join((str(part.get("session", "")), str(no), "1" if part.get("final") else "0",
-                      "1" if part.get("snapshot") else "0", media))
+    fields = [str(part.get("session", "")), str(no), "1" if part.get("final") else "0", "1" if part.get("snapshot") else "0", media]
+    if part.get("runChats") is not None:     # final part of a run: how many chats the run started (issue #21); absent in older parts
+        try:
+            fields.append(str(int(part["runChats"])))
+        except (TypeError, ValueError):
+            return "\0invalid"
+    return "\0".join(fields)
 
 
 def _seal_tag(k_mac, kid, aad, nonce, ct):
@@ -387,20 +393,60 @@ def drop_key(kid):
             pass
 
 
-def session_imported(kid, sid):
-    """Oturumun son parcasi ice aktarildi ve paketleri silindi: anahtar dosyasina isle. Kosunun tum oturumlari bitince anahtari
-    sil. -> (biten, toplam, silindi_mi); anahtar dosyasi yoksa None."""
+def session_imported(kid, sid, chats=None):
+    """Oturumun son parcasi ice aktarildi ve paketleri silindi: anahtar dosyasina isle. chats: son parcanin basliginda
+    (dogrulanmis) kosuda gercekte baslayan sohbet sayisi; kosunun oturum sayisi bundan buyuk kalamaz (durdurma ya da
+    bulunamayan sohbet). Anahtari BURADA silmeyen karar: release_keys. -> (biten, toplam); anahtar dosyasi yoksa None."""
     rec = _read_key_file(kid)
     if rec is None:
         return None
-    done = sorted(set(rec.get("done") or []) | {sid})
+    rec["done"] = sorted(set(rec.get("done") or []) | {sid})
     total = max(1, int(rec.get("sessions") or 1))
-    if len(done) >= total:
-        drop_key(kid)
-        return len(done), total, True
-    rec["done"] = done
+    try:
+        if chats is not None and int(chats) >= 1:
+            total = rec["sessions"] = min(total, int(chats))
+    except (TypeError, ValueError):
+        pass
     _write_key_file(kid, rec)
-    return len(done), total, False
+    return len(rec["done"]), total
+
+
+_SEALED_KID_RX = re.compile(rb'"sealed"\s*:\s*\{[^{}]{0,200}?"kid"\s*:\s*"([0-9a-f]{16})"')
+
+
+def sniff_sealed_kid(path):
+    """Paket dosyasi muhurluysa muhrun anahtar kimligi (dosyayi yuklemeden, parca parca taranir) | None."""
+    try:
+        with open(path, "rb") as f:
+            tail = b""
+            while chunk := f.read(1 << 20):
+                m = _SEALED_KID_RX.search(tail + chunk)
+                if m:
+                    return m.group(1).decode("ascii")
+                tail = chunk[-400:]
+    except OSError:
+        pass
+    return None
+
+
+def release_keys(inputs, kids):
+    """Ice aktarimdan sonra: kosunun TUM oturumlari ice aktarildiysa VE girdilerde bu anahtarla muhurlu, donusturulmemis
+    paket kalmadiysa anahtari sil (issue #21: ayni parca iki kosuda calistiginda ya da bir oturum donusturulemediginde
+    anahtar, kalan paketin tek acilis yolu olarak durur); yoksa neden durdugunu yaz (yalniz sayilar)."""
+    if not kids:
+        return
+    left = {sniff_sealed_kid(p) for parts in find_bundle_files(inputs).values() for p in parts.values()}
+    for kid in sorted(kids):
+        rec = _read_key_file(kid)
+        if rec is None:
+            continue
+        done, total = len(rec.get("done") or []), max(1, int(rec.get("sessions") or 1))
+        if done < total:
+            print(wa2md.t("web_key_kept", done=done, total=total))
+        elif kid in left:
+            print(wa2md.t("web_key_kept_bundles"))
+        else:
+            drop_key(kid)
 
 
 # ------------------------------------------------------------------ SECTION: paket okuma + import
@@ -514,6 +560,7 @@ def import_bundles(inputs, out_dir, date_from=None, date_to=None, max_messages=N
         print(f"{wa2md.t('err')}: " + wa2md.t("web_no_bundles"), file=sys.stderr)
         return 0, 1
     done = failed = 0
+    touched = set()   # keys of the sealed sessions converted in this call
     red = anonim  # anonimde konsolda ad / dosya adi / icerik yok
     for k, (sid, parts) in enumerate(sorted(sessions.items())):
         staging = tempfile.mkdtemp(prefix="wa_web_")
@@ -555,7 +602,8 @@ def import_bundles(inputs, out_dir, date_from=None, date_to=None, max_messages=N
             done += 1
             if complete and not keep_bundles:
                 if _delete_bundles(parts.values()) == 0 and kid and kid not in seal_keys:
-                    _session_key_note(session_imported(kid, sid))   # the key goes once every session of the run is imported
+                    session_imported(kid, sid, final.get("runChats"))   # release_keys (below) decides when the key goes
+                    touched.add(kid)
             elif not complete and keep_incomplete:
                 print(wa2md.t("web_parts_kept"))  # eksik oturum: son parca sonradan inebilir, parcalar yerinde kalir
             elif not complete and not keep_bundles:
@@ -567,6 +615,7 @@ def import_bundles(inputs, out_dir, date_from=None, date_to=None, max_messages=N
             failed += 1
         finally:
             shutil.rmtree(staging, ignore_errors=True)
+    release_keys(inputs, touched)
     print(wa2md.t("web_done", done=done, failed=failed))
     return done, failed
 
@@ -585,12 +634,6 @@ def _delete_bundles(paths):
     if bad:
         print(wa2md.t("web_delete_failed", n=bad), file=sys.stderr)
     return bad
-
-
-def _session_key_note(state):
-    """Anahtar bu oturumdan sonra da duruyorsa konsola yalniz sayilar yaz (kosunun baska oturumlari bekliyor)."""
-    if state and not state[2]:
-        print(wa2md.t("web_key_kept", done=state[0], total=state[1]))
 
 
 # ------------------------------------------------------------------ SECTION: komut satiri -> toplayici secenekleri
