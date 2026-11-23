@@ -345,10 +345,12 @@ def load_session(parts, staging):
 
 def import_bundles(inputs, out_dir, date_from=None, date_to=None, max_messages=None, anonim=False,
                    chat_start=1, no_media=False, ref_start=1, extra_names=None, review_dir=None, no_dict=False,
-                   keep_bundles=False):
+                   keep_bundles=False, keep_incomplete=True):
     """Paketleri Markdown'a cevir (wa2md.write_chat; wa2md ile ayni secenekler: ek adlar, inceleme klasoru, sozluksuz).
     Grup karari tarih/sayi suzgecinden ONCE tum paketten verilir (wa2md.is_group). Basariyla yazilan oturumun paket
-    dosyalari silinir (maskelenmemis sohbeti tasirlar; keep_bundles saklar; issue #20). -> (yazilan, atlanan)"""
+    dosyalari silinir (maskelenmemis sohbeti tasirlar; keep_bundles saklar; issue #20). Son parcasi olmayan oturumun
+    parcalari yerinde kalir (son parca sonradan inebilir); keep_incomplete=False: son parca gelmeyecek (CDP yolu), ara kayit
+    donusunce parcalar silinir. -> (yazilan, atlanan)"""
     sessions = find_bundle_files(inputs)
     if not sessions:
         print(f"{wa2md.t('err')}: " + wa2md.t("web_no_bundles"), file=sys.stderr)
@@ -395,8 +397,10 @@ def import_bundles(inputs, out_dir, date_from=None, date_to=None, max_messages=N
             done += 1
             if complete and not keep_bundles:
                 _delete_bundles(parts.values())
-            elif not complete:
+            elif not complete and keep_incomplete:
                 print(wa2md.t("web_parts_kept"))  # eksik oturum: son parca sonradan inebilir, parcalar yerinde kalir
+            elif not complete and not keep_bundles:
+                _delete_bundles(parts.values())   # son parca gelmeyecek: ara kayit donustu, parcalar gerekmez
         except Exception as e:  # noqa: BLE001 - anonimde iz/yol (ad icerir) yerine yalniz tur
             if not red:
                 raise
@@ -604,10 +608,9 @@ def _salvage_staging(staging, args, chat_start, ref_no):
     print(wa2md.t("web_salvage"))
     d, _ = import_bundles([staging], args.out, args.date_from, args.date_to, args.max_messages,
                           anonim=getattr(args, "anonim", True), chat_start=chat_start,
-                          no_media=bool(getattr(args, "no_media", False)), ref_start=ref_no, **anon_kwargs(args))
-    if d:   # the checkpoint is converted and no final part will follow in this path: the parts are not needed any more
-        _delete_bundles(p for parts in find_bundle_files([staging]).values() for p in parts.values())
-    return d
+                          no_media=bool(getattr(args, "no_media", False)), ref_start=ref_no, keep_incomplete=False,
+                          **anon_kwargs(args))
+    return d   # no final part follows in this path: import_bundles deleted the parts it converted
 
 
 def _remove_staging(staging):
