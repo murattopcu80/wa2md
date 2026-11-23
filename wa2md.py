@@ -259,6 +259,18 @@ MSG = {
                      "tr": "mühürlü paket parçası {no} bütünlük denetimini geçemedi (bozuk dosya ya da yanlış anahtar)."},
     "web_deleted": {"en": "   {n} converted bundle file(s) deleted (--keep-bundles keeps them).",
                     "tr": "   Dönüştürülen {n} paket dosyası silindi (--keep-bundles saklar)."},
+    "web_parts_kept": {"en": "   The collection has no final part: the bundle files stay where they are; import them "
+                             "again together with the final part if it turns up.",
+                       "tr": "   Toplamanın son parçası yok: paket dosyaları yerinde kalır; son parça bulunursa "
+                             "onunla birlikte yeniden içe aktarın."},
+    "web_salvage": {"en": "   The collection did not finish: converting what was collected (checkpoints).",
+                    "tr": "   Toplama bitmedi: toplananlar (ara kayıtlar) dönüştürülüyor."},
+    "web_parts_left": {"en": "   Bundle parts that could not be converted are kept in {path} (they hold the chat); "
+                             "convert them with: wa_web.py import \"{path}\" --out <folder>, then delete them.",
+                       "tr": "   Dönüştürülemeyen paket parçaları {path} klasöründe duruyor (sohbeti içerir); "
+                             "şu komutla dönüştürün: wa_web.py import \"{path}\" --out <klasör>, sonra silin."},
+    "web_run_stopped": {"en": "Stopped by the user: {n} remaining chat(s) were not collected.",
+                        "tr": "Kullanıcı durdurdu: kalan {n} sohbet toplanmadı."},
     "web_delete_failed": {"en": "   {n} bundle file(s) could not be deleted; delete them by hand (they hold the unmasked chat).",
                           "tr": "   {n} paket dosyası silinemedi; elle silin (maskelenmemiş sohbeti içerir)."},
     "web_no_bundles": {"en": "wa-bundle-*.json not found.", "tr": "wa-bundle-*.json bulunamadı."},

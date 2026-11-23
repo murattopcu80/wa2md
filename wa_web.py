@@ -493,8 +493,10 @@ def import_bundles(inputs, out_dir, date_from=None, date_to=None, max_messages=N
             done += 1
             if kid:
                 used_kids.add(kid)
-            if not keep_bundles:
+            if complete and not keep_bundles:
                 _delete_bundles(parts.values())
+            elif not complete:
+                print(wa2md.t("web_parts_kept"))  # eksik oturum: son parca sonradan inebilir, parcalar yerinde kalir
         except Exception as e:  # noqa: BLE001 - anonimde iz/yol (ad icerir) yerine yalniz tur
             if not red:
                 raise
@@ -691,6 +693,37 @@ def cmd_list(args):
     return run_with_page(args, go)
 
 
+def _stop_pressed(page):
+    """True when "Stop and save" was pressed (or __waCollect.stop() run) after the previous chat's run ended."""
+    try:
+        return bool(page.evaluate("() => !!(window.__waCollect && window.__waCollect.stopped && window.__waCollect.stopped())"))
+    except Exception:  # noqa: BLE001 - tab gone: the next collection reports it
+        return False
+
+
+def _salvage_staging(staging, args, chat_start, ref_no):
+    """Convert the parts of a collection that did not finish (issue #20): checkpoints keep what was collected.
+    Parts that cannot be converted (no checkpoint yet) stay in the staging folder, whose
+    path is printed so that `import` can be run on it later. -> number of chats written"""
+    if not find_bundle_files([staging]):
+        return 0
+    print(wa2md.t("web_salvage"))
+    d, _ = import_bundles([staging], args.out, args.date_from, args.date_to, args.max_messages,
+                          anonim=getattr(args, "anonim", True), chat_start=chat_start,
+                          no_media=bool(getattr(args, "no_media", False)), ref_start=ref_no, **anon_kwargs(args))
+    if d:   # the checkpoint is converted and no final part will follow in this path: the parts are not needed any more
+        _delete_bundles(p for parts in find_bundle_files([staging]).values() for p in parts.values())
+    return d
+
+
+def _remove_staging(staging):
+    """Remove the staging folder unless bundle parts are left in it (they hold the chat: tell the user where)."""
+    if find_bundle_files([staging]):
+        print(wa2md.t("web_parts_left", path=staging))
+        return
+    shutil.rmtree(staging, ignore_errors=True)
+
+
 def cmd_export(args):
     wanted = split_chats(args.chats)
     if not wanted:
@@ -708,7 +741,12 @@ def cmd_export(args):
         done = failed = 0
         red = wa2md.redact_console(args)
         for i, name in enumerate(wanted, 1):
+            if i > 1 and _stop_pressed(page):
+                print(wa2md.t("web_run_stopped", n=len(wanted) - i + 1))
+                break
             staging = tempfile.mkdtemp(prefix="wa_cdp_")
+            collected = False   # collection finished without error: the normal import below converts it
+            stopped = False
             try:
                 try:
                     status = export_chat_cdp(page, name, args, staging, seal_cfg)
@@ -722,12 +760,14 @@ def cmd_export(args):
                     failed += 1
                     continue
                 res = (status.get("results") or [{}])[0] if status else {}
+                stopped = bool(status and status.get("stopped"))
                 if status.get("state") != "done" or res.get("error"):
                     failed_msg = wa2md.t("web_collect_failed")
                     detail = failed_msg if red else (status.get('error') or res.get('error') or failed_msg)
                     print(f"{wa2md.t('err')} [{wa2md.t('ref_input', n=i) if red else name}]: {detail}", file=sys.stderr)
                     failed += 1
                     continue
+                collected = True
                 d, f = import_bundles([staging], args.out, args.date_from, args.date_to, args.max_messages,
                                       anonim=getattr(args, "anonim", True), chat_start=done + 1,
                                       no_media=bool(getattr(args, "no_media", False)),
@@ -735,7 +775,15 @@ def cmd_export(args):
                 done += d
                 failed += f
             finally:
-                shutil.rmtree(staging, ignore_errors=True)
+                # A failed or cut-short collection (tab closed, error) leaves checkpoints in the staging folder (issue #20):
+                # convert what was collected (masked as usual); whatever cannot be converted stays on disk and is announced.
+                if not collected:
+                    done += _salvage_staging(staging, args, done + 1, i)
+                _remove_staging(staging)
+            if stopped:   # "Stop and save" ends the whole run, not only the current chat (issue #20)
+                if i < len(wanted):
+                    print(wa2md.t("web_run_stopped", n=len(wanted) - i))
+                break
         print(wa2md.t("web_done", done=done, failed=failed))
         return 0 if done else 1
     return run_with_page(args, go)

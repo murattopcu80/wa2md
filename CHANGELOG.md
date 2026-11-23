@@ -25,7 +25,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
-- `wa_web.py import` deletes the bundle files of every chat it converted successfully, because they hold the unmasked chat; `--keep-bundles` keeps them ([#20](../../issues/20), stop-gap for [#21](../../issues/21)). Bundle format 2: snapshot parts and `mediaParts`; format 1 bundles are still read.
+- `wa_web.py import` deletes the bundle files of every chat it converted successfully, because they hold the unmasked chat; `--keep-bundles` keeps them ([#20](../../issues/20), stop-gap for [#21](../../issues/21)). Bundle format 2: snapshot parts and `mediaParts`; format 1 bundles are still read. A session without a final part (only checkpoints arrived) keeps its files until the final part has been imported. On the CDP path a failed collection is converted from its checkpoints and **Stop and save** ends the whole run.
 - **Output labels are English by default** and follow `--lang` / `WA2MD_LANG`: `Chat-N`, `Person N`, `[phone]`, `[company]`, `[path]`, `[email]`, `[user]`, `[password]`, `[code]`, `Participants:`, `attachments.md`, `Chat-N-suspect-names.txt`. **To keep the previous Turkish labels (`Sohbet-N`, `Kişi N`, `[telefon]`, ...) use `--lang tr` or `WA2MD_LANG=tr`**; with `--packs tr --lang tr` the Markdown output is byte-identical to the previous version except that an IBAN of any country is now masked whole as `[iban]`.
 - Internal statistics and review-reason ids are English (`dictionary`, `honorific`, `place_unclear`, ...); the console shows them in the selected language as before.
 - Test data uses reserved example numbers and names only.
