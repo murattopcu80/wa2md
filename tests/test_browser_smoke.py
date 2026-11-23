@@ -271,6 +271,25 @@ class Smoke(unittest.TestCase):
             shutil.rmtree(staging, ignore_errors=True)
             shutil.rmtree(out, ignore_errors=True)
 
+    def test_stop_ends_the_whole_run_not_only_the_current_chat(self):
+        """Issue #20 review: with several chats, "Stop and save" must not let Python start the next chat."""
+        out = tempfile.mkdtemp()
+        try:
+            self.run_flow(lambda page: page.evaluate("""() => { const iv = setInterval(() => {
+                const b = document.querySelector('#wa-collect-panel button[data-wa=stop]');
+                if (b && window.__waStatus && window.__waStatus.phase === 'collect') { b.click(); clearInterval(iv); }
+            }, 10); }"""))
+            args = Args(out=out, user_data_dir=self.udd, chats="Sohbet 09,Sohbet 03,Sohbet 07", anonim=False, no_media=True,
+                        max_messages=15)
+            with redirect_stdout(io.StringIO()) as o, redirect_stderr(io.StringIO()) as e:
+                rc = wa_web.cmd_export(args)
+            self.assertEqual(rc, 0, e.getvalue())
+            self.assertEqual(sorted(os.listdir(out)), ["Sohbet 09"])      # the chats after the stopped one were not collected
+            self.assertIn("Stopped by the user: 2 remaining chat(s) were not collected", o.getvalue())
+            self.assertIn("Done: 1 chats written, 0 skipped/failed.", o.getvalue())
+        finally:
+            shutil.rmtree(out, ignore_errors=True)
+
 
 def parts_media(parts, no):
     return any(p["part"] == no and p.get("media") for p in parts.values())

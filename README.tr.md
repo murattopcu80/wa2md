@@ -123,7 +123,7 @@ Seçenekler: `--from` / `--to` tarih aralığı, `--max-messages N` en yeni N me
 .venv\Scripts\python wa_web.py export --chats "Ali Veli" --out C:\Users\kullanici\wa-out
 ```
 
-Aynı `wa_collect.js`'i Playwright ile çalışan Chrome'a bağlanarak çalıştırır ve paketleri doğrudan `import` koduna verir. Chrome'da `chrome://inspect/#remote-debugging` sayfasında "Bu tarayıcı örneği için uzaktan hata ayıklamaya izin ver" kutusu açık olmalı ve ilk bağlanışta çıkan izin penceresinde **İzin ver**'e tıklanmalı. **Gerçek Chrome'a bağlantı doğrulanmadı**: bakımcının test ortamında, Chrome 157'de, uç nokta WebSocket el sıkışmasını yanıtlamadı (üç deneme zaman aşımı). Betiğin kendi geçici Chrome'unla çalıştığı testlerle gösterilmiştir. Bağlanamazsa komut hata verir ve konsol yolunu önerir.
+Aynı `wa_collect.js`'i Playwright ile çalışan Chrome'a bağlanarak çalıştırır ve paketleri doğrudan `import` koduna verir. Toplama başarısız olursa ya da sekme kapanırsa o ana kadar toplananlar (ara kayıtlar) her zamanki gibi maskelenerek dönüştürülür; dönüştürülemeyen parçalar yolu yazılan geçici bir klasörde kalır; **Durdur ve kaydet** yalnız o sohbeti değil, tüm çalışmayı bitirir. Chrome'da `chrome://inspect/#remote-debugging` sayfasında "Bu tarayıcı örneği için uzaktan hata ayıklamaya izin ver" kutusu açık olmalı ve ilk bağlanışta çıkan izin penceresinde **İzin ver**'e tıklanmalı. **Gerçek Chrome'a bağlantı doğrulanmadı**: bakımcının test ortamında, Chrome 157'de, uç nokta WebSocket el sıkışmasını yanıtlamadı (üç deneme zaman aşımı). Betiğin kendi geçici Chrome'unla çalıştığı testlerle gösterilmiştir. Bağlanamazsa komut hata verir ve konsol yolunu önerir.
 
 ### Salt okunur, ama okundu bilgisi gider
 

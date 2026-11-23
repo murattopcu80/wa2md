@@ -436,6 +436,87 @@ class Bundles(unittest.TestCase):
         self.assertIn("_belge indirilemedi: rapor.pdf_", md)
 
 
+class CdpFailure(unittest.TestCase):
+    """Issue #20 review: a CDP collection that fails (tab closed, collector error) keeps what was collected."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.out = os.path.join(self.tmp, "out")
+        self.args = type("A", (), {"chats": "Naime", "out": self.out, "anonim": False, "date_from": None, "date_to": None,
+                                   "max_messages": None, "no_media": False})()
+        self.orig = (wa_web.run_with_page, wa_web.export_chat_cdp)
+        wa_web.run_with_page = lambda args, fn: fn(object())
+
+    def tearDown(self):
+        wa_web.run_with_page, wa_web.export_chat_cdp = self.orig
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def parts(self, staging, snapshot=True):
+        rows = [synth(1, stamp="[14:05, 14.11.2026] Naime: ", text="Ilk satir"), synth(2, stamp="[14:06, 14.11.2026] Naime: ", text="Ikinci satir")]
+        if snapshot:
+            p = {"format": "wa-web-bundle", "version": 2, "session": "cdp111", "part": 1, "chat": "Naime", "final": False,
+                 "snapshot": True, "rows": rows, "media": [], "mediaParts": [], "today": "2026-11-16", "opts": {}}
+        else:
+            p = {"format": "wa-web-bundle", "version": 2, "session": "cdp111", "part": 1, "chat": "Naime", "final": False,
+                 "media": []}
+        with open(os.path.join(staging, "wa-bundle-naime-cdp111-001.json"), "w", encoding="utf-8") as f:
+            json.dump(p, f)
+
+    def export(self):
+        with redirect_stdout(io.StringIO()) as o, redirect_stderr(io.StringIO()) as e:
+            try:
+                rc = wa_web.cmd_export(self.args)
+            except RuntimeError as ex:
+                rc = ex
+        return rc, o.getvalue(), e.getvalue()
+
+    def test_tab_closed_after_a_checkpoint_converts_the_checkpoint(self):
+        def fake(page, name, args, staging):
+            self.parts(staging)
+            raise RuntimeError("Target closed")                  # the tab was closed mid-collection
+        wa_web.export_chat_cdp = fake
+        rc, out, err = self.export()
+        self.assertIsInstance(rc, RuntimeError)
+        with open(os.path.join(self.out, "Naime", "Naime.md"), encoding="utf-8") as f:
+            self.assertIn("Ikinci satir", f.read())
+        self.assertIn("ara kayıt", out)
+        self.assertNotIn("Dönüştürülemeyen", out)
+
+    def test_collector_error_after_a_checkpoint_converts_it_and_counts_the_chat_as_failed(self):
+        def fake(page, name, args, staging):
+            self.parts(staging)
+            return {"state": "error", "error": "boom", "results": []}
+        wa_web.export_chat_cdp = fake
+        rc, out, err = self.export()
+        self.assertEqual(rc, 0)                                   # one chat was written from the checkpoint
+        self.assertTrue(os.path.isfile(os.path.join(self.out, "Naime", "Naime.md")))
+        self.assertIn("Bitti: 1 sohbet yazıldı, 1 atlandı/hatalı", out)
+
+    def test_parts_that_cannot_be_converted_stay_on_disk_and_the_path_is_printed(self):
+        kept = []
+
+        def fake(page, name, args, staging):
+            kept.append(staging)
+            self.parts(staging, snapshot=False)                   # only a media part reached the folder
+            return {"state": "error", "error": "boom", "results": []}
+        wa_web.export_chat_cdp = fake
+        rc, out, err = self.export()
+        self.assertEqual(rc, 1)
+        self.assertTrue(os.path.isfile(os.path.join(kept[0], "wa-bundle-naime-cdp111-001.json")))
+        self.assertIn(kept[0], out)
+        shutil.rmtree(kept[0], ignore_errors=True)
+
+    def test_clean_failure_without_parts_leaves_no_folder(self):
+        kept = []
+
+        def fake(page, name, args, staging):
+            kept.append(staging)
+            return {"state": "error", "error": "boom", "results": []}
+        wa_web.export_chat_cdp = fake
+        self.export()
+        self.assertFalse(os.path.exists(kept[0]))
+
+
 # ------------------------------------------------------------------ wa_collect.js (gercek Chrome)
 @unittest.skipUnless(sync_playwright and os.path.isfile(CHROME), "Chrome veya playwright yok")
 class CollectorDom(unittest.TestCase):

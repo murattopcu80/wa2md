@@ -898,7 +898,7 @@
     return status;
   }
 
-  window.__waCollect = { SEL, run, stop, listChats, openChat, parseRow, pickChat, normName, squash, partBlob, blobToB64, textOf, quoteText, shortId, mergeOrder, stampDay };
+  window.__waCollect = { SEL, run, stop, stopped: () => stopRequested, listChats, openChat, parseRow, pickChat, normName, squash, partBlob, blobToB64, textOf, quoteText, shortId, mergeOrder, stampDay };
   if (window.__WA_OPTS) {
     const o = window.__WA_OPTS;
     delete window.__WA_OPTS;
