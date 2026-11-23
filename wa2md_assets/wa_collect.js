@@ -12,6 +12,9 @@
  *         medya parcalarina (mediaParts) dayanir: sekme kapansa da en yeni ara kayit tek basina ice aktarilabilir.
  *         Durdurma: paneldeki "Stop and save" dugmesi ya da window.__waCollect.stop() kaydirmayi bitirir, toplananla
  *         son parcayi yazar (stopped: true).
+ *         Muhur (issue #21): opts.seal = {kid, key} verilirse satirlar ve sohbet adi sekmede, indirmeden ONCE sifrelenir
+ *         (wa2md-seal-2: HMAC-SHA256 sayac kipi + sifrele-sonra-MAC; WebCrypto). Diske maskelenmemis metin yazilmaz;
+ *         `import` Python'da acar ve tek maskeleyiciyle (wa2md.write_chat) maskeler. Medya (fotograf) eskisi gibi kalir.
  *         Playwright yolu: opts.emit = window.waEmit (Python parcalari alir). Ikisi de ayni parcalari uretir;
  *         `wa_web.py import` Markdown'a cevirir (tek yazici wa2md.write_chat).
  * Dosya ASCII'dir (Windows panosu icin): Turkce karakterler \u kacislaridir.
@@ -367,10 +370,63 @@
     return null; // belge: indirilmez (tarayici indirmesi tetiklenir); yer tutucu satir yazilir
   }
 
+  // ------------------------------------------------------------------ muhur (issue #21)
+  // wa2md-seal-2 (Python karsiligi: wa_web.seal / wa_web.unseal; ayni belirtim, bilinen cevap testi ikisini karsilastirir):
+  //   kEnc = HMAC(K, "wa2md-seal-2 enc"), kMac = HMAC(K, "wa2md-seal-2 mac"); blok i = HMAC(kEnc, nonce16 || be32(i));
+  //   ct = utf8(JSON) XOR anahtar akisi; tag = HMAC(kMac, "wa2md-seal-2\0" || kid || "\0" || aad || "\0" || nonce || ct).
+  //   aad = session \0 parca no \0 final(0|1) \0 snapshot(0|1) \0 medya parcalari (virgullu) = parca basliginin dogrulanan
+  //   alanlari (wa_web.header_aad): eski bir ara kayit basligi degistirilerek "tam" parca gibi acilamaz. Son parcada
+  //   runChats (kosuda baslayan sohbet sayisi) varsa \0 runChats eklenir; yoksa eklenmez (runChats'siz eski parcalar acilir).
+  const utf8 = new TextEncoder();
+  const unhex = (h) => new Uint8Array(String(h).match(/../g).map((x) => parseInt(x, 16)));
+  function b64of(u8) {
+    let s = "";
+    for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+    return btoa(s);
+  }
+  const hmacKey = (raw) => crypto.subtle.importKey("raw", raw, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const hmac = async (key, data) => new Uint8Array(await crypto.subtle.sign("HMAC", key, data));
+  function headerAad(part) {
+    const a = [part.session, part.part, part.final ? 1 : 0, part.snapshot ? 1 : 0, (part.mediaParts || []).join(",")];
+    if (part.runChats != null) a.push(part.runChats);
+    return a.join("\0");
+  }
+  async function seal(obj, cfg, nonce, aad) {
+    const master = await hmacKey(unhex(cfg.key));
+    const kEnc = await hmacKey(await hmac(master, utf8.encode("wa2md-seal-2 enc")));
+    const kMac = await hmacKey(await hmac(master, utf8.encode("wa2md-seal-2 mac")));
+    const iv = nonce ? Uint8Array.from(nonce) : crypto.getRandomValues(new Uint8Array(16));
+    const pt = utf8.encode(JSON.stringify(obj));
+    const ct = new Uint8Array(pt.length);
+    const blocks = Math.ceil(pt.length / 32), BATCH = 2048;
+    for (let b0 = 0; b0 < blocks; b0 += BATCH) {
+      const jobs = [];
+      for (let b = b0; b < Math.min(blocks, b0 + BATCH); b++) {
+        const ctr = new Uint8Array(20);
+        ctr.set(iv);
+        new DataView(ctr.buffer).setUint32(16, b);
+        jobs.push(hmac(kEnc, ctr));
+      }
+      (await Promise.all(jobs)).forEach((ks, j) => {
+        const off = (b0 + j) * 32;
+        for (let i = 0; i < 32 && off + i < pt.length; i++) ct[off + i] = pt[off + i] ^ ks[i];
+      });
+      await yieldNow();
+    }
+    const head = utf8.encode("wa2md-seal-2\0" + cfg.kid + "\0" + (aad || "") + "\0");
+    const macIn = new Uint8Array(head.length + iv.length + ct.length);
+    macIn.set(head); macIn.set(iv, head.length); macIn.set(ct, head.length + iv.length);
+    return { alg: "wa2md-seal-2", kid: cfg.kid, nonce: b64of(iv), ct: b64of(ct), tag: b64of(await hmac(kMac, macIn)) };
+  }
+
   // ------------------------------------------------------------------ paketleme
-  function makeBundler(emit, chat, maxPartMb) {
+  // run: {asked, index, started} of the whole run (run()); the final part of a sealed chat carries runChats = the number of
+  // chats the run started (known once no further chat will start: stop pressed or the last requested chat), else the number
+  // requested (an upper bound). `import` uses it to know when every session of the run is imported (issue #21).
+  function makeBundler(emit, chat, maxPartMb, sealCfg, run) {
     const session = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    const slug = fold(chat).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 24) || "sohbet";
+    // muhurlu pakette dosya adinda da sohbet adi yok
+    const slug = sealCfg ? "sealed" : (fold(chat).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 24) || "sohbet");
     let n = 0, buf = [], size = 0;
     const mediaParts = []; // medya tasiyan parca numaralari: snapshot/final yalniz bunlara dayanir (eski ara kayitlar gerekmez)
     const limit = maxPartMb * 1024 * 1024;
@@ -378,8 +434,18 @@
       n += 1;
       if (part.media && part.media.length) mediaParts.push(n);
       const name = `wa-bundle-${slug}-${session}-${String(n).padStart(3, "0")}.json`;
-      await emit(Object.assign({ format: "wa-web-bundle", version: 2, session, part: n, chat }, part,
-        part.rows ? { mediaParts: mediaParts.slice() } : {}), name);
+      let body = Object.assign({}, part, part.rows ? { mediaParts: mediaParts.slice() } : {});
+      if (n === 1 && run) run.started += 1;   // the chat has a session from its first part on
+      if (sealCfg) { // satirlar + sohbet adi yalniz muhurlu yukte; baslikta ad yok
+        if (body.rows) {
+          if (body.final && run) body.runChats = stopRequested || run.index >= run.asked ? run.started : run.asked;
+          const aad = headerAad(Object.assign({ session, part: n }, body));
+          const sealed = await seal({ chat, rows: body.rows }, sealCfg, null, aad);
+          delete body.rows;
+          body.sealed = sealed;
+        }
+      } else body = Object.assign({ chat }, body);
+      await emit(Object.assign({ format: "wa-web-bundle", version: 2, session, part: n }, body), name);
       return name;
     };
     return {
@@ -832,7 +898,7 @@
       olderOnPhone: st.olderPrompt, emptyRows: st.order.length - st.order.filter((id) => st.rows.has(id)).length }, extra || {});
   }
 
-  async function exportChat(name, opts, emit) {
+  async function exportChat(name, opts, emit, run) {
     const pick = await openChat(name);
     if (pick.status === "none") return { chat: name, error: T("err_none") };
     if (pick.status === "ambiguous") return { chat: name, error: T("err_ambiguous") + pick.count + T("err_ambiguous_end") };
@@ -840,7 +906,7 @@
     const title = pick.title;
     beat({ phase: "opened" });
     await pause(1.0, 2.0);
-    const bundler = makeBundler(emit, title, opts.maxPartMb);
+    const bundler = makeBundler(emit, title, opts.maxPartMb, opts.seal && opts.seal.kid && opts.seal.key ? opts.seal : null, run);
     const st = await collectChat(title, opts, bundler);
     const rows = rowsOf(st);
     const empty = st.order.length - rows.length;
@@ -871,14 +937,16 @@
     // olay dongusu canli mi: asili kalmada alive de durur; yavas ilerlemede alive akar, heartbeat gec kalir
     const alive = setInterval(() => { status.alive = Date.now(); }, 2000);
     renderPanel();
+    const runInfo = { asked: opts.chats.length, index: 0, started: 0 };
     try {
       await waitReady();
       for (const name of opts.chats) {
         if (stopRequested) break; // durdurma: kalan sohbetlere gecilmez
         status.chatIndex += 1;
+        runInfo.index = status.chatIndex;
         state.log(T("log_chat") + name);
         try {
-          status.results.push(await exportChat(name, opts, emit));
+          status.results.push(await exportChat(name, opts, emit, runInfo));
         } catch (e) {
           status.results.push({ chat: name, error: T("err_collect") + String(e && e.message || e).slice(0, 200) });
         }
@@ -898,7 +966,7 @@
     return status;
   }
 
-  window.__waCollect = { SEL, run, stop, stopped: () => stopRequested, listChats, openChat, parseRow, pickChat, normName, squash, partBlob, blobToB64, textOf, quoteText, shortId, mergeOrder, stampDay };
+  window.__waCollect = { SEL, run, stop, stopped: () => stopRequested, seal, headerAad, listChats, openChat, parseRow, pickChat, normName, squash, partBlob, blobToB64, textOf, quoteText, shortId, mergeOrder, stampDay };
   if (window.__WA_OPTS) {
     const o = window.__WA_OPTS;
     delete window.__WA_OPTS;

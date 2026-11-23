@@ -4,6 +4,7 @@ list/export (CDP tasimasi) + wa_collect.js akisini kosar. Kullanicinin gercek Ch
 Chrome/playwright yoksa atlanir. (Bu test CDP tasimasinin KENDI Chrome'umuzla calistigini gosterir; kullanicinin
 Chrome'una baglanti dogrulanmadi.)"""
 import io
+import json
 import os
 import shutil
 import subprocess
@@ -12,6 +13,7 @@ import tempfile
 import time
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
+from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
@@ -209,7 +211,8 @@ class Smoke(unittest.TestCase):
         def go(page):
             staging = tempfile.mkdtemp(prefix="wa_smoke_stage_")
             try:
-                status = wa_web.export_chat_cdp(page, name, Args(**kw), staging)
+                seal_cfg = kw.pop("seal_cfg", None)
+                status = wa_web.export_chat_cdp(page, name, Args(**kw), staging, seal_cfg)
                 parts = {}
                 for n in sorted(os.listdir(staging)):
                     with open(os.path.join(staging, n), encoding="utf-8") as f:
@@ -271,6 +274,58 @@ class Smoke(unittest.TestCase):
             shutil.rmtree(staging, ignore_errors=True)
             shutil.rmtree(out, ignore_errors=True)
 
+    # ---- issue #21: sealed bundles in the CDP path (key only in memory)
+    def test_sealed_parts_hold_no_text_and_import_with_the_memory_key(self):
+        out = tempfile.mkdtemp()
+        cfg = wa_web.new_seal(store=False)
+        status, parts, staging = self.collect("Sohbet 13", no_media=True, seal_cfg=cfg)
+        try:
+            self.assertEqual(status["state"], "done")
+            for n in os.listdir(staging):
+                self.assertIn("-sealed-", n)
+                with open(os.path.join(staging, n), encoding="utf-8") as f:
+                    raw = f.read()
+                self.assertNotIn("Mesaj", raw)
+                self.assertNotIn("Sohbet 13", raw)
+            with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                res = wa_web.import_bundles([staging], out, seal_keys={cfg["kid"]: bytes.fromhex(cfg["key"])})
+            self.assertEqual(res, (1, 0))
+            with open(os.path.join(out, "Sohbet 13", "Sohbet 13.md"), encoding="utf-8") as f:
+                self.assertIn("Mesaj 39", f.read())
+        finally:
+            shutil.rmtree(staging, ignore_errors=True)
+            shutil.rmtree(out, ignore_errors=True)
+
+    def test_sealed_checkpoints_are_authenticated_with_their_header_and_import_without_the_final_part(self):
+        out = tempfile.mkdtemp()
+        cfg = wa_web.new_seal(store=False)
+        status, parts, staging = self.collect("Sohbet 11", no_media=True, seal_cfg=cfg, checkpoint_minutes=0.0001)
+        try:
+            snaps = sorted((n for n, p in parts.items() if p.get("snapshot")), key=lambda n: parts[n]["part"])
+            self.assertGreaterEqual(len(snaps), 2, list(parts))
+            self.assertTrue(all("sealed" in parts[n] and "rows" not in parts[n] for n in snaps))
+            final = next(n for n, p in parts.items() if p.get("final"))
+            os.remove(os.path.join(staging, final))                   # tab closed: no final part
+            keys = {cfg["kid"]: bytes.fromhex(cfg["key"])}
+            with redirect_stdout(io.StringIO()) as o, redirect_stderr(io.StringIO()) as e:
+                res = wa_web.import_bundles([staging], out, seal_keys=keys)
+            self.assertEqual(res, (1, 0), e.getvalue())
+            self.assertIn("newest checkpoint", o.getvalue())
+            self.assertTrue(os.path.isfile(os.path.join(out, "Sohbet 11", "Sohbet 11.md")))
+            # the header is part of the MAC: relabel the newest checkpoint as a final part and it no longer opens
+            path = os.path.join(staging, snaps[-1])
+            relabelled = dict(parts[snaps[-1]], final=True, total=parts[snaps[-1]]["part"])
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(relabelled, f)
+            shutil.rmtree(out)
+            with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()) as e:
+                res = wa_web.import_bundles([staging], out, seal_keys=keys)
+            self.assertEqual(res, (0, 1))
+            self.assertIn("integrity check", e.getvalue())
+        finally:
+            shutil.rmtree(staging, ignore_errors=True)
+            shutil.rmtree(out, ignore_errors=True)
+
     def test_stop_ends_the_whole_run_not_only_the_current_chat(self):
         """Issue #20 review: with several chats, "Stop and save" must not let Python start the next chat."""
         out = tempfile.mkdtemp()
@@ -288,6 +343,50 @@ class Smoke(unittest.TestCase):
             self.assertIn("Done: 1 chats written, 0 skipped/failed.", o.getvalue())
         finally:
             shutil.rmtree(out, ignore_errors=True)
+
+
+    def collect_run(self, chats, seal_cfg, **kw):
+        """One collector run over several chats (the console path: one snippet for N chats), sealed, no import:
+        (status, {file name: part}); the parts are read back and the staging folder is removed."""
+        orig = wa_web.collector_opts
+
+        def go(page):
+            staging = tempfile.mkdtemp(prefix="wa_smoke_stage_")
+            try:
+                with mock.patch.object(wa_web, "collector_opts", lambda a, c: orig(a, chats)):
+                    status = wa_web.export_chat_cdp(page, chats[0], Args(no_media=True, **kw), staging, seal_cfg)
+                parts = {}
+                for n in sorted(os.listdir(staging)):
+                    with open(os.path.join(staging, n), encoding="utf-8") as f:
+                        parts[n] = json.load(f)
+                return status, parts
+            finally:
+                shutil.rmtree(staging, ignore_errors=True)
+        return self.run_flow(go)
+
+    def test_final_part_header_says_how_many_chats_the_run_started(self):
+        """Issue #21 review: a chat that is not found is not counted; the header (authenticated) carries the count."""
+        cfg = wa_web.new_seal(store=False)
+        status, parts = self.collect_run(["Sohbet 09", "hic yok boyle bir sohbet", "Sohbet 03"], cfg)
+        finals = [p for p in parts.values() if p.get("final")]
+        self.assertEqual(len(finals), 2, status)                   # the missing chat has no session
+        # the last chat's final part knows no further chat will start (2 started); the first one only knows 3 were asked
+        self.assertEqual(sorted(p["runChats"] for p in finals), [2, 3])
+        key = bytes.fromhex(cfg["key"])
+        for p in finals:                                           # runChats is under the MAC: the parts open with it
+            self.assertTrue(wa_web.unseal(p["sealed"], key, wa_web.header_aad(p))["rows"])
+
+    def test_final_part_header_after_a_stop_counts_only_the_chats_started(self):
+        cfg = wa_web.new_seal(store=False)
+        self.run_flow(lambda page: page.evaluate("""() => { const iv = setInterval(() => {
+            const b = document.querySelector('#wa-collect-panel button[data-wa=stop]');
+            if (b && window.__waStatus && window.__waStatus.phase === 'collect') { b.click(); clearInterval(iv); }
+        }, 10); }"""))
+        status, parts = self.collect_run(["Sohbet 09", "Sohbet 03", "Sohbet 07"], cfg)
+        finals = [p for p in parts.values() if p.get("final")]
+        self.assertEqual(len(finals), 1, status)                   # chats 2 and 3 were never started
+        self.assertTrue(finals[0]["stopped"])
+        self.assertEqual(finals[0]["runChats"], 1)
 
 
 def parts_media(parts, no):

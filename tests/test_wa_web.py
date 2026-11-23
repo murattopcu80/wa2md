@@ -220,6 +220,8 @@ class Snippet(unittest.TestCase):
         self.assertIn("__waCollect", out)  # toplayici dosyanin kendisi gomulu
         self.assertIn("allow pasting", err)
         self.assertEqual(opts["checkpointMin"], 10)   # issue #20: varsayilan ara kayit araligi
+        seal = opts["seal"]                             # issue #21: kosu anahtari durum klasorunde
+        self.assertEqual(wa_web.load_key(seal["kid"]), bytes.fromhex(seal["key"]))
 
     def test_checkpoint_minutes_option(self):
         rc, out, _ = self.run_snippet("--chats", "Naime", "--checkpoint-minutes", "0")
@@ -419,6 +421,239 @@ class Bundles(unittest.TestCase):
         self.assertEqual(res, (0, 2))
         self.assertTrue(os.path.exists(no_final) and os.path.exists(empty))
 
+    # ---- issue #21: sealed bundles (rows and chat title encrypted in the tab)
+    def sealed_part(self, no, rows, cfg, session="abc123", chat="Naime", final=True, snapshot=False, media_parts=(), **extra):
+        p = {"format": "wa-web-bundle", "version": 2, "session": session, "part": no, "final": final, "media": [],
+             "mediaParts": list(media_parts), "today": "2026-11-16", "opts": {}}
+        if snapshot:
+            p["snapshot"] = True
+        if final:
+            p["total"] = no
+        p.update(extra)
+        p["sealed"] = wa_web.seal({"chat": chat, "rows": rows}, bytes.fromhex(cfg["key"]), cfg["kid"],
+                                  aad=wa_web.header_aad(p))
+        path = os.path.join(self.tmp, f"wa-bundle-sealed-{session}-{no:03d}.json")
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(p, f)
+        return path
+
+    def edit_part(self, path, **changes):
+        with open(path, encoding="utf-8") as f:
+            part = json.load(f)
+        part.update(changes)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(part, f)
+
+    def key_exists(self, cfg):
+        return os.path.exists(self.key_path(cfg))
+
+    def key_path(self, cfg):
+        return os.path.join(wa_web._key_dir(), cfg["kid"] + ".key")
+
+    def test_seal_round_trip_and_tamper_check(self):
+        key, kid = bytes(range(32)), "000000000000000a"
+        obj = {"chat": "Naime Çağ 🚚", "rows": [synth(1, text="Şifre: x")]}
+        aad = wa_web.header_aad({"session": "abc123", "part": 2, "final": False, "snapshot": True, "mediaParts": [1]})
+        box = wa_web.seal(obj, key, kid, aad=aad)
+        self.assertEqual(wa_web.unseal(box, key, aad), obj)
+        for other in ({"session": "abc124", "part": 2, "final": False, "snapshot": True, "mediaParts": [1]},   # session
+                      {"session": "abc123", "part": 3, "final": False, "snapshot": True, "mediaParts": [1]},   # part number
+                      {"session": "abc123", "part": 2, "final": True, "snapshot": True, "mediaParts": [1]},    # final flag
+                      {"session": "abc123", "part": 2, "final": False, "snapshot": False, "mediaParts": [1]},  # snapshot flag
+                      {"session": "abc123", "part": 2, "final": False, "snapshot": True, "mediaParts": []}):   # media part list
+            with self.assertRaises(ValueError, msg=other):
+                wa_web.unseal(box, key, wa_web.header_aad(other))
+        bad = dict(box, ct=base64.b64encode(bytes([base64.b64decode(box["ct"])[0] ^ 1]) + base64.b64decode(box["ct"])[1:]).decode())
+        with self.assertRaises(ValueError):
+            wa_web.unseal(bad, key, aad)
+        with self.assertRaises(ValueError):
+            wa_web.unseal(box, bytes(32), aad)
+
+    def test_sealed_bundle_holds_no_text_imports_and_drops_its_key(self):
+        cfg = wa_web.new_seal()
+        self.assertTrue(os.path.isfile(self.key_path(cfg)))
+        if os.name == "posix":
+            self.assertEqual(os.stat(self.key_path(cfg)).st_mode & 0o777, 0o600)
+        p = self.sealed_part(1, [synth(1, stamp="[14:05, 14.11.2026] Naime: ", text="Gizli metin 12345")], cfg)
+        with open(p, encoding="utf-8") as f:
+            raw = f.read()
+        self.assertNotIn("Gizli", raw)
+        self.assertNotIn("Naime", raw)                       # sohbet adi ne baslikta ne dosya adinda
+        res, out, err = self.run_import(self.tmp)
+        self.assertEqual(res, (1, 0), err)
+        self.assertIn("Gizli metin 12345", self.md())
+        self.assertFalse(os.path.exists(p))
+        self.assertFalse(os.path.exists(self.key_path(cfg)))   # anahtar kullanildi: eski kopyalar artik acilmaz
+
+    def test_sealed_bundle_without_its_key_fails_and_keeps_files(self):
+        cfg = wa_web.new_seal(store=False)
+        p = self.sealed_part(1, [synth(1, stamp="[14:05, 14.11.2026] A: ", text="x")], cfg)
+        res, out, err = self.run_import(p)
+        self.assertEqual(res, (0, 1))
+        self.assertIn("anahtarı kullanıcı durum klasöründe yok", err)
+        self.assertTrue(os.path.exists(p))
+        res, out, err = self.run_import(p, seal_keys={cfg["kid"]: bytes.fromhex(cfg["key"])})   # CDP: bellekteki anahtar
+        self.assertEqual(res, (1, 0), err)
+
+    def test_key_stays_while_a_session_of_the_run_failed(self):
+        cfg = wa_web.new_seal(sessions=2)
+        self.sealed_part(1, [synth(1, stamp="[14:05, 14.11.2026] A: ", text="x")], cfg, session="aaa111")
+        self.sealed_part(2, [synth(1, stamp="[14:05, 14.11.2026] B: ", text="y")], cfg, session="bbb222", total=2,
+                         mediaParts=[1])                      # medya parcasi 1 eksik
+        res, out, err = self.run_import(self.tmp)
+        self.assertEqual(res, (1, 1))
+        self.assertTrue(os.path.exists(self.key_path(cfg)))
+
+    # ---- issue #21 review: the key lives until every session of the run has imported its final part
+    def test_incomplete_sealed_session_keeps_parts_and_key_until_the_final_part_arrives(self):
+        cfg = wa_web.new_seal()
+        r1 = synth(1, stamp="[14:05, 14.11.2026] Naime: ", text="Ilk")
+        r2 = synth(2, stamp="[14:06, 14.11.2026] Naime: ", text="Ikinci")
+        snap = self.sealed_part(1, [r1], cfg, final=False, snapshot=True)       # only a checkpoint reached the folder
+        res, out, err = self.run_import(self.tmp)
+        self.assertEqual(res, (1, 0), err)
+        self.assertTrue(os.path.exists(snap) and self.key_exists(cfg))            # parts and key stay
+        self.assertNotIn("Ikinci", self.md())
+        fin = self.sealed_part(2, [r1, r2], cfg, media_parts=[])                  # the final part is downloaded later
+        shutil.rmtree(self.out)
+        res, out, err = self.run_import(self.tmp)
+        self.assertEqual(res, (1, 0), err)
+        self.assertIn("Ikinci", self.md())
+        self.assertFalse(os.path.exists(snap) or os.path.exists(fin) or self.key_exists(cfg))   # now everything is gone
+
+    def test_key_stays_when_only_some_sessions_of_the_run_are_imported(self):
+        cfg = wa_web.new_seal(sessions=2)
+        a = self.sealed_part(1, [synth(1, stamp="[14:05, 14.11.2026] A: ", text="birinci")], cfg, session="aaa111", chat="Aile")
+        b = self.sealed_part(1, [synth(1, stamp="[14:05, 14.11.2026] B: ", text="ikinci")], cfg, session="bbb222", chat="Is")
+        res, out, err = self.run_import(a)                                       # the user passes one session only
+        self.assertEqual(res, (1, 0), err)
+        self.assertFalse(os.path.exists(a))
+        self.assertTrue(self.key_exists(cfg))                                    # session bbb222 still needs the key
+        self.assertIn("2 oturumundan 1 tanesi", out)
+        res, out, err = self.run_import(b)                                       # the second session, later
+        self.assertEqual(res, (1, 0), err)
+        self.assertFalse(os.path.exists(b) or self.key_exists(cfg))
+
+    def test_key_stays_with_keep_bundles(self):
+        cfg = wa_web.new_seal()
+        p = self.sealed_part(1, [synth(1, stamp="[14:05, 14.11.2026] A: ", text="x")], cfg)
+        res, out, err = self.run_import(p, keep_bundles=True)
+        self.assertEqual(res, (1, 0), err)
+        self.assertTrue(os.path.exists(p) and self.key_exists(cfg))
+
+    # ---- issue #21 review 2: the key is kept while a sealed bundle of it is left in the input
+    def test_two_runs_of_one_snippet_import_together_and_the_key_goes_at_the_end(self):
+        cfg = wa_web.new_seal(sessions=2)            # one snippet for 2 chats, pasted twice: 4 sessions share one key
+        for sid, chat in (("aaa111", "Aile"), ("bbb222", "Is"), ("ccc333", "Okul"), ("ddd444", "Spor")):
+            self.sealed_part(1, [synth(1, stamp="[14:05, 14.11.2026] A: ", text="metin " + chat)], cfg, session=sid, chat=chat)
+        res, out, err = self.run_import(self.tmp)
+        self.assertEqual(res, (4, 0), err)           # before: the key went after the first 2 and the others failed
+        self.assertFalse(self.key_exists(cfg))
+        self.assertEqual(sorted(os.listdir(self.out)), ["Aile", "Is", "Okul", "Spor"])
+
+    def test_key_stays_while_a_sealed_bundle_of_it_is_left_in_the_input(self):
+        cfg = wa_web.new_seal(sessions=1)
+        good = self.sealed_part(1, [synth(1, stamp="[14:05, 14.11.2026] A: ", text="birinci")], cfg, session="aaa111")
+        bad = self.sealed_part(1, [synth(1, stamp="[14:05, 14.11.2026] B: ", text="ikinci")], cfg, session="bbb222")
+        self.edit_part(bad, runChats=7)              # fails the integrity check: stays in the folder, unconverted
+        res, out, err = self.run_import(self.tmp)
+        self.assertEqual(res, (1, 1))
+        self.assertFalse(os.path.exists(good))
+        self.assertTrue(os.path.exists(bad) and self.key_exists(cfg))       # 1 of 1 sessions done, but a bundle is left
+        self.assertIn("dönüştürülmemiş mühürlü paket", out)
+        self.sealed_part(1, [synth(1, stamp="[14:05, 14.11.2026] B: ", text="ikinci")], cfg, session="bbb222")   # a good copy
+        res, out, err = self.run_import(self.tmp)
+        self.assertEqual(res, (1, 0), err)
+        self.assertFalse(self.key_exists(cfg))
+
+    def test_a_stop_before_all_chats_started_does_not_keep_the_key(self):
+        cfg = wa_web.new_seal(sessions=3)            # the snippet asked for 3 chats; "Stop and save" ended the run in chat 1
+        p = self.sealed_part(1, [synth(1, stamp="[14:05, 14.11.2026] A: ", text="x")], cfg, runChats=1, stopped=True)
+        res, out, err = self.run_import(self.tmp)
+        self.assertEqual(res, (1, 0), err)
+        self.assertFalse(os.path.exists(p) or self.key_exists(cfg))
+        self.assertNotIn("Anahtar duruyor", out)
+
+    def test_a_chat_that_was_not_found_does_not_keep_the_key(self):
+        cfg = wa_web.new_seal(sessions=3)            # 3 chats asked, the 2nd was not found: 2 sessions exist
+        a = self.sealed_part(1, [synth(1, stamp="[14:05, 14.11.2026] A: ", text="x")], cfg, session="aaa111", chat="Aile", runChats=3)
+        res, out, err = self.run_import(a)
+        self.assertEqual(res, (1, 0), err)
+        self.assertTrue(self.key_exists(cfg))        # the first final part cannot know yet: 3 chats may follow
+        self.assertIn("3 oturumundan 1 tanesi", out)
+        c = self.sealed_part(1, [synth(1, stamp="[14:05, 14.11.2026] C: ", text="y")], cfg, session="ccc333", chat="Is", runChats=2)
+        res, out, err = self.run_import(c)
+        self.assertEqual(res, (1, 0), err)
+        self.assertFalse(self.key_exists(cfg))       # the last chat's final part says how many chats were started
+
+    def test_run_chats_is_authenticated(self):
+        cfg = wa_web.new_seal(sessions=3)
+        rows = [synth(1, stamp="[14:05, 14.11.2026] A: ", text="x")]
+        p = self.sealed_part(1, rows, cfg, runChats=3)
+        self.edit_part(p, runChats=1)                # lowering it would make the key go while sessions are missing
+        res, out, err = self.run_import(p)
+        self.assertEqual(res, (0, 1))
+        self.assertIn("bütünlük denetimini geçemedi", err)
+        p = self.sealed_part(1, rows, cfg, runChats=3)
+        with open(p, encoding="utf-8") as f:
+            part = json.load(f)
+        del part["runChats"]
+        with open(p, "w", encoding="utf-8") as f:
+            json.dump(part, f)
+        res, out, err = self.run_import(p)
+        self.assertEqual((res, "bütünlük denetimini geçemedi" in err), ((0, 1), True))
+        self.assertTrue(self.key_exists(cfg))
+
+    def test_a_part_without_run_chats_still_opens_and_falls_back_to_the_recorded_count(self):
+        cfg = wa_web.new_seal(sessions=2)
+        self.sealed_part(1, [synth(1, stamp="[14:05, 14.11.2026] A: ", text="x")], cfg)
+        res, out, err = self.run_import(self.tmp)
+        self.assertEqual(res, (1, 0), err)
+        self.assertTrue(self.key_exists(cfg))
+
+    def test_old_seal_format_is_named_not_reported_as_damaged(self):
+        cfg = wa_web.new_seal()
+        p = self.sealed_part(1, [synth(1, stamp="[14:05, 14.11.2026] A: ", text="x")], cfg)
+        with open(p, encoding="utf-8") as f:
+            part = json.load(f)
+        part["sealed"]["alg"] = "wa2md-seal-1"
+        with open(p, "w", encoding="utf-8") as f:
+            json.dump(part, f)
+        res, out, err = self.run_import(p)
+        self.assertEqual(res, (0, 1))
+        self.assertIn("mühür biçimini (wa2md-seal-1)", err)
+        self.assertNotIn("bütünlük", err)
+        self.assertTrue(os.path.exists(p) and self.key_exists(cfg))
+
+    # ---- issue #21 review: the MAC covers session, part number, final / snapshot flag and media part list
+    def test_header_fields_are_authenticated(self):
+        cfg = wa_web.new_seal()
+        rows = [synth(1, stamp="[14:05, 14.11.2026] A: ", text="x")]
+        for change in ({"final": True, "total": 1},            # an old checkpoint relabelled as the final part
+                       {"snapshot": False},                    # a checkpoint stripped of its flag
+                       {"mediaParts": [1]},                    # media part list changed
+                       {"session": "abc124"},                  # another session id
+                       {"part": 2}):                           # another part number
+            with self.subTest(change=change):
+                p = self.sealed_part(1, rows, cfg, final=False, snapshot=True)
+                self.edit_part(p, **change)
+                res, out, err = self.run_import(p)
+                self.assertEqual(res, (0, 1), err)
+                self.assertIn("bütünlük denetimini geçemedi", err)
+                os.remove(p)
+
+    def test_damaged_sealed_part_is_reported(self):
+        cfg = wa_web.new_seal()
+        p = self.sealed_part(1, [synth(1, stamp="[14:05, 14.11.2026] A: ", text="x")], cfg)
+        with open(p, encoding="utf-8") as f:
+            part = json.load(f)
+        part["sealed"]["tag"] = base64.b64encode(bytes(32)).decode()
+        with open(p, "w", encoding="utf-8") as f:
+            json.dump(part, f)
+        res, out, err = self.run_import(p)
+        self.assertEqual(res, (0, 1))
+        self.assertIn("bütünlük denetimini geçemedi", err)
+
     def test_no_bundle_found(self):
         res, _, err = self.run_import(self.tmp)
         self.assertEqual(res, (0, 1))
@@ -473,7 +708,7 @@ class CdpFailure(unittest.TestCase):
     def test_tab_closed_after_a_checkpoint_converts_the_checkpoint(self):
         kept = []
 
-        def fake(page, name, args, staging):
+        def fake(page, name, args, staging, seal_cfg=None):
             kept.append(staging)
             self.parts(staging)
             raise RuntimeError("Target closed")                  # the tab was closed mid-collection
@@ -488,7 +723,7 @@ class CdpFailure(unittest.TestCase):
         self.assertFalse(wa_web.find_bundle_files([kept[0]]))
 
     def test_collector_error_after_a_checkpoint_converts_it_and_counts_the_chat_as_failed(self):
-        def fake(page, name, args, staging):
+        def fake(page, name, args, staging, seal_cfg=None):
             self.parts(staging)
             return {"state": "error", "error": "boom", "results": []}
         wa_web.export_chat_cdp = fake
@@ -497,10 +732,26 @@ class CdpFailure(unittest.TestCase):
         self.assertTrue(os.path.isfile(os.path.join(self.out, "Naime", "Naime.md")))
         self.assertIn("Bitti: 1 sohbet yazıldı, 1 atlandı/hatalı", out)
 
+    def test_sealed_checkpoint_is_converted_with_the_memory_key_after_a_failure(self):
+        def fake(page, name, args, staging, seal_cfg=None):
+            head = {"format": "wa-web-bundle", "version": 2, "session": "cdp222", "part": 1, "final": False, "snapshot": True,
+                    "media": [], "mediaParts": [], "today": "2026-11-16", "opts": {}}
+            rows = [synth(1, stamp="[14:05, 14.11.2026] Naime: ", text="Gizli satir")]
+            head["sealed"] = wa_web.seal({"chat": "Naime", "rows": rows}, bytes.fromhex(seal_cfg["key"]), seal_cfg["kid"],
+                                         aad=wa_web.header_aad(head))
+            with open(os.path.join(staging, "wa-bundle-sealed-cdp222-001.json"), "w", encoding="utf-8") as f:
+                json.dump(head, f)
+            return {"state": "error", "error": "boom", "results": []}
+        wa_web.export_chat_cdp = fake
+        rc, out, err = self.export()
+        self.assertEqual(rc, 0)
+        with open(os.path.join(self.out, "Naime", "Naime.md"), encoding="utf-8") as f:
+            self.assertIn("Gizli satir", f.read())
+
     def test_parts_that_cannot_be_converted_stay_on_disk_and_the_path_is_printed(self):
         kept = []
 
-        def fake(page, name, args, staging):
+        def fake(page, name, args, staging, seal_cfg=None):
             kept.append(staging)
             self.parts(staging, snapshot=False)                   # only a media part reached the folder
             return {"state": "error", "error": "boom", "results": []}
@@ -509,12 +760,14 @@ class CdpFailure(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertTrue(os.path.isfile(os.path.join(kept[0], "wa-bundle-naime-cdp111-001.json")))
         self.assertIn(kept[0], out)
+        self.assertNotIn("wa_web.py import", out)                  # the key lived in memory only: do not offer an import that cannot work
+        self.assertIn("yalnız bellekte", out)
         shutil.rmtree(kept[0], ignore_errors=True)
 
     def test_clean_failure_without_parts_leaves_no_folder(self):
         kept = []
 
-        def fake(page, name, args, staging):
+        def fake(page, name, args, staging, seal_cfg=None):
             kept.append(staging)
             return {"state": "error", "error": "boom", "results": []}
         wa_web.export_chat_cdp = fake
@@ -662,6 +915,30 @@ class CollectorDom(unittest.TestCase):
             return b64 === btoa(bin);
         }""")
         self.assertTrue(out)
+
+    def test_js_seal_matches_the_python_reference(self):
+        # issue #21: bir belirtim, iki uygulama (sekme muhurler, Python acar): sabit anahtar ve nonce ile bayt bayt ayni
+        key, kid, nonce = bytes(range(32)), "00000000000000bb", bytes(range(16))
+        obj = {"chat": "Naime Çağ 🚚", "rows": [synth(i, text=f"Mesaj {i} şifre: Ab{i}") for i in range(900)]}  # >64 KB: 2048 blok sinirini gecer
+        # WebCrypto yalniz guvenli baglamda (web.whatsapp.com gibi https): sahte https sayfasi (ag yok)
+        self.page.route("https://wa2md.test/**", lambda r: r.fulfill(status=200, content_type="text/html", body="<body></body>"))
+        self.page.goto("https://wa2md.test/")
+        self.page.evaluate(wa_web.read_collector())
+        # the authenticated header (session, part number, final / snapshot flag, media part list), spelled as the bundler does
+        head = {"session": "k1abc", "part": 3, "final": False, "snapshot": True, "mediaParts": [1, 2]}
+        aad = wa_web.header_aad(head)
+        self.assertEqual(aad, "\0".join(["k1abc", "3", "0", "1", "1,2"]))
+        self.assertEqual(self.page.evaluate("(p) => __waCollect.headerAad(p)", head), aad)       # the JS side builds the same string
+        last = dict(head, final=True, snapshot=False, runChats=2)   # a final part also authenticates how many chats the run started
+        self.assertEqual(wa_web.header_aad(last), "\0".join(["k1abc", "3", "1", "0", "1,2", "2"]))
+        self.assertEqual(self.page.evaluate("(p) => __waCollect.headerAad(p)", last), wa_web.header_aad(last))
+        js = self.page.evaluate("async ([o, cfg, n, a]) => await __waCollect.seal(o, cfg, n, a)",
+                                [obj, {"kid": kid, "key": key.hex()}, list(nonce), aad])
+        self.assertGreater(len(base64.b64decode(js["ct"])), 2048 * 32)
+        self.assertEqual(js, wa_web.seal(obj, key, kid, nonce, aad))
+        self.assertEqual(wa_web.unseal(js, key, aad), obj)
+        with self.assertRaises(ValueError):          # the header is part of the MAC: another flag does not open
+            wa_web.unseal(js, key, wa_web.header_aad(dict(head, final=True)))
 
     def test_merge_order_inserts_before_and_after_anchors(self):
         o = self.page.evaluate("""() => { const o = ['c', 'd'];

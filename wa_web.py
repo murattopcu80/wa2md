@@ -24,10 +24,13 @@ messages as "read" (the other side sees blue ticks). Message texts are untrusted
 import argparse
 import base64
 import datetime as dt
+import hashlib
+import hmac
 import json
 import mimetypes
 import os
 import re
+import secrets
 import shutil
 import subprocess
 import sys
@@ -265,6 +268,187 @@ def filter_messages(msgs, date_from=None, date_to=None, max_messages=None):
     return msgs
 
 
+# ------------------------------------------------------------------ SECTION: muhur (issue #21)
+# Toplayici satirlari ve sohbet adini sekmede, indirmeden once sifreler (wa_collect.js seal(); ayni belirtim):
+#   kEnc = HMAC(K, "wa2md-seal-2 enc"), kMac = HMAC(K, "wa2md-seal-2 mac"); blok i = HMAC(kEnc, nonce16 || be32(i));
+#   ct = utf8(JSON) XOR anahtar akisi; tag = HMAC(kMac, "wa2md-seal-2\0" || kid || "\0" || aad || "\0" || nonce || ct).
+#   aad (kimligi dogrulanan baslik): session \0 parca no \0 final(0|1) \0 snapshot(0|1) \0 medya parcalari (virgullu): eski bir
+#   ara kayit baslik elle degistirilerek "tam" parca gibi acilamaz. HMAC-SHA256.
+# Standart kutuphanede AES yok: PRF (HMAC-SHA256) sayac kipi + sifrele-sonra-MAC. Anahtar (32 bayt) snippet'te uretilir ve
+# kullanici durum klasorunde (indirilenler ve cikti klasorunun disi) tutulur; kosunun her oturumu son parcasiyla
+# ice aktarilinca silinir (anahtar dosyasi kosunun oturum sayisini ve bitenleri tutar).
+SEAL_ALG = "wa2md-seal-2"
+KID_RE = re.compile(r"^[0-9a-f]{16}$")
+
+
+def _seal_subkeys(key):
+    return (hmac.digest(key, SEAL_ALG.encode() + b" enc", "sha256"), hmac.digest(key, SEAL_ALG.encode() + b" mac", "sha256"))
+
+
+def _xor_stream(k_enc, nonce, data):
+    n = len(data)
+    ks = b"".join(hmac.digest(k_enc, nonce + i.to_bytes(4, "big"), "sha256") for i in range((n + 31) // 32))[:n]
+    return (int.from_bytes(data, "big") ^ int.from_bytes(ks, "big")).to_bytes(n, "big") if n else b""
+
+
+def header_aad(part):
+    """Parca basliginin dogrulanan alanlari (wa_collect.js headerAad ayni dizgiyi kurar): session, parca no, final, snapshot,
+    mediaParts, varsa runChats (kosuda baslayan sohbet sayisi; yoksa alan da yok: runChats'siz parcalar acilir)."""
+    try:
+        no = int(part.get("part") or 0)
+        media = ",".join(str(int(i)) for i in (part.get("mediaParts") or []))
+    except (TypeError, ValueError):
+        return "\0invalid"          # hicbir muhurle eslesmez
+    fields = [str(part.get("session", "")), str(no), "1" if part.get("final") else "0", "1" if part.get("snapshot") else "0", media]
+    if part.get("runChats") is not None:     # final part of a run: how many chats the run started (issue #21); absent in older parts
+        try:
+            fields.append(str(int(part["runChats"])))
+        except (TypeError, ValueError):
+            return "\0invalid"
+    return "\0".join(fields)
+
+
+def _seal_tag(k_mac, kid, aad, nonce, ct):
+    return hmac.digest(k_mac, SEAL_ALG.encode() + b"\0" + kid.encode("ascii") + b"\0" + aad.encode("utf-8") + b"\0" + nonce + ct,
+                       "sha256")
+
+
+def seal(obj, key, kid, nonce=None, aad=""):
+    """Python esi (testler ve bilinen cevap): JSON.stringify ile ayni bayt dizisi (ensure_ascii=False, ayiricisiz).
+    aad: header_aad(parca basligi)."""
+    nonce = nonce or secrets.token_bytes(16)
+    k_enc, k_mac = _seal_subkeys(key)
+    ct = _xor_stream(k_enc, nonce, json.dumps(obj, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
+    b64 = lambda b: base64.b64encode(b).decode("ascii")
+    return {"alg": SEAL_ALG, "kid": kid, "nonce": b64(nonce), "ct": b64(ct), "tag": b64(_seal_tag(k_mac, kid, aad, nonce, ct))}
+
+
+def unseal(sealed, key, aad=""):
+    """Muhurlu yuk -> nesne. Butunluk denetimi (sabit zamanli; yukle birlikte aad = parca basligi) gecmezse ValueError."""
+    if not isinstance(sealed, dict) or sealed.get("alg") != SEAL_ALG or not KID_RE.match(str(sealed.get("kid", ""))):
+        raise ValueError("seal")   # (load_session names an older / unknown format before it gets here)
+    nonce, ct, tag = (base64.b64decode(sealed.get(k, ""), validate=True) for k in ("nonce", "ct", "tag"))
+    k_enc, k_mac = _seal_subkeys(key)
+    if len(nonce) != 16 or not hmac.compare_digest(tag, _seal_tag(k_mac, sealed["kid"], aad, nonce, ct)):
+        raise ValueError("seal")
+    return json.loads(_xor_stream(k_enc, nonce, ct).decode("utf-8"))
+
+
+def _key_dir():
+    return os.path.join(wa2md.state_dir(), "keys")
+
+
+def _key_path(kid):
+    return os.path.join(_key_dir(), kid + ".key")
+
+
+def _write_key_file(kid, rec, exclusive=False):
+    """Anahtar dosyasi (JSON: key, sessions, done), 0600; degisiklik gecici dosya + yeniden adlandirma."""
+    os.makedirs(_key_dir(), exist_ok=True)
+    path = _key_path(kid)
+    if exclusive:
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    else:
+        path += ".tmp"
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="ascii") as f:
+        json.dump(rec, f)
+    if not exclusive:
+        os.replace(path, _key_path(kid))
+
+
+def new_seal(store=True, sessions=1):
+    """Kosu anahtari -> {"kid", "key"(hex)}. store: kullanici durum klasorune yaz (0600; konsol yolu); sessions: kosuda
+    istenen sohbet sayisi (her biri bir oturum: anahtar hepsinin son parcasi ice aktarilinca silinir). CDP yolunda anahtar
+    yalniz bellekte kalir (store=False)."""
+    kid, key = secrets.token_hex(8), secrets.token_bytes(32)
+    if store:
+        _write_key_file(kid, {"key": key.hex(), "sessions": max(1, int(sessions)), "done": []}, exclusive=True)
+    return {"kid": kid, "key": key.hex()}
+
+
+def _read_key_file(kid):
+    if not KID_RE.match(kid or ""):
+        return None
+    try:
+        with open(_key_path(kid), encoding="ascii") as f:
+            rec = json.load(f)
+        bytes.fromhex(rec["key"])
+        return rec
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
+def load_key(kid):
+    """Durum klasorundeki anahtar | None."""
+    rec = _read_key_file(kid)
+    return bytes.fromhex(rec["key"]) if rec else None
+
+
+def drop_key(kid):
+    if KID_RE.match(kid or ""):
+        try:
+            os.remove(_key_path(kid))
+        except OSError:
+            pass
+
+
+def session_imported(kid, sid, chats=None):
+    """Oturumun son parcasi ice aktarildi ve paketleri silindi: anahtar dosyasina isle. chats: son parcanin basliginda
+    (dogrulanmis) kosuda gercekte baslayan sohbet sayisi; kosunun oturum sayisi bundan buyuk kalamaz (durdurma ya da
+    bulunamayan sohbet). Anahtari BURADA silmeyen karar: release_keys. -> (biten, toplam); anahtar dosyasi yoksa None."""
+    rec = _read_key_file(kid)
+    if rec is None:
+        return None
+    rec["done"] = sorted(set(rec.get("done") or []) | {sid})
+    total = max(1, int(rec.get("sessions") or 1))
+    try:
+        if chats is not None and int(chats) >= 1:
+            total = rec["sessions"] = min(total, int(chats))
+    except (TypeError, ValueError):
+        pass
+    _write_key_file(kid, rec)
+    return len(rec["done"]), total
+
+
+_SEALED_KID_RX = re.compile(rb'"sealed"\s*:\s*\{[^{}]{0,200}?"kid"\s*:\s*"([0-9a-f]{16})"')
+
+
+def sniff_sealed_kid(path):
+    """Paket dosyasi muhurluysa muhrun anahtar kimligi (dosyayi yuklemeden, parca parca taranir) | None."""
+    try:
+        with open(path, "rb") as f:
+            tail = b""
+            while chunk := f.read(1 << 20):
+                m = _SEALED_KID_RX.search(tail + chunk)
+                if m:
+                    return m.group(1).decode("ascii")
+                tail = chunk[-400:]
+    except OSError:
+        pass
+    return None
+
+
+def release_keys(inputs, kids):
+    """Ice aktarimdan sonra: kosunun TUM oturumlari ice aktarildiysa VE girdilerde bu anahtarla muhurlu, donusturulmemis
+    paket kalmadiysa anahtari sil (issue #21: ayni parca iki kosuda calistiginda ya da bir oturum donusturulemediginde
+    anahtar, kalan paketin tek acilis yolu olarak durur); yoksa neden durdugunu yaz (yalniz sayilar)."""
+    if not kids:
+        return
+    left = {sniff_sealed_kid(p) for parts in find_bundle_files(inputs).values() for p in parts.values()}
+    for kid in sorted(kids):
+        rec = _read_key_file(kid)
+        if rec is None:
+            continue
+        done, total = len(rec.get("done") or []), max(1, int(rec.get("sessions") or 1))
+        if done < total:
+            print(wa2md.t("web_key_kept", done=done, total=total))
+        elif kid in left:
+            print(wa2md.t("web_key_kept_bundles"))
+        else:
+            drop_key(kid)
+
+
 # ------------------------------------------------------------------ SECTION: paket okuma + import
 def ext_for(mime, kind="image"):
     mime = (mime or "").split(";")[0].strip().lower()
@@ -305,12 +489,13 @@ def find_bundle_files(inputs):
     return sessions
 
 
-def load_session(parts, staging):
+def load_session(parts, staging, keys=None):
     """Bir oturumun parcalarini sirayla oku: medyayi staging'e yaz, satir parcasini don. Satir parcasi son parcadir
     (final); o yoksa en yeni ara kayittir (snapshot, issue #20: sekme kapanmis ya da toplama yarida kalmis).
     Gerekli parcalar: bicim 2'de satir parcasinin kendisi ve dayandigi medya parcalari (mediaParts; eski ara kayitlar
-    gerekmez), bicim 1'de 1..total. -> (satir_parcasi, {anahtar: (yol, uzanti)}, tamam_mi)"""
-    final, snap, files = None, None, {}
+    gerekmez), bicim 1'de 1..total. Muhurlu parca (issue #21) bellekte acilir: keys(kid) -> anahtar | None.
+    -> (satir_parcasi, {anahtar: (yol, uzanti)}, tamam_mi, muhur_kimligi | None)"""
+    final, snap, files, kid = None, None, {}, None
     for no in sorted(parts):
         with open(parts[no], encoding="utf-8") as f:
             part = json.load(f)
@@ -325,6 +510,21 @@ def load_session(parts, staging):
             with open(path, "wb") as out:
                 out.write(base64.b64decode(item.get("b64", "")))
             files[key] = (path, ext)
+        if part.get("sealed") is not None:
+            alg = part["sealed"].get("alg") if isinstance(part["sealed"], dict) else None
+            if alg != SEAL_ALG:   # an older (wa2md-seal-1) or unknown format is not a damaged file: say what it is
+                raise ValueError(wa2md.t("web_seal_format", no=no, alg=alg if re.fullmatch(r"wa2md-seal-\d{1,3}", str(alg)) else "?"))
+            kid = str((part["sealed"] or {}).get("kid", "")) if isinstance(part["sealed"], dict) else ""
+            key = keys(kid) if keys else None
+            if key is None:
+                raise ValueError(wa2md.t("web_seal_no_key"))
+            try:   # the header (session, part number, final / snapshot flags, media parts) is part of the MAC (issue #21 review)
+                if part.get("part") != no:
+                    raise ValueError("part")
+                inner = unseal(part.pop("sealed"), key, header_aad(part))
+            except (ValueError, TypeError, UnicodeDecodeError, json.JSONDecodeError):
+                raise ValueError(wa2md.t("web_seal_bad", no=no)) from None
+            part["chat"], part["rows"] = inner.get("chat"), inner.get("rows")
         if part.get("final"):
             final = part
         elif part.get("snapshot") and isinstance(part.get("rows"), list):
@@ -340,29 +540,34 @@ def load_session(parts, staging):
     missing = sorted(i for i in need if i not in parts)
     if missing:
         raise ValueError(wa2md.t("web_missing_parts", parts=", ".join(str(i) for i in missing)))
-    return head, files, final is not None
+    return head, files, final is not None, kid
 
 
 def import_bundles(inputs, out_dir, date_from=None, date_to=None, max_messages=None, anonim=False,
                    chat_start=1, no_media=False, ref_start=1, extra_names=None, review_dir=None, no_dict=False,
-                   keep_bundles=False, keep_incomplete=True):
+                   keep_bundles=False, seal_keys=None, keep_incomplete=True):
     """Paketleri Markdown'a cevir (wa2md.write_chat; wa2md ile ayni secenekler: ek adlar, inceleme klasoru, sozluksuz).
     Grup karari tarih/sayi suzgecinden ONCE tum paketten verilir (wa2md.is_group). Basariyla yazilan oturumun paket
-    dosyalari silinir (maskelenmemis sohbeti tasirlar; keep_bundles saklar; issue #20). Son parcasi olmayan oturumun
-    parcalari yerinde kalir (son parca sonradan inebilir); keep_incomplete=False: son parca gelmeyecek (CDP yolu), ara kayit
-    donusunce parcalar silinir. -> (yazilan, atlanan)"""
+    dosyalari silinir, son parcasi olmayan (yalniz ara kayit) oturumunki silinmez (maskelenmemis sohbeti tasirlar;
+    keep_bundles saklar; issue #20; keep_incomplete=False: son parca gelmeyecek (CDP yolu), ara kayit donusunce silinir).
+    Muhurlu paketin anahtari seal_keys'te (CDP: yalniz bellekte) ya da kullanici durum
+    klasorunde aranir; durum klasorundeki anahtar, kosunun HER oturumu son parcasiyla ice aktarilip paketleri silinince
+    silinir (anahtar dosyasi kosunun oturum sayisini tutar; issue #21: eksik oturum ya da yalniz bir kismi verilen
+    kosuda anahtar kalir, onun paketleri hala o anahtarla acilir). -> (yazilan, atlanan)"""
     sessions = find_bundle_files(inputs)
+    seal_keys = seal_keys or {}
     if not sessions:
         print(f"{wa2md.t('err')}: " + wa2md.t("web_no_bundles"), file=sys.stderr)
         return 0, 1
     done = failed = 0
+    touched = set()   # keys of the sealed sessions converted in this call
     red = anonim  # anonimde konsolda ad / dosya adi / icerik yok
     for k, (sid, parts) in enumerate(sorted(sessions.items())):
         staging = tempfile.mkdtemp(prefix="wa_web_")
         ref = wa2md.t("ref_input", n=ref_start + k)
         try:
             try:
-                final, files, complete = load_session(parts, staging)
+                final, files, complete, kid = load_session(parts, staging, lambda k: seal_keys.get(k) or load_key(k))
             except (ValueError, OSError, json.JSONDecodeError) as e:
                 msg = e if not red else (e if type(e) is ValueError else wa2md.safe_error(e))
                 print(f"{wa2md.t('err')} [{ref if red else sid}]: {msg}", file=sys.stderr)
@@ -396,7 +601,9 @@ def import_bundles(inputs, out_dir, date_from=None, date_to=None, max_messages=N
                 print(wa2md.t("web_stopped"))
             done += 1
             if complete and not keep_bundles:
-                _delete_bundles(parts.values())
+                if _delete_bundles(parts.values()) == 0 and kid and kid not in seal_keys:
+                    session_imported(kid, sid, final.get("runChats"))   # release_keys (below) decides when the key goes
+                    touched.add(kid)
             elif not complete and keep_incomplete:
                 print(wa2md.t("web_parts_kept"))  # eksik oturum: son parca sonradan inebilir, parcalar yerinde kalir
             elif not complete and not keep_bundles:
@@ -408,6 +615,7 @@ def import_bundles(inputs, out_dir, date_from=None, date_to=None, max_messages=N
             failed += 1
         finally:
             shutil.rmtree(staging, ignore_errors=True)
+    release_keys(inputs, touched)
     print(wa2md.t("web_done", done=done, failed=failed))
     return done, failed
 
@@ -425,6 +633,7 @@ def _delete_bundles(paths):
         print(wa2md.t("web_deleted", n=gone))
     if bad:
         print(wa2md.t("web_delete_failed", n=bad), file=sys.stderr)
+    return bad
 
 
 # ------------------------------------------------------------------ SECTION: komut satiri -> toplayici secenekleri
@@ -460,6 +669,7 @@ def cmd_snippet(args):
         print(f"{wa2md.t('err')}: " + wa2md.t("web_chats_empty"), file=sys.stderr)
         return 2
     opts = collector_opts(args, chats)
+    opts["seal"] = new_seal(sessions=len(chats))   # issue #21: satirlar sekmede muhurlenir; anahtar kullanici durum klasorunde
     # ensure_ascii=True: Turkce karakterler \u kacisi olur; pano/konsol ASCII kalir
     js = "window.__WA_OPTS = " + json.dumps(opts, ensure_ascii=True) + ";\n" + read_collector()
     copied = copy_to_clipboard(js)
@@ -540,7 +750,7 @@ def list_chats(page):
     return page.evaluate("() => window.__waCollect.listChats()")
 
 
-def export_chat_cdp(page, name, args, staging):
+def export_chat_cdp(page, name, args, staging, seal_cfg=None):
     """Ayni wa_collect.js'i sayfada calistirir; paketleri staging'e yazar. -> sonuc dict"""
     os.makedirs(staging, exist_ok=True)
     hold = getattr(page, "_wa_hold", None)
@@ -557,6 +767,8 @@ def export_chat_cdp(page, name, args, staging):
     hold["dir"] = staging
     inject_collector(page)
     opts = collector_opts(args, [name])
+    if seal_cfg:
+        opts["seal"] = seal_cfg   # yalniz bellekte (CDP): staging'e de muhurlu parca yazilir
     return page.evaluate(
         "async (o) => { o.emit = (p, n) => window.waEmit(JSON.stringify(p), n);"
         " return await window.__waCollect.run(o); }", opts)
@@ -599,7 +811,7 @@ def _stop_pressed(page):
         return False
 
 
-def _salvage_staging(staging, args, chat_start, ref_no):
+def _salvage_staging(staging, args, chat_start, ref_no, seal_keys=None):
     """Convert the parts of a collection that did not finish (issue #20): checkpoints keep what was collected.
     Parts that cannot be converted (no checkpoint yet) stay in the staging folder, whose
     path is printed so that `import` can be run on it later. -> number of chats written"""
@@ -608,8 +820,8 @@ def _salvage_staging(staging, args, chat_start, ref_no):
     print(wa2md.t("web_salvage"))
     d, _ = import_bundles([staging], args.out, args.date_from, args.date_to, args.max_messages,
                           anonim=getattr(args, "anonim", True), chat_start=chat_start,
-                          no_media=bool(getattr(args, "no_media", False)), ref_start=ref_no, keep_incomplete=False,
-                          **anon_kwargs(args))
+                          no_media=bool(getattr(args, "no_media", False)), ref_start=ref_no, seal_keys=seal_keys,
+                          keep_incomplete=False, **anon_kwargs(args))
     return d   # no final part follows in this path: import_bundles deleted the parts it converted
 
 
@@ -631,6 +843,9 @@ def cmd_export(args):
         if rc:
             return rc
 
+    seal_cfg = new_seal(store=False)
+    keys = {seal_cfg["kid"]: bytes.fromhex(seal_cfg["key"])}
+
     def go(page):
         done = failed = 0
         red = wa2md.redact_console(args)
@@ -643,7 +858,7 @@ def cmd_export(args):
             stopped = False
             try:
                 try:
-                    status = export_chat_cdp(page, name, args, staging)
+                    status = export_chat_cdp(page, name, args, staging, seal_cfg)
                 except NotReady:
                     raise
                 except Exception as e:  # noqa: BLE001
@@ -665,14 +880,14 @@ def cmd_export(args):
                 d, f = import_bundles([staging], args.out, args.date_from, args.date_to, args.max_messages,
                                       anonim=getattr(args, "anonim", True), chat_start=done + 1,
                                       no_media=bool(getattr(args, "no_media", False)),
-                                      ref_start=i, **anon_kwargs(args))
+                                      ref_start=i, seal_keys=keys, **anon_kwargs(args))
                 done += d
                 failed += f
             finally:
                 # A failed or cut-short collection (tab closed, error) leaves checkpoints in the staging folder (issue #20):
                 # convert what was collected (masked as usual); whatever cannot be converted stays on disk and is announced.
                 if not collected:
-                    done += _salvage_staging(staging, args, done + 1, i)
+                    done += _salvage_staging(staging, args, done + 1, i, keys)
                 _remove_staging(staging)
             if stopped:   # "Stop and save" ends the whole run, not only the current chat (issue #20)
                 if i < len(wanted):

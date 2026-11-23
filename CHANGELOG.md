@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- WhatsApp Web collector: the message text and the chat name are sealed (encrypted) in the tab before a bundle is downloaded, with a one-time key kept in the user state folder; `import` opens them in memory, masks them with the one Python anonymizer and deletes the key after a successful run, so no readable chat text reaches the disk ([#21](../../issues/21)). In-browser masking was not built (reasons in #21).
 - WhatsApp Web collector: checkpoint parts every 10 minutes (`--checkpoint-minutes`) and a **Stop and save** button; `import` converts an unfinished collection from its newest checkpoint ([#20](../../issues/20)).
 
 - Initial public release: converts WhatsApp chat exports (phone export zip or folder, and the WhatsApp Web collector path through `wa_web.py`) to Markdown with media; anonymization of direct identifiers is on by default (person names, phone numbers, e-mail addresses, IBAN, national ID numbers, plates, trade names, domain names, usernames, passwords and one-time codes), with an offline name and place dictionary built from Wikidata (CC0 1.0).
