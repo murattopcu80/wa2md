@@ -112,7 +112,7 @@ Python 3 yeterli (konsol yolu için ek paket gerekmez). Yalnız deneysel CDP yol
    python wa_web.py import wa-bundle-ali-veli-abc123-001.json wa-bundle-ali-veli-abc123-002.json --out C:\Users\kullanici\wa-out
    ```
 
-   Her sohbet için özet satırı yazılır: `[Ad] N mesaj, M medya kopyalandı, K medya eksik -> yol`. Paketlerde maskelenmemiş sohbet vardır: başarılı dönüştürmeden sonra `import` o sohbetin paket dosyalarını (ara kayıtlar dahil) siler; `--keep-bundles` saklar. Hatalı sohbetin paketleri yerinde kalır. `import` bir klasörü olduğu gibi tarar: eski paketler orada duruyorsa onları da çevirir.
+   Her sohbet için özet satırı yazılır: `[Ad] N mesaj, M medya kopyalandı, K medya eksik -> yol`. Paketlerde maskelenmemiş sohbet vardır: biten bir toplamanın başarılı dönüştürülmesinden sonra `import` o sohbetin paket dosyalarını (ara kayıtlar dahil) siler; `--keep-bundles` saklar. Hatalı sohbetin paketleri ve son parçası henüz olmayan toplamanın parçaları (klasöre yalnız bir ara kayıt ulaşmışsa) yerinde kalır: son parça inince yeniden içe aktarın. `import` bir klasörü olduğu gibi tarar: eski paketler orada duruyorsa onları da çevirir.
 
 Seçenekler: `--from` / `--to` tarih aralığı, `--max-messages N` en yeni N mesaj, `--no-media` medya indirme, `--checkpoint-minutes N` ara kayıt aralığı (varsayılan 10, `0` = kapalı), `--older-from-phone` sohbetin başında "Telefonunuzdaki eski mesajları almak için buraya tıklayın" düğmesine tıkla (varsayılan: tıklama; telefonun açık olması gerekir). `import` da `--from/--to/--max-messages` kabul eder; `import` ve `export` ayrıca `wa2md.py` ile aynı anonim seçeneklerini (`--ek-adlar`, `--inceleme-dizini`, `--sozluksuz`) aynı anlamla kabul eder.
 

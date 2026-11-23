@@ -393,8 +393,10 @@ def import_bundles(inputs, out_dir, date_from=None, date_to=None, max_messages=N
             elif final.get("stopped"):
                 print(wa2md.t("web_stopped"))
             done += 1
-            if not keep_bundles:
+            if complete and not keep_bundles:
                 _delete_bundles(parts.values())
+            elif not complete:
+                print(wa2md.t("web_parts_kept"))  # eksik oturum: son parca sonradan inebilir, parcalar yerinde kalir
         except Exception as e:  # noqa: BLE001 - anonimde iz/yol (ad icerir) yerine yalniz tur
             if not red:
                 raise

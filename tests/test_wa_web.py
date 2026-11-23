@@ -390,6 +390,28 @@ class Bundles(unittest.TestCase):
         self.assertTrue(os.path.exists(a) and os.path.exists(b))
         self.assertNotIn("silindi", out)
 
+    def test_incomplete_session_keeps_its_parts_until_the_final_part_arrives(self):
+        """Issue #20 review: only a checkpoint reached the folder (Chrome blocked the second download): converting it
+        must not delete the parts; the final part downloaded later then imports and gives the complete chat."""
+        r1 = synth(1, stamp="[14:05, 14.11.2026] Naime: ", text="Bak", media=[{"kind": "image", "key": "AAAA0001-1", "label": ""}])
+        r2 = synth(2, stamp="[14:06, 14.11.2026] Naime: ", text="Ikinci")
+        r3 = synth(3, stamp="[14:07, 14.11.2026] Naime: ", text="Ucuncu satir")
+        a = self.part(1, media=[self.img("AAAA0001-1")], version=2)
+        b = self.snap(2, [r1, r2], [1])
+        res, out, err = self.run_import(self.tmp)
+        self.assertEqual(res, (1, 0), err)
+        self.assertTrue(os.path.exists(a) and os.path.exists(b))          # parts stay: the session is not finished
+        self.assertNotIn("silindi", out)
+        self.assertNotIn("Ucuncu satir", self.md())
+        c = self.part(3, final=True, total=3, rows=[r1, r2, r3], version=2, mediaParts=[1])
+        shutil.rmtree(self.out)
+        res, out, err = self.run_import(self.tmp)
+        self.assertEqual(res, (1, 0), err)
+        self.assertNotIn("Eksik paket", err)
+        self.assertIn("Ucuncu satir", self.md())
+        self.assertEqual(len(os.listdir(os.path.join(self.out, "Naime", "media"))), 1)
+        self.assertFalse(any(os.path.exists(p) for p in (a, b, c)))        # now complete: all three deleted
+
     def test_failed_sessions_keep_their_bundles(self):
         no_final = self.part(1, media=[self.img("K1")], session="aaa111")
         empty = self.part(1, final=True, rows=[synth(1, stamp="[14:05, 13.11.2026] A: ", text="eski")], session="bbb222")
