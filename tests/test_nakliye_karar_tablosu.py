@@ -602,7 +602,8 @@ class ZeroWidthMainParity(unittest.TestCase):
 
 class InteractionMainParity(unittest.TestCase):
     """7. tur eki (T7E): kanit bilineni yalniz guclendirir; dal main'in maskeledigi hicbir sozcugu acmaz (tek istisna: kanitli
-    guzergahtaki katilimci yer adi parcasi). Fikstur (fixtures/etkilesim_main.json): uydurma, etkilesim agirlikli 300 sohbet
+    guzergahtaki katilimci yer adi parcasi; ve gunluk sozcuk olan soyadin tamamen kucuk harfli bicimi, istisna 2: issue #22, bilerek
+    acik birakilir; buyuk harfli ve kesme ekli bicimi, her gercek soyad ve baska her ad main kadar maskelenir). Fikstur (fixtures/etkilesim_main.json): uydurma, etkilesim agirlikli 300 sohbet (+ 100 sohbet, issue #22)
     (sabit tohumlu uretec; dalin onceki surumde main'den az maskeledigi her sohbet dahil) ve her mesaj icin main'in (onceki surum)
     maskeledigi karakter araliklari [mesaj, bas, son, istisna]; main araci bir kez calistirilip kaydedildi."""
 
