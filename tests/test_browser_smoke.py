@@ -279,8 +279,7 @@ class Smoke(unittest.TestCase):
                 const b = document.querySelector('#wa-collect-panel button[data-wa=stop]');
                 if (b && window.__waStatus && window.__waStatus.phase === 'collect') { b.click(); clearInterval(iv); }
             }, 10); }"""))
-            args = Args(out=out, user_data_dir=self.udd, chats="Sohbet 09,Sohbet 03,Sohbet 07", anonim=False, no_media=True,
-                        max_messages=15)
+            args = Args(out=out, user_data_dir=self.udd, chats="Sohbet 09,Sohbet 03,Sohbet 07", anonim=False, no_media=True)
             with redirect_stdout(io.StringIO()) as o, redirect_stderr(io.StringIO()) as e:
                 rc = wa_web.cmd_export(args)
             self.assertEqual(rc, 0, e.getvalue())
