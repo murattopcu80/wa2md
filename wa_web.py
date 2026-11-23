@@ -320,7 +320,7 @@ def seal(obj, key, kid, nonce=None, aad=""):
 def unseal(sealed, key, aad=""):
     """Muhurlu yuk -> nesne. Butunluk denetimi (sabit zamanli; yukle birlikte aad = parca basligi) gecmezse ValueError."""
     if not isinstance(sealed, dict) or sealed.get("alg") != SEAL_ALG or not KID_RE.match(str(sealed.get("kid", ""))):
-        raise ValueError("seal")
+        raise ValueError("seal")   # (load_session names an older / unknown format before it gets here)
     nonce, ct, tag = (base64.b64decode(sealed.get(k, ""), validate=True) for k in ("nonce", "ct", "tag"))
     k_enc, k_mac = _seal_subkeys(key)
     if len(nonce) != 16 or not hmac.compare_digest(tag, _seal_tag(k_mac, sealed["kid"], aad, nonce, ct)):
@@ -465,6 +465,9 @@ def load_session(parts, staging, keys=None):
                 out.write(base64.b64decode(item.get("b64", "")))
             files[key] = (path, ext)
         if part.get("sealed") is not None:
+            alg = part["sealed"].get("alg") if isinstance(part["sealed"], dict) else None
+            if alg != SEAL_ALG:   # an older (wa2md-seal-1) or unknown format is not a damaged file: say what it is
+                raise ValueError(wa2md.t("web_seal_format", no=no, alg=alg if re.fullmatch(r"wa2md-seal-\d{1,3}", str(alg)) else "?"))
             kid = str((part["sealed"] or {}).get("kid", "")) if isinstance(part["sealed"], dict) else ""
             key = keys(kid) if keys else None
             if key is None:

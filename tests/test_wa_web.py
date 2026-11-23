@@ -541,6 +541,20 @@ class Bundles(unittest.TestCase):
         self.assertEqual(res, (1, 0), err)
         self.assertTrue(os.path.exists(p) and self.key_exists(cfg))
 
+    def test_old_seal_format_is_named_not_reported_as_damaged(self):
+        cfg = wa_web.new_seal()
+        p = self.sealed_part(1, [synth(1, stamp="[14:05, 14.11.2026] A: ", text="x")], cfg)
+        with open(p, encoding="utf-8") as f:
+            part = json.load(f)
+        part["sealed"]["alg"] = "wa2md-seal-1"
+        with open(p, "w", encoding="utf-8") as f:
+            json.dump(part, f)
+        res, out, err = self.run_import(p)
+        self.assertEqual(res, (0, 1))
+        self.assertIn("mühür biçimini (wa2md-seal-1)", err)
+        self.assertNotIn("bütünlük", err)
+        self.assertTrue(os.path.exists(p) and self.key_exists(cfg))
+
     # ---- issue #21 review: the MAC covers session, part number, final / snapshot flag and media part list
     def test_header_fields_are_authenticated(self):
         cfg = wa_web.new_seal()
@@ -676,6 +690,8 @@ class CdpFailure(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertTrue(os.path.isfile(os.path.join(kept[0], "wa-bundle-naime-cdp111-001.json")))
         self.assertIn(kept[0], out)
+        self.assertNotIn("wa_web.py import", out)                  # the key lived in memory only: do not offer an import that cannot work
+        self.assertIn("yalnız bellekte", out)
         shutil.rmtree(kept[0], ignore_errors=True)
 
     def test_clean_failure_without_parts_leaves_no_folder(self):

@@ -259,6 +259,10 @@ MSG = {
                      "tr": "mühürlü paket parçası {no} bütünlük denetimini geçemedi (bozuk dosya ya da yanlış anahtar)."},
     "web_key_kept": {"en": "   Key kept: {done} of {total} sessions of this run are imported; the key is deleted when the last one is.",
                      "tr": "   Anahtar duruyor: bu koşunun {total} oturumundan {done} tanesi içe aktarıldı; sonuncusunda anahtar silinir."},
+    "web_seal_format": {"en": "sealed bundle part {no} uses the seal format {alg}, which this version does not read (it is not a "
+                              "damaged file); import it with the version of wa2md that wrote it.",
+                        "tr": "mühürlü paket parçası {no} bu sürümün okumadığı mühür biçimini ({alg}) kullanıyor (bozuk dosya "
+                              "değil); onu yazan wa2md sürümüyle içe aktarın."},
     "web_deleted": {"en": "   {n} converted bundle file(s) deleted (--keep-bundles keeps them).",
                     "tr": "   Dönüştürülen {n} paket dosyası silindi (--keep-bundles saklar)."},
     "web_parts_kept": {"en": "   The collection has no final part: the bundle files stay where they are; import them "
@@ -267,10 +271,12 @@ MSG = {
                              "onunla birlikte yeniden içe aktarın."},
     "web_salvage": {"en": "   The collection did not finish: converting what was collected (checkpoints).",
                     "tr": "   Toplama bitmedi: toplananlar (ara kayıtlar) dönüştürülüyor."},
-    "web_parts_left": {"en": "   Bundle parts that could not be converted are kept in {path} (they hold the chat); "
-                             "convert them with: wa_web.py import \"{path}\" --out <folder>, then delete them.",
-                       "tr": "   Dönüştürülemeyen paket parçaları {path} klasöründe duruyor (sohbeti içerir); "
-                             "şu komutla dönüştürün: wa_web.py import \"{path}\" --out <klasör>, sonra silin."},
+    "web_parts_left": {"en": "   Bundle parts that could not be converted are kept in {path}. They cannot be imported later: "
+                             "the key of an `export` run lives only in memory, so the chat text in them (encrypted) can no "
+                             "longer be opened; parts without text hold photos only. Delete the folder when you do not need them.",
+                       "tr": "   Dönüştürülemeyen paket parçaları {path} klasöründe duruyor. Sonradan içe aktarılamazlar: "
+                             "`export` koşusunun anahtarı yalnız bellekte durur, içlerindeki (şifreli) sohbet metni artık "
+                             "açılamaz; metinsiz parçalar yalnız fotoğraf içerir. Gerekmiyorsa klasörü silin."},
     "web_run_stopped": {"en": "Stopped by the user: {n} remaining chat(s) were not collected.",
                         "tr": "Kullanıcı durdurdu: kalan {n} sohbet toplanmadı."},
     "web_delete_failed": {"en": "   {n} bundle file(s) could not be deleted; delete them by hand (they hold the unmasked chat).",
