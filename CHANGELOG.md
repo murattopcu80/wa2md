@@ -30,4 +30,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Internal statistics and review-reason ids are English (`dictionary`, `honorific`, `place_unclear`, ...); the console shows them in the selected language as before.
 - Test data uses reserved example numbers and names only.
 
+### Fixed
+
+- Turkish: a surname that is also an everyday word (`Açık`, `Beyaz`, `Kısa`, ...; 44 words in the word-name list `adlar/sozcuk-adlar.txt`) that was learned from an honorific (`Açık Bey`) or a mention (`@Açık`) is now masked in its capitalised forms, apostrophe suffixes included (`Açık'a`, `dün Açık geldi`, as before), but no longer in the all-lower-case ordinary word (`kapı açık`). Other names, real surnames and given names that are words are masked in every form as before ([#22](../../issues/22)).
+
 [Unreleased]: ../../commits/main

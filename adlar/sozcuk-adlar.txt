@@ -45,3 +45,9 @@ ece ela engin erdem esen esin eflatun ezgi fazilet feza filiz gamze görkem güz
 hidayet hikmet hilal himmet kamil kâmil konca latife mahir mehtap menderes mercan mert mevlüt miraç nail oya öykü
 ozan poyraz ramazan reşit reyhan saba sabri sedef seher selim sema serap seyran şahin şelale şule taşkın tayfun tunç
 turan ülker vuslat yağız yalçın yasemin yavuz zemzem
+# Soyad listesindeki (tr-soyadlar.txt) gunluk sozcukler (issue #22; elle derlendi, 2026-11-23). Hitapla ("Açık Bey") ya da
+# @anma ile ogrenildiginde yalniz buyuk harfli bicimleriyle maskelenir ("Açık'a", "dün Açık geldi"); "kapı açık" gibi
+# tamamen kucuk harfli siradan kullanim maskelenmez (wa2md.Anonymizer._learn). Gercek soyadlar (Karakoç) her bicimde maskelenir.
+akıllı açık bal beyaz bilir büyük canlı ceviz çay doğru düz elma erken fındık geçer ince kalın kar kazan kırmızı kiraz
+kısa kolay küçük mavi mor orman sağlam sarı sert sever tatlı tek temiz tepe uzun üzüm yavaş yeni yeşil yumuşak yüksek
+zeytin zor
