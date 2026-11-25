@@ -38,7 +38,7 @@ If personal data is left unmasked in a form that the README says is masked, trea
 ## Changing the code
 
 - Keep a change small and focused, and add a test that fails without it. Tests that check masking go next to the existing ones in `tests/`; a masking rule that has a decision-table row in `tests/test_nakliye_karar_tablosu.py` gets a new row there.
-- Behaviour that the README documents changes together with the README (`README.md` and `README.tr.md`).
+- Behaviour that the README documents changes together with the README (`README.md`, `README.tr.md` and the topic pages in `docs/` and `docs/tr/`).
 - The anonymizer's language-specific parts live in language packs (`wa2md_lang/`, issue #2); see [docs/language-packs.md](docs/language-packs.md) for the interface and how to add a language. Please talk to the maintainers in that issue before a large change to the detection code.
 
 ## Commit style

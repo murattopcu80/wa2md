@@ -1,3 +1,4 @@
 include DATA-LICENSES.md CHANGELOG.md CODE_OF_CONDUCT.md CONTRIBUTING.md SECURITY.md README.tr.md requirements.txt
+recursive-include docs *.md
 graft tests
 global-exclude __pycache__ *.py[cod]

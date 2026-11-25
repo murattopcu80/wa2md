@@ -8,7 +8,7 @@ wa2md has no stable release yet. Security fixes are made on the `main` branch.
 
 wa2md handles private chats and its main purpose is to remove personal data from them. Besides the usual kinds of vulnerability (for example code execution or path traversal when reading a crafted export or bundle, or writing outside the output folder), **for this tool a vulnerability also includes personal data that is left unmasked contrary to the documented behaviour**: for example a phone number, e-mail address, IBAN, national ID number or a participant name in a form that the README says is masked, but that appears in the output; or a way to make the tool print or store the mapping between real names and labels.
 
-Best-effort misses that the README lists under "What this tool does not find automatically" are not vulnerabilities; please report them as an "Anonymization miss or over-masking" issue instead (that form is public, so use invented data only).
+Best-effort misses that the README and [docs/anonymization.md](docs/anonymization.md) list under "What this tool does not find automatically" are not vulnerabilities; please report them as an "Anonymization miss or over-masking" issue instead (that form is public, so use invented data only).
 
 ## How to report
 

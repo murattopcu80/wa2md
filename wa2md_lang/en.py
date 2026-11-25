@@ -1,7 +1,7 @@
 """English language pack: word lists, patterns and output labels for English chats (issue #2).
 
 The engine's rules are the same for every language; this module only supplies English data. Field meanings:
-wa2md_lang.LanguagePack. Dictionaries: adlar/en-*.txt (sources and licences in their headers and in README.md).
+wa2md_lang.LanguagePack. Dictionaries: adlar/en-*.txt (sources and licences in their headers and in docs/data-sources.md).
 """
 from wa2md_lang import NEVER, Labels, LanguagePack
 
@@ -45,7 +45,7 @@ def _national_phones(b):
 def _mobile_phones(b):
     """No English shape is masked outside an English selection: a UK mobile (07700 900123) also fits digit strings that
     the Turkish pack has always left as text, and the Turkish pack's output must stay byte-identical. A UK mobile in a
-    chat that selects only the Turkish pack is a documented miss (README, known limits)."""
+    chat that selects only the Turkish pack is a documented miss (docs/language-support.md, known limits)."""
     return []
 
 
