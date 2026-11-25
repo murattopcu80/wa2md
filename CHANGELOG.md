@@ -29,6 +29,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Output labels are English by default** and follow `--lang` / `WA2MD_LANG`: `Chat-N`, `Person N`, `[phone]`, `[company]`, `[path]`, `[email]`, `[user]`, `[password]`, `[code]`, `Participants:`, `attachments.md`, `Chat-N-suspect-names.txt`. **To keep the previous Turkish labels (`Sohbet-N`, `Kişi N`, `[telefon]`, ...) use `--lang tr` or `WA2MD_LANG=tr`**; with `--packs tr --lang tr` the Markdown output is byte-identical to the previous version except that an IBAN of any country is now masked whole as `[iban]`.
 - Internal statistics and review-reason ids are English (`dictionary`, `honorific`, `place_unclear`, ...); the console shows them in the selected language as before.
 - Test data uses reserved example numbers and names only.
+- Documentation: `README.md` and `README.tr.md` are short entry pages; the long sections moved unchanged in substance to topic pages in `docs/` (English) and `docs/tr/` (Turkish, same file names): `whatsapp-web.md`, `phone-export.md`, `anonymization.md`, `language-support.md`, `options.md`, `blind-run.md`, `output-format.md`, `data-sources.md`. Help texts that pointed at the README now point at these pages; the source distribution includes `docs/`.
 
 ### Fixed
 
