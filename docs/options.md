@@ -7,6 +7,7 @@ Every option has an English primary name. The old Turkish names are accepted as 
 | English (primary) | Turkish alias | Meaning | Command |
 |---|---|---|---|
 | `--no-media` | `--medya-yok` | leave media out of the output | `wa2md.py`; `wa_web.py snippet/import/export` |
+| `--no-video` | `--video-yok` | do not open, play or download video, gif or audio messages (no sound); written as `[video: not exported]`; photos kept | `wa_web.py snippet/export` |
 | `--copy-documents` | `--belgeleri-kopyala` | when anonymizing, also copy attachments other than image/video/audio | `wa2md.py` |
 | `--extra-names` | `--ek-adlar` | backup name list (`"First Last,Nickname"` or `@file`) | `wa2md.py`; `wa_web.py import/export` |
 | `--review-dir` | `--inceleme-dizini` | folder of the suspect-remaining words file | `wa2md.py`; `wa_web.py import/export` |

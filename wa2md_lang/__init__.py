@@ -41,6 +41,7 @@ class Labels:
     forwarded: str                  # WhatsApp Web path: note text of a forwarded message
     deleted: str                    # WhatsApp Web path: note text of a deleted message
     download_failed: str            # WhatsApp Web path: "{kind}", "{label}"
+    not_exported: str               # WhatsApp Web path, --no-video: "{kind}" (video, gif, audio left untouched)
     own_name: str                   # WhatsApp Web path: sender name of outgoing messages
     web_kinds: Mapping[str, str]    # WhatsApp Web media kind id -> display (image gif video audio document)
     kinds: Mapping[str, str]        # attachment kind id -> display (image video audio contact pdf office archive other)

@@ -11,11 +11,12 @@ Collection (DOM reading, scrolling, photo blobs) lives in ONE JavaScript file: w
 Both paths write the Markdown with wa2md.write_chat (one writer).
 
     python wa_web.py snippet --chats "Ali Veli,Sample Group" [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--max-messages N] [--no-media]
+                                     [--no-video]  (video, gif and audio are not opened, played or downloaded)
     python wa_web.py import <bundle files or folder> --out <folder>
     python wa_web.py list                       (CDP)
     python wa_web.py export --chats "Naime" --out <folder> [...]   (CDP)
 
-Options also accept the Turkish aliases (--medya-yok, --ek-adlar, --inceleme-dizini, --sozluksuz, --anonim, --no-anonim);
+Options also accept the Turkish aliases (--medya-yok, --video-yok, --ek-adlar, --inceleme-dizini, --sozluksuz, --anonim, --no-anonim);
 --lang tr or WA2MD_LANG=tr selects Turkish help and console messages.
 
 READ-ONLY: it writes nothing, sends nothing, reacts, deletes, archives or mutes nothing. Opening a chat marks its
@@ -163,9 +164,10 @@ def resolve_when(rows, today):
     return [(o[0], o[1]) for o in out]
 
 
-def build_messages(rows, title, today, media_files=None, staging=None, no_media=False, own_name=None):
+def build_messages(rows, title, today, media_files=None, staging=None, no_media=False, own_name=None, no_video=False):
     """Paket satirlari -> wa2md mesaj listesi (parts modeli). media_files: {anahtar: (yol, uzanti)} (staging icinde).
-    Medya dosyalari <YYYYMMDD-HHMM>-<kisa id>[-n].<uzanti> adina tasinir."""
+    Medya dosyalari <YYYYMMDD-HHMM>-<kisa id>[-n].<uzanti> adina tasinir. no_video: alinmamis video/gif/ses
+    "[video: aktarilmadi]" notu olur (toplayici onlara dokunmadi)."""
     media_files = media_files or {}
     L = wa2md.output_labels()
     own_name = L.own_name if own_name is None else own_name
@@ -207,7 +209,7 @@ def build_messages(rows, title, today, media_files=None, staging=None, no_media=
             parts.append(("omitted", None))
         else:
             for i, md in enumerate(media):
-                parts.extend(_media_parts(r, md, i, len(media), when, media_files, staging))
+                parts.extend(_media_parts(r, md, i, len(media), when, media_files, staging, no_video))
         for line in text.split("\n"):
             if line.strip():
                 parts.append(("text", line.strip()))
@@ -238,7 +240,10 @@ def doc_name(label):
     return (m.group(1) if m else label).strip()
 
 
-def _media_parts(r, md, idx, total, when, media_files, staging):
+NO_VIDEO_KINDS = ("video", "gif", "audio")   # --no-video: the collector never touches these (wa_collect.js NO_VIDEO_KINDS)
+
+
+def _media_parts(r, md, idx, total, when, media_files, staging, no_video=False):
     kinds = wa2md.output_labels().web_kinds
     kind = md.get("kind") if md.get("kind") in kinds else "document"
     stem = f"{when:%Y%m%d-%H%M}-{short_id(r['id'])}" + (f"-{idx + 1}" if total > 1 else "")
@@ -249,6 +254,8 @@ def _media_parts(r, md, idx, total, when, media_files, staging):
         if os.path.abspath(got[0]) != os.path.abspath(target):
             os.replace(got[0], target)
         return [("file", name)]
+    if no_video and kind in NO_VIDEO_KINDS:
+        return [("note", wa2md.output_labels().not_exported.format(kind=kinds[kind]))]
     if kind == "image":  # yazicinin mevcut "dosya eksik" isaretcisi
         return [("file", stem + EXT_BY_KIND["image"])]
     label = doc_name(md.get("label")) or kinds[kind]
@@ -579,7 +586,8 @@ def import_bundles(inputs, out_dir, date_from=None, date_to=None, max_messages=N
             d_from = date_from or (dt.date.fromisoformat(o["from"]) if o.get("from") else None)
             d_to = date_to or (dt.date.fromisoformat(o["to"]) if o.get("to") else None)
             maxm = max_messages or o.get("max") or None
-            msgs = build_messages(final["rows"], title, today, files, staging, bool(o.get("noMedia")) or no_media)
+            msgs = build_messages(final["rows"], title, today, files, staging, bool(o.get("noMedia")) or no_media,
+                                  no_video=bool(o.get("noVideo")))
             group = wa2md.is_group(msgs, title)
             msgs = filter_messages(msgs, d_from, d_to, maxm)
             if not msgs:
@@ -640,7 +648,7 @@ def _delete_bundles(paths):
 def collector_opts(args, chats):
     return {"chats": chats, "from": args.date_from.isoformat() if args.date_from else None,
             "to": args.date_to.isoformat() if args.date_to else None, "max": args.max_messages or 0,
-            "noMedia": bool(args.no_media), "olderFromPhone": bool(getattr(args, "older_from_phone", False)),
+            "noMedia": bool(args.no_media), "noVideo": bool(getattr(args, "no_video", False)), "olderFromPhone": bool(getattr(args, "older_from_phone", False)),
             "pace": float(os.environ.get("WA_PACE", "1")), "lang": wa2md.current_lang(),
             "checkpointMin": max(0.0, float(getattr(args, "checkpoint_minutes", 10) or 0))}
 
@@ -913,6 +921,8 @@ def add_filter_args(p, with_media=True):
     if with_media:
         p.add_argument("--no-media", "--medya-yok", dest="no_media", action="store_true",
                        help=wa2md.t("help_web_no_media"))
+        p.add_argument("--no-video", "--video-yok", dest="no_video", action="store_true",
+                       help=wa2md.t("help_web_no_video"))
         p.add_argument("--older-from-phone", action="store_true", help=wa2md.t("help_older_from_phone"))
         p.add_argument("--checkpoint-minutes", type=float, default=10, metavar="N", help=wa2md.t("help_checkpoint_minutes"))
 

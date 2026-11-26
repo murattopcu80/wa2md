@@ -145,6 +145,16 @@ class Build(unittest.TestCase):
         (m,) = wa_web.build_messages(rows, "S", TODAY, no_media=True)
         self.assertEqual(m["parts"], [("omitted", None), ("text", "Açıklama")])
 
+    def test_no_video_marks_video_gif_and_audio_not_exported(self):
+        kinds = [{"kind": k, "key": None, "label": ""} for k in ("video", "gif", "audio", "image")]
+        rows = [synth(i + 1, stamp=f"[14:0{i}, 14.11.2026] A: ", media=[md]) for i, md in enumerate(kinds)]
+        msgs = wa_web.build_messages(rows, "S", TODAY, no_video=True)
+        self.assertEqual([m["parts"] for m in msgs[:3]], [[("note", "[video: aktarılmadı]")], [("note", "[gif: aktarılmadı]")],
+                                                       [("note", "[ses: aktarılmadı]")]])
+        self.assertEqual(msgs[3]["parts"][0][0], "file")   # fotograf etkilenmez (eksikse dosya eksik isaretcisi)
+        msgs = wa_web.build_messages(rows, "S", TODAY)        # secenek yokken eski davranis
+        self.assertEqual(msgs[0]["parts"], [("note", "video indirilemedi: video")])
+
     def test_album_files_get_numbered_stems_and_missing_marker(self):
         img = {"kind": "image", "key": None, "label": ""}
         rows = [synth(1, stamp="[14:05, 14.11.2026] A: ", media=[img, img])]
@@ -207,6 +217,14 @@ class Snippet(unittest.TestCase):
             wa_web.copy_to_clipboard = real_clip
         return rc, out.getvalue(), err.getvalue()
 
+    def test_no_video_option_and_turkish_alias(self):
+        for flag in ("--no-video", "--video-yok"):
+            with self.subTest(flag=flag):
+                rc, out, _ = self.run_snippet("--chats", "Naime", flag)
+                self.assertEqual(rc, 0)
+                opts = json.loads(out.split(";\n", 1)[0][len("window.__WA_OPTS = "):])
+                self.assertEqual((opts["noVideo"], opts["noMedia"]), (True, False))
+
     def test_options_baked_in_and_ascii_only(self):
         rc, out, err = self.run_snippet("--chats", "Naime,Aile grubu", "--from", "2026-11-01", "--max-messages", "50",
                                         "--no-media")
@@ -217,6 +235,7 @@ class Snippet(unittest.TestCase):
         self.assertEqual(opts["chats"], ["Naime", "Aile grubu"])
         self.assertEqual((opts["from"], opts["to"], opts["max"], opts["noMedia"], opts["olderFromPhone"]),
                          ("2026-11-01", None, 50, True, False))
+        self.assertFalse(opts["noVideo"])
         self.assertIn("__waCollect", out)  # toplayici dosyanin kendisi gomulu
         self.assertIn("allow pasting", err)
         self.assertEqual(opts["checkpointMin"], 10)   # issue #20: varsayilan ara kayit araligi

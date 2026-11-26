@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- WhatsApp Web collector: `--no-video` (`--video-yok`) for `snippet` and `export` leaves video, gif and audio messages untouched (no click, no media viewer, nothing plays or downloads, so no sound) and writes them as `[video: not exported]` / `[audio: not exported]`; photos are still taken (only when already loaded or by their download button). A photo thumbnail that carries a play sign counts as a video.
 - WhatsApp Web collector: the message text and the chat name are sealed (encrypted) in the tab before a bundle is downloaded, with a one-time key kept in the user state folder; `import` opens them in memory, masks them with the one Python anonymizer and deletes the key after a successful run, so no readable chat text reaches the disk ([#21](../../issues/21)). In-browser masking was not built (reasons in #21).
 - WhatsApp Web collector: checkpoint parts every 10 minutes (`--checkpoint-minutes`) and a **Stop and save** button; `import` converts an unfinished collection from its newest checkpoint ([#20](../../issues/20)).
 

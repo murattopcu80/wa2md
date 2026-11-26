@@ -68,6 +68,7 @@ LABELS = Labels(
     forwarded="Forwarded message",
     deleted="This message was deleted",
     download_failed="{kind} could not be downloaded: {label}",
+    not_exported="[{kind}: not exported]",
     own_name="Me",
     web_kinds={"image": "photo", "gif": "gif", "video": "video", "audio": "audio", "document": "document"},
     kinds={"image": "image", "video": "video", "audio": "audio", "contact": "contact card", "pdf": "PDF",

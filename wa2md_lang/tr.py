@@ -53,6 +53,7 @@ LABELS = Labels(
     forwarded="Yönlendirilmiş mesaj",
     deleted="Bu mesaj silindi",
     download_failed="{kind} indirilemedi: {label}",
+    not_exported="[{kind}: aktarılmadı]",
     own_name="Ben",
     web_kinds={"image": "fotoğraf", "gif": "gif", "video": "video", "audio": "ses", "document": "belge"},
     kinds={"image": "görüntü", "video": "video", "audio": "ses", "contact": "kişi kartı", "pdf": "PDF",

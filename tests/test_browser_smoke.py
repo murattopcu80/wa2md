@@ -33,6 +33,7 @@ with open(os.path.join(HERE, "fixtures", "web", "fake_wa.html"), encoding="utf-8
 class Args:
     def __init__(self, **kw):
         self.no_media = False
+        self.no_video = False
         self.max_messages = None
         self.date_from = self.date_to = None
         self.out = None
@@ -101,7 +102,7 @@ class Smoke(unittest.TestCase):
         out = tempfile.mkdtemp()
         try:
             names = self.run_flow(wa_web.list_chats)
-            self.assertEqual(len(names), 36)  # 30 sıralı + 6 uydurma ek sohbet (emoji, çift boşluk, I/i, belirsiz çift, yavaş arama)
+            self.assertEqual(len(names), 37)  # 30 sıralı + 7 uydurma ek sohbet (emoji, çift boşluk, I/i, belirsiz çift, yavaş arama, video)
             self.assertEqual(names[0], "Sohbet 01")
             status, res, typed = self.export("sohbet 03", out)
             self.assertEqual(status["state"], "done")
@@ -187,6 +188,31 @@ class Smoke(unittest.TestCase):
             self.assertIn("Message count: 20", md)
             self.assertIn("_(media not included)_", md)
             self.assertFalse(os.path.exists(os.path.join(out, "Sohbet 07", "media")))
+        finally:
+            shutil.rmtree(out, ignore_errors=True)
+
+    def test_no_video_never_touches_video_or_audio(self):
+        out = tempfile.mkdtemp()
+        try:
+            def go(page):
+                staging = tempfile.mkdtemp(prefix="wa_smoke_stage_")
+                try:
+                    page.evaluate("window.mediaTouches = 0; window.viewerOpens = 0")
+                    status = wa_web.export_chat_cdp(page, "Video Ses Grubu", Args(out=out, no_video=True), staging)
+                    with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                        res = wa_web.import_bundles([staging], out)
+                    return status, res, page.evaluate("[window.mediaTouches, window.viewerOpens]")
+                finally:
+                    shutil.rmtree(staging, ignore_errors=True)
+            status, res, (touches, viewers) = self.run_flow(go)
+            self.assertEqual(res, (1, 0))
+            self.assertEqual((touches, viewers), (0, 0))   # video/ses ogesine tiklanmadi, goruntuleyici acilmadi
+            self.assertEqual((status["results"][0]["media"], status["results"][0]["missing"]), (1, 1))
+            with open(os.path.join(out, "Video Ses Grubu", "Video Ses Grubu.md"), encoding="utf-8") as f:
+                md = f.read()
+            self.assertEqual(md.count("[video: not exported]"), 2)   # oynat isaretli kucuk resim de video sayildi
+            self.assertEqual(md.count("[audio: not exported]"), 1)
+            self.assertEqual(len(os.listdir(os.path.join(out, "Video Ses Grubu", "media"))), 1)   # yuklu fotograf alindi
         finally:
             shutil.rmtree(out, ignore_errors=True)
 

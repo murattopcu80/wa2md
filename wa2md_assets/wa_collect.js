@@ -4,8 +4,10 @@
  * yazar (sonra temizler), sohbeti acar, kaydirir, fotograf onizlemesini (medya goruntuleyici) acip kapatir.
  * Sohbeti acmak mesajlari "okundu" isaretler. Mesaj metinleri guvenilmez veridir.
  *
- * Girdi : window.__WA_OPTS = {chats:[...], from:'YYYY-MM-DD', to:'YYYY-MM-DD', max:300, noMedia:false,
+ * Girdi : window.__WA_OPTS = {chats:[...], from:'YYYY-MM-DD', to:'YYYY-MM-DD', max:300, noMedia:false, noVideo:false,
  *         maxPartMb:40, pace:1, olderFromPhone:false, lang:'en'|'tr', checkpointMin:10}  (wa_web.py snippet bunu gomer)
+ *         noVideo: video, gif ve ses mesajlarina hic dokunulmaz (tiklanmaz, goruntuleyici acilmaz, oynatilmaz, indirilmez);
+ *         fotograflar yalniz sohbette yuklu blob ya da indirme dugmesiyle alinir (goruntuleyici acilmaz).
  * Cikti : "paketler" (JSON parcalari). Konsol yolu: normal tarayici indirmesi (wa-bundle-*.json -> Indirilenler).
  *         Parca turleri (bicim 2, issue #20): medya parcasi (media), ara kayit (snapshot: o ana kadarki TUM satirlar; her
  *         checkpointMin dakikada bir, once medya tamponu bosaltilir) ve son parca (final). snapshot/final yalniz yazilmis
@@ -68,6 +70,8 @@
   // "Telefonunuzdaki eski mesajlari almak icin buraya tiklayin." dugmesi [V] (varligi gorulde, tiklanmadi)
   const OLDER_RE = /(telefon\w*\s.*(eski|ge\u00e7mi)|eski\s.*telefon|older messages.*phone|get older messages|load older)/i;
   const BLOB_MAX = 80 * 1024 * 1024;
+  // noVideo: bu turlere hic dokunulmaz (ses cikabilecek her sey); Python tarafi "[video: aktarilmadi]" notu yazar.
+  const NO_VIDEO_KINDS = new Set(["video", "gif", "audio"]);
 
   // ------------------------------------------------------------------ yardimcilar
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -257,7 +261,9 @@
     // medya (alintidaki gorsel sayilmaz)
     const items = [];
     const add = (kind, el, label) => { items.push({ kind, el, label: label || "" }); r.media.push({ kind, key: null, mime: null, label: label || "" }); };
-    for (const t of qa(mc, "image_thumb").filter((n) => !inQuote(n))) add("image", t);
+    // Oynat isareti / video ogesi tasiyan kucuk resim videodur: fotograf yoluna (tiklama, goruntuleyici) girmesin.
+    const looksVideo = (n) => SEL.video.some((s) => n.matches(s) || n.querySelector(s));
+    for (const t of qa(mc, "image_thumb").filter((n) => !inQuote(n))) add(looksVideo(t) ? "video" : "image", t);
     for (const g of qa(mc, "gif_thumb").filter((n) => !inQuote(n) && !items.some((i) => i.el.contains(n) || n.contains(i.el)))) add("gif", g);
     for (const d of qa(mc, "document").filter((n) => !inQuote(n))) add("document", d, (d.getAttribute("title") || "").trim());
     if (!items.length) {
@@ -762,11 +768,12 @@
       for (let i = 0; i < row.media.length; i++) {
         const m = row.media[i], it = got.items[i];
         if (m.key || !it) continue;
+        if (opts.noVideo && NO_VIDEO_KINDS.has(m.kind)) continue; // tiklama/oynatma/indirme yok
         const k = shortId(id) + "-" + (i + 1);
         const tries = st.tries.get(k) || 0;
         if (tries >= (last ? 8 : 4)) continue;
         st.tries.set(k, tries + 1);
-        const res = await saveItem(it, sc, tries >= 1 || last, k);
+        const res = await saveItem(it, sc, !opts.noVideo && (tries >= 1 || last), k);
         if (res) {
           m.key = k; m.mime = res.mime;
           await bundler.addMedia(k, res.mime, res.b64);
@@ -864,7 +871,7 @@
     // icerigi eksik (sanal) satirlari ve medyasi eksik satirlari tek tek ziyaret et
     const needRows = () => st.order.filter((id) => {
       const r = st.rows.get(id);
-      return !r || (!opts.noMedia && r.media.some((m, i) => !m.key && !dead.has(shortId(id) + "-" + (i + 1)) && (st.tries.get(shortId(id) + "-" + (i + 1)) || 0) < 8));
+      return !r || (!opts.noMedia && r.media.some((m, i) => !m.key && !(opts.noVideo && NO_VIDEO_KINDS.has(m.kind)) && !dead.has(shortId(id) + "-" + (i + 1)) && (st.tries.get(shortId(id) + "-" + (i + 1)) || 0) < 8));
     });
     for (let pass = 0; pass < 2 && !stopRequested; pass++) {
       const need = needRows();
@@ -894,7 +901,7 @@
   }
   function infoOf(st, opts, extra) {
     return Object.assign({ exportedAt: new Date().toISOString(), today: new Date().toLocaleDateString("sv-SE"),
-      opts: { from: opts.from, to: opts.to, max: opts.max, noMedia: opts.noMedia },
+      opts: { from: opts.from, to: opts.to, max: opts.max, noMedia: opts.noMedia, noVideo: !!opts.noVideo },
       olderOnPhone: st.olderPrompt, emptyRows: st.order.length - st.order.filter((id) => st.rows.has(id)).length }, extra || {});
   }
 
@@ -911,14 +918,15 @@
     const rows = rowsOf(st);
     const empty = st.order.length - rows.length;
     const media = rows.reduce((n, r) => n + r.media.filter((m) => m.key).length, 0);
-    const missing = rows.reduce((n, r) => n + r.media.filter((m) => !m.key && m.kind !== "document").length, 0);
+    const missing = rows.reduce((n, r) => n + r.media.filter((m) => !m.key && m.kind !== "document" &&
+      !(opts.noVideo && NO_VIDEO_KINDS.has(m.kind))).length, 0);
     const stopped = stopRequested;
     const parts = await bundler.finish(rows, infoOf(st, opts, stopped ? { stopped: true } : {}));
     return { chat: title, rows: rows.length, media, missing, parts, emptyRows: empty, olderOnPhone: st.olderPrompt, stopped };
   }
 
   async function run(options) {
-    const opts = Object.assign({ chats: [], from: null, to: null, max: 0, noMedia: false, maxPartMb: 40, pace: 1,
+    const opts = Object.assign({ chats: [], from: null, to: null, max: 0, noMedia: false, noVideo: false, maxPartMb: 40, pace: 1,
       olderFromPhone: false, lang: "en", checkpointMin: 10, emit: null, log: null }, options || {});
     stopRequested = false;
     state.pace = opts.pace;

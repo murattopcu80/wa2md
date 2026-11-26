@@ -14,6 +14,9 @@ const grid = document.getElementById('grid'), msgsEl = document.getElementById('
 const chats = Array.from({length: 30}, (_, i) => 'Sohbet ' + String(i + 1).padStart(2, '0'));
 // Uydurma ek sohbetler: emoji sarili grup, cift bosluklu baslik, Turkce buyuk/kucuk harf (I/i), belirsiz cift, yavas arama
 chats.push('🚛🚛Örnek ÇUKUROVA Nakliyat 🚛🚛', 'Merkezi  Test   hibu', 'ILIK Liman Grubu', 'Deneme Grup A', 'Deneme Grup B', 'Yavaş Arama Grubu');
+// --no-video sohbeti: oynat isaretli kucuk resim (video), video ogesi, sesli mesaj, yuklu ve yuklenmemis fotograf
+chats.push('Video Ses Grubu');
+window.mediaTouches = 0; window.viewerOpens = 0;   // video/ses ogesine tiklama ve goruntuleyici acilisi sayaclari
 // arama: WhatsApp gibi emoji/aksan/bosluk/buyuk-kucuk harfe duyarsiz; 'yavas' iceren sorguda sonuclar 2.6 sn gecikir (eski liste gorunur kalir)
 const fz = t => t.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ı/g, 'i').toLowerCase().replace(/[^a-z0-9]+/g, '');
 function renderChats(filter) {
@@ -37,6 +40,10 @@ function png(size) { return new Promise(res => { const c = document.createElemen
 const all = Array.from({length: 40}, (_, i) => ({i, day: i < 20 ? '13.11.2026' : '14.11.2026', out: i % 2 === 1,
   who: i % 2 ? 'Deniz Test' : 'Naime', img: i % 7 === 3, pending: i % 7 === 5, dlbtn: i % 7 === 6,
   hh: String(8 + Math.floor(i / 4)).padStart(2, '0'), mm: String((i % 4) * 10).padStart(2, '0')}));
+const vids = ['text', 'vthumb', 'video', 'audio', 'img', 'pending'].map((k, i) => ({i, day: '14.11.2026', out: false, who: 'Naime',
+  text: k === 'text', vthumb: k === 'vthumb', video: k === 'video', audio: k === 'audio', img: k === 'img', pending: k === 'pending',
+  hh: '10', mm: String(i * 5).padStart(2, '0')}));
+let cur = all;
 let loaded = 0;
 const svg = t => '<svg viewBox="0 0 8 13"><title>' + t + '</title></svg>';
 async function rowHtml(m) {
@@ -45,7 +52,13 @@ async function rowHtml(m) {
   const tick = m.out ? '<div><span aria-hidden="false" aria-label=" Okundu ">' + svg('wds-ic-read') + '</span></div>' : '';
   const meta = '<div><div data-testid="msg-meta" role="button"><span><span>' + t + '</span></span>' + tick + '</div></div>';
   let body;
-  if (m.dlbtn) {
+  if (m.vthumb) {
+    body = '<div role="button" data-testid="image-thumb" data-kind="video"><div data-testid="media-url-provider"><div><img src="data:image/jpeg;base64,/9j/4AAQ"></div></div><span data-icon="media-play"></span></div>';
+  } else if (m.video) {
+    body = '<div role="button" data-testid="video-content" data-kind="video"><span data-icon="media-play"></span></div>';
+  } else if (m.audio) {
+    body = '<div data-kind="audio"><span role="button" data-icon="audio-play"></span></div>';
+  } else if (m.dlbtn) {
     body = '<div role="button" data-testid="image-thumb" data-dl="1"><div data-testid="media-state-download"><span>136 kB</span></div><div data-testid="media-url-provider"><div><img src="data:image/jpeg;base64,/9j/4AAQ"></div></div></div>';
   } else if (m.img || m.pending) {
     const blob = m.img ? '<div><img draggable="true" src="' + await png(80) + '"></div>' : '';
@@ -59,19 +72,20 @@ async function rowHtml(m) {
     '<div>' + label + '<div>' + body + meta + '</div></div></div></div></div></div></div>';
 }
 async function prepend(count) {
-  const end = all.length - loaded, start = Math.max(0, end - count);
-  const slice = all.slice(start, end); let html = '', lastDay = null;
+  const end = cur.length - loaded, start = Math.max(0, end - count);
+  const slice = cur.slice(start, end); let html = '', lastDay = null;
   for (const m of slice) { if (m.day !== lastDay) { html += '<div><div><span>' + m.day + '</span></div></div>'; lastDay = m.day; } html += await rowHtml(m); }
   const old = msgsEl.scrollHeight; const wrap = document.createElement('div'); wrap.innerHTML = html;
   msgsEl.prepend(...wrap.childNodes); loaded += slice.length;
   msgsEl.scrollTop += msgsEl.scrollHeight - old;
 }
 let loading = false;
-msgsEl.addEventListener('scroll', async () => { if (msgsEl.scrollTop < 5 && loaded < all.length && !loading) { loading = true; await new Promise(r => setTimeout(r, 300)); await prepend(10); loading = false; } });
+msgsEl.addEventListener('scroll', async () => { if (msgsEl.scrollTop < 5 && loaded < cur.length && !loading) { loading = true; await new Promise(r => setTimeout(r, 300)); await prepend(10); loading = false; } });
 async function openChat(c) {
   // gercek baslik: emoji <img alt> olarak cizilir (textContent'te yok), ardisik bosluklar tek gorunur
   document.querySelector('[data-testid=conversation-info-header-chat-title]').innerHTML =
     c.replace(/\s+/g, ' ').replace(/\p{Extended_Pictographic}/gu, m => '<img alt="' + m + '" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">');
+  cur = c === 'Video Ses Grubu' ? vids : all;
   msgsEl.innerHTML = ''; loaded = 0; await prepend(10); msgsEl.scrollTop = msgsEl.scrollHeight;
 }
 // indirme dugmesi: tiklaninca eski thumb elemani DOM'dan duser, yerine blob'lu yeni eleman gelir (gercek WhatsApp Web davranisi)
@@ -91,5 +105,8 @@ document.addEventListener('click', async e => {
   const v = document.createElement('div'); v.setAttribute('data-testid', 'media-viewer-modal');
   v.innerHTML = '<div data-testid="media-canvas"><img data-testid="media-image" src="' + await png(300) + '"></div>'; document.body.appendChild(v);
 });
+document.addEventListener('click', e => { if (e.target.closest && e.target.closest('[data-kind]')) window.mediaTouches++; }, true);
+new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => { if (n.getAttribute && n.getAttribute('data-testid') === 'media-viewer-modal') window.viewerOpens++; })))
+  .observe(document.body, {childList: true});
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { const v = document.querySelector('[data-testid=media-viewer-modal]'); if (v) v.remove(); } });
 </script></body></html>

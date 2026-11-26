@@ -7,6 +7,7 @@ Her seçeneğin İngilizce birincil adı vardır. Eski Türkçe adlar **takma ad
 | İngilizce (birincil) | Türkçe takma ad | Açıklama | Hangi komut |
 |---|---|---|---|
 | `--no-media` | `--medya-yok` | medyayı çıktıya koyma | `wa2md.py`; `wa_web.py snippet/import/export` |
+| `--no-video` | `--video-yok` | video, gif ve ses mesajlarını açma, oynatma, indirme (ses çıkmaz); `[video: aktarılmadı]` yazılır; fotoğraflar alınır | `wa_web.py snippet/export` |
 | `--copy-documents` | `--belgeleri-kopyala` | anonim modda görüntü/video/ses dışındaki ekleri de kopyala | `wa2md.py` |
 | `--extra-names` | `--ek-adlar` | yedek ad listesi (`"Ad Soyad,Takma"` ya da `@dosya`) | `wa2md.py`; `wa_web.py import/export` |
 | `--review-dir` | `--inceleme-dizini` | şüpheli kalan sözcükler dosyasının klasörü | `wa2md.py`; `wa_web.py import/export` |

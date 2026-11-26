@@ -415,6 +415,12 @@ MSG = {
                                 "screenshots, documents), recommended for output you will share",
                           "tr": "medya indirme / çıktıya koyma; fotoğraflar anonimleştirilmez (yüzler, ekran görüntüleri, "
                                 "belgeler), paylaşılacak çıktı için önerilir"},
+    "help_web_no_video": {"en": "do not open, play or download video, gif or audio messages (no sound); they are written as "
+                                "\"[video: not exported]\"; photos are taken only when already loaded in the chat or by their "
+                                "download button (the media viewer is not opened)",
+                          "tr": "video, gif ve ses mesajlarını açma, oynatma, indirme (ses çıkmaz); \"[video: aktarılmadı]\" "
+                                "olarak yazılır; fotoğraflar yalnız sohbette yüklüyse ya da indirme düğmesiyle alınır "
+                                "(medya görüntüleyici açılmaz)"},
     "help_web_import_no_media": {"en": "leave media out of the output (photos in the bundle are not copied); photos are not "
                                        "anonymized (faces, screenshots, documents), recommended for output you will share",
                                  "tr": "medyayı çıktıya koyma (paketteki fotoğraflar kopyalanmaz); fotoğraflar anonimleştirilmez "
