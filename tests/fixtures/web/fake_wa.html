@@ -15,7 +15,7 @@ const chats = Array.from({length: 30}, (_, i) => 'Sohbet ' + String(i + 1).padSt
 // Uydurma ek sohbetler: emoji sarili grup, cift bosluklu baslik, Turkce buyuk/kucuk harf (I/i), belirsiz cift, yavas arama
 chats.push('🚛🚛Örnek ÇUKUROVA Nakliyat 🚛🚛', 'Merkezi  Test   hibu', 'ILIK Liman Grubu', 'Deneme Grup A', 'Deneme Grup B', 'Yavaş Arama Grubu');
 // --no-video sohbeti: oynat isaretli kucuk resim (video), video ogesi, sesli mesaj, yuklu ve yuklenmemis fotograf
-chats.push('Video Ses Grubu');
+chats.push('Video Ses Grubu', 'Belge Grubu');
 window.mediaTouches = 0; window.viewerOpens = 0;   // video/ses ogesine tiklama ve goruntuleyici acilisi sayaclari
 // arama: WhatsApp gibi emoji/aksan/bosluk/buyuk-kucuk harfe duyarsiz; 'yavas' iceren sorguda sonuclar 2.6 sn gecikir (eski liste gorunur kalir)
 const fz = t => t.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ı/g, 'i').toLowerCase().replace(/[^a-z0-9]+/g, '');
@@ -43,6 +43,10 @@ const all = Array.from({length: 40}, (_, i) => ({i, day: i < 20 ? '13.11.2026' :
 const vids = ['text', 'vthumb', 'video', 'audio', 'img', 'pending'].map((k, i) => ({i, day: '14.11.2026', out: false, who: 'Naime',
   text: k === 'text', vthumb: k === 'vthumb', video: k === 'video', audio: k === 'audio', img: k === 'img', pending: k === 'pending',
   hh: '10', mm: String(i * 5).padStart(2, '0')}));
+// Belge sohbeti: uydurma .xlsx ve .pdf kabarciklari (indirme asagida: baglam menusu 'Indir')
+const docs = [['text', ''], ['doc', 'Ornek Liste.xlsx'], ['doc', 'Deneme Belge.pdf']].map(([k, f], i) => ({i, day: '14.11.2026', out: false, who: 'Naime',
+  text: k === 'text', doc: k === 'doc' ? f : '', hh: '11', mm: String(i * 5).padStart(2, '0')}));
+window.docClicks = 0;
 let cur = all;
 let loaded = 0;
 const svg = t => '<svg viewBox="0 0 8 13"><title>' + t + '</title></svg>';
@@ -52,7 +56,9 @@ async function rowHtml(m) {
   const tick = m.out ? '<div><span aria-hidden="false" aria-label=" Okundu ">' + svg('wds-ic-read') + '</span></div>' : '';
   const meta = '<div><div data-testid="msg-meta" role="button"><span><span>' + t + '</span></span>' + tick + '</div></div>';
   let body;
-  if (m.vthumb) {
+  if (m.doc) {
+    body = '<div role="button" data-testid="document-thumb" data-doc="' + m.doc + '" title="“' + m.doc + '” dosyasını indir"><span data-icon="document-xlsx-icon"></span></div><span data-testid="icon-down-context" role="button"></span>';
+  } else if (m.vthumb) {
     body = '<div role="button" data-testid="image-thumb" data-kind="video"><div data-testid="media-url-provider"><div><img src="data:image/jpeg;base64,/9j/4AAQ"></div></div><span data-icon="media-play"></span></div>';
   } else if (m.video) {
     body = '<div role="button" data-testid="video-content" data-kind="video"><span data-icon="media-play"></span></div>';
@@ -85,7 +91,7 @@ async function openChat(c) {
   // gercek baslik: emoji <img alt> olarak cizilir (textContent'te yok), ardisik bosluklar tek gorunur
   document.querySelector('[data-testid=conversation-info-header-chat-title]').innerHTML =
     c.replace(/\s+/g, ' ').replace(/\p{Extended_Pictographic}/gu, m => '<img alt="' + m + '" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">');
-  cur = c === 'Video Ses Grubu' ? vids : all;
+  cur = c === 'Video Ses Grubu' ? vids : c === 'Belge Grubu' ? docs : all;
   msgsEl.innerHTML = ''; loaded = 0; await prepend(10); msgsEl.scrollTop = msgsEl.scrollHeight;
 }
 // indirme dugmesi: tiklaninca eski thumb elemani DOM'dan duser, yerine blob'lu yeni eleman gelir (gercek WhatsApp Web davranisi)
@@ -106,6 +112,28 @@ document.addEventListener('click', async e => {
   v.innerHTML = '<div data-testid="media-canvas"><img data-testid="media-image" src="' + await png(300) + '"></div>'; document.body.appendChild(v);
 });
 document.addEventListener('click', e => { if (e.target.closest && e.target.closest('[data-kind]')) window.mediaTouches++; }, true);
+// Belge: gercek WhatsApp Web'de balonun kendisine tiklamak bir sey yapmaz; indirme, satirin baglam menusundeki 'Indir' ogesiyle olur
+// (menu dugmesi icon-down-context; oge tiklaninca blob'lu <a download> tiklanir). 'Sil' gibi ogeler de menude durur: sayac tutulur.
+window.menuDeletes = 0;
+document.addEventListener('click', e => {
+  const c = e.target.closest && e.target.closest('[data-testid=icon-down-context]');
+  if (c) {
+    document.querySelectorAll('#ctxmenu').forEach(n => n.remove());
+    const ul = document.createElement('ul'); ul.id = 'ctxmenu'; ul.setAttribute('role', 'application'); ul._doc = c.closest('[data-testid=msg-container]').querySelector('[data-testid=document-thumb]');
+    ul.innerHTML = ['Cevapla', 'İndir', 'İlet', 'Sil'].map(t => '<li><div>' + t + '</div></li>').join(''); document.body.appendChild(ul); return;
+  }
+  const li = e.target.closest && e.target.closest('#ctxmenu li'); if (!li) return;
+  const t = li.textContent.trim(), ul = li.closest('#ctxmenu');
+  if (t === 'Sil') window.menuDeletes++;
+  if (t === 'İndir' && ul._doc) {
+    window.docClicks++;
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['PK-uydurma-' + ul._doc.dataset.doc], {type: 'application/octet-stream'}));
+    a.download = ul._doc.dataset.doc; document.body.appendChild(a); a.click(); a.remove();
+  }
+  ul.remove();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('#ctxmenu').forEach(n => n.remove()); });
+
 new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => { if (n.getAttribute && n.getAttribute('data-testid') === 'media-viewer-modal') window.viewerOpens++; })))
   .observe(document.body, {childList: true});
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { const v = document.querySelector('[data-testid=media-viewer-modal]'); if (v) v.remove(); } });

@@ -216,6 +216,35 @@ class Smoke(unittest.TestCase):
         finally:
             shutil.rmtree(out, ignore_errors=True)
 
+    def test_documents_are_saved_through_the_download_control(self):
+        out = tempfile.mkdtemp()
+        try:
+            def go(page):
+                staging = tempfile.mkdtemp(prefix="wa_smoke_stage_")
+                try:
+                    page.evaluate("window.docClicks = 0; window.menuDeletes = 0; window.mediaTouches = 0; window.viewerOpens = 0")
+                    status = wa_web.export_chat_cdp(page, "Belge Grubu", Args(out=out, no_video=True), staging)
+                    with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                        res = wa_web.import_bundles([staging], out)
+                    return status, res, page.evaluate("[window.mediaTouches, window.viewerOpens, window.menuDeletes, window.docClicks]")
+                finally:
+                    shutil.rmtree(staging, ignore_errors=True)
+            status, res, (touches, viewers, deletes, downloads) = self.run_flow(go)
+            self.assertEqual((touches, viewers, deletes, downloads), (0, 0, 0, 2))   # yalniz "Indir" ogesi tiklandi, "Sil" asla
+            self.assertEqual((status["results"][0]["media"], status["results"][0]["missing"]), (2, 0))
+            media = os.path.join(out, "Belge Grubu", "media")
+            names = sorted(os.listdir(media))
+            self.assertEqual([os.path.splitext(n)[1] for n in names], [".xlsx", ".pdf"])
+            for n in names:
+                with open(os.path.join(media, n), "rb") as f:
+                    self.assertTrue(f.read().startswith(b"PK-uydurma-"))
+            with open(os.path.join(out, "Belge Grubu", "Belge Grubu.md"), encoding="utf-8") as f:
+                md = f.read()
+            for n in names:
+                self.assertIn("media/" + n, md)
+        finally:
+            shutil.rmtree(out, ignore_errors=True)
+
     def test_max_messages_stops_early(self):
         out = tempfile.mkdtemp()
         try:
