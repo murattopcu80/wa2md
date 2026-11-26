@@ -32,6 +32,8 @@ Python 3 yeterli (konsol yolu için ek paket gerekmez). Yalnız deneysel CDP yol
 
 Seçenekler: `--from` / `--to` tarih aralığı, `--max-messages N` en yeni N mesaj, `--no-media` medya indirme, `--no-video` video, gif ve ses mesajlarına dokunma (tıklama yok, medya görüntüleyici açılmaz, hiçbir şey oynamaz ya da inmez; `[video: aktarılmadı]` / `[ses: aktarılmadı]` olarak yazılır; fotoğraflar yalnız sohbette yüklüyse ya da indirme düğmesiyle alınır), `--checkpoint-minutes N` ara kayıt aralığı (varsayılan 10, `0` = kapalı), `--older-from-phone` sohbetin başında "Telefonunuzdaki eski mesajları almak için buraya tıklayın" düğmesine tıkla (varsayılan: tıklama; telefonun açık olması gerekir). `import` da `--from/--to/--max-messages` kabul eder; `import` ve `export` ayrıca `wa2md.py` ile aynı anonim seçeneklerini (`--ek-adlar`, `--inceleme-dizini`, `--sozluksuz`) aynı anlamla kabul eder.
 
+Belgeler (xlsx, pdf, docx, zip ...) WhatsApp Web'in kendi mesaj menüsündeki **İndir** öğesiyle kaydedilir (toplayıcı menüyü açar ve yalnızca metni tam "İndir" olan öğeye tıklar; önizleme açılmaz). Anonim çalıştırmada belge adlar içerebileceğinden çıktıya yalnız `--belgeleri-kopyala` ile kopyalanır. Video, gif ve ses asla oynatılmaz: `--video-yok` ile atlanır; onsuz yalnızca WhatsApp zaten blob olarak tutuyorsa kaydedilir, değilse atlanır (kaydetmek oynatma gerektirir).
+
 ## Deneysel: Chrome'a doğrudan bağlanma (`list` / `export`) — bağlantı doğrulanmadı
 
 ```

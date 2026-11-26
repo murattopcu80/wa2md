@@ -63,6 +63,8 @@
     video: ["video", '[data-icon="media-play"]', '[data-testid="video-content"]'], // [U]
     audio: ["audio", '[data-icon="audio-play"]', '[data-testid="audio-play"]', '[data-icon="ptt-status"]'], // [U]
     document: ['[data-testid="document-thumb"]'], // [V] (title=dosya adi + ayrintilar)
+    msg_menu_btn: ['[data-testid="icon-down-context"]'], // [V] satirin baglam menusu oku (fareyle uzerine gelince gorunur)
+    menu_item: ['[role=application] li', '[role=menu] li', '[role=menuitem]'], // [V] baglam menusu ogeleri (Cevapla, Indir, Ilet, Sil...)
     reaction: ['[data-testid="reaction-bubble"]'], // [V] (yok sayilir)
   };
   // Tarih ayiraci (gun basligi): Python tarafi sert eler (wa_web.parse_divider).
@@ -373,7 +375,58 @@
       const el = item.el.matches("audio") ? item.el : item.el.querySelector("audio[src^='blob:']");
       if (el && el.src && el.src.startsWith("blob:")) return fetchBlob(el.src);
     }
-    return null; // belge: indirilmez (tarayici indirmesi tetiklenir); yer tutucu satir yazilir
+    if (item.kind === "document") {
+      if (key && dead.has(key)) return null;
+      const res = await documentFetch(item.el);
+      if (!res && key) dead.add(key);
+      return res;
+    }
+    return null;
+  }
+
+  // Belge: balonun kendisine tiklamak bir sey yapmaz [V]; WhatsApp Web'in kendi indirme yolu satirin baglam menusundeki "Indir" ogesidir.
+  // Menu acilir, YALNIZ metni tam "Indir"/"Download" olan oge tiklanir (Sil/Sikayet vb. asla). Sayfa blob'lu bir <a download> tiklar:
+  // bu tiklama yakalanir (gercek indirme baslatilmaz), blob okunur. Onizleme/goruntuleyici acilmaz; video/ses oynatilmaz.
+  const DOWNLOAD_ITEM_RE = /^(\u0130ndir|Indir|Download)$/i;
+  async function documentFetch(el) {
+    const rowEl = el.closest(SEL.row[0]);
+    if (!rowEl) return null;
+    const proto = HTMLAnchorElement.prototype, origClick = proto.click, origDispatch = proto.dispatchEvent;
+    let got = null;
+    const grab = (a) => { // blob hemen okunur: WhatsApp adresi tiklamadan sonra iptal edebilir
+      if (a && a.href && a.href.startsWith("blob:") && a.hasAttribute("download")) { got = { name: a.getAttribute("download") || "", p: fetchBlob(a.href) }; return true; }
+      return false;
+    };
+    proto.click = function () { if (!grab(this)) return origClick.apply(this, arguments); };
+    proto.dispatchEvent = function (ev) { if (ev && ev.type === "click" && grab(this)) return true; return origDispatch.apply(this, arguments); };
+    try {
+      // Menu oku yalniz fare satirin uzerindeyken olusur: fareyle uzerine gelme (React mouseenter, relatedTarget disarida) taklit edilir.
+      const mc = qf(rowEl, "container") || rowEl;
+      let btn = null;
+      const btnUntil = Date.now() + 2500;
+      while (!btn && Date.now() < btnUntil) {
+        for (const t of ["pointerover", "mouseover", "pointermove", "mousemove"]) mc.dispatchEvent(new MouseEvent(t, { bubbles: true, view: window, relatedTarget: document.body }));
+        await sleep(250);
+        btn = qf(rowEl, "msg_menu_btn");
+      }
+      if (!btn) return null;
+      click(btn);
+      let item = null;
+      const menuUntil = Date.now() + 3000;
+      while (!item && Date.now() < menuUntil) {
+        await sleep(150);
+        item = qa(document, "menu_item").find((li) => DOWNLOAD_ITEM_RE.test((li.innerText || "").trim())) || null;
+      }
+      if (!item) { document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); return null; }
+      click(item);
+      const until = Date.now() + 8000;
+      while (!got && Date.now() < until) await sleep(200);
+      if (!got) return null;
+      const r = await got.p;
+      return r ? Object.assign(r, { name: got.name }) : null;
+    } finally {
+      proto.click = origClick; proto.dispatchEvent = origDispatch;
+    }
   }
 
   // ------------------------------------------------------------------ muhur (issue #21)
@@ -776,6 +829,7 @@
         const res = await saveItem(it, sc, !opts.noVideo && (tries >= 1 || last), k);
         if (res) {
           m.key = k; m.mime = res.mime;
+          if (res.name) m.fileName = String(res.name).slice(0, 200);
           await bundler.addMedia(k, res.mime, res.b64);
         }
       }
@@ -918,7 +972,7 @@
     const rows = rowsOf(st);
     const empty = st.order.length - rows.length;
     const media = rows.reduce((n, r) => n + r.media.filter((m) => m.key).length, 0);
-    const missing = rows.reduce((n, r) => n + r.media.filter((m) => !m.key && m.kind !== "document" &&
+    const missing = rows.reduce((n, r) => n + r.media.filter((m) => !m.key &&
       !(opts.noVideo && NO_VIDEO_KINDS.has(m.kind))).length, 0);
     const stopped = stopRequested;
     const parts = await bundler.finish(rows, infoOf(st, opts, stopped ? { stopped: true } : {}));

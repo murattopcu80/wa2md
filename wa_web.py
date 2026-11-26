@@ -8,10 +8,14 @@ Collection (DOM reading, scrolling, photo blobs) lives in ONE JavaScript file: w
   2) CDP (experimental, connection not verified): `export` attaches to a running Chrome with Playwright, runs the same
      wa_collect.js, takes the bundles directly and writes them through the same import code.
 
+Documents (xlsx, pdf, docx, zip ...) are saved through WhatsApp Web's own "Download" item of the message menu (nothing is
+opened or played). Video, gif and audio are never played; they are saved only when WhatsApp already holds them as a blob.
+
 Both paths write the Markdown with wa2md.write_chat (one writer).
 
     python wa_web.py snippet --chats "Ali Veli,Sample Group" [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--max-messages N] [--no-media]
                                      [--no-video]  (video, gif and audio are not opened, played or downloaded)
+                                     [--copy-documents]  (anonymized runs copy documents only with this flag)
     python wa_web.py import <bundle files or folder> --out <folder>
     python wa_web.py list                       (CDP)
     python wa_web.py export --chats "Naime" --out <folder> [...]   (CDP)
@@ -249,7 +253,11 @@ def _media_parts(r, md, idx, total, when, media_files, staging, no_video=False):
     stem = f"{when:%Y%m%d-%H%M}-{short_id(r['id'])}" + (f"-{idx + 1}" if total > 1 else "")
     got = media_files.get(md.get("key")) if md.get("key") else None
     if got and os.path.isfile(got[0]):
-        name = stem + got[1]
+        ext = got[1]
+        if kind == "document":   # belgede uzanti dosya adindan (xlsx, docx, zip...): mime tahmini yetmez
+            ext = os.path.splitext(md.get("fileName") or doc_name(md.get("label")))[1]
+            ext = ext.lower() if re.fullmatch(r"\.[A-Za-z0-9]{1,8}", ext) else ext_for(md.get("mime"), "document")
+        name = stem + ext
         target = os.path.join(staging, name)
         if os.path.abspath(got[0]) != os.path.abspath(target):
             os.replace(got[0], target)
@@ -552,7 +560,7 @@ def load_session(parts, staging, keys=None):
 
 def import_bundles(inputs, out_dir, date_from=None, date_to=None, max_messages=None, anonim=False,
                    chat_start=1, no_media=False, ref_start=1, extra_names=None, review_dir=None, no_dict=False,
-                   keep_bundles=False, seal_keys=None, keep_incomplete=True):
+                   keep_bundles=False, seal_keys=None, keep_incomplete=True, copy_docs=False):
     """Paketleri Markdown'a cevir (wa2md.write_chat; wa2md ile ayni secenekler: ek adlar, inceleme klasoru, sozluksuz).
     Grup karari tarih/sayi suzgecinden ONCE tum paketten verilir (wa2md.is_group). Basariyla yazilan oturumun paket
     dosyalari silinir, son parcasi olmayan (yalniz ara kayit) oturumunki silinmez (maskelenmemis sohbeti tasirlar;
@@ -596,7 +604,7 @@ def import_bundles(inputs, out_dir, date_from=None, date_to=None, max_messages=N
                 continue
             export = wa2md.Export("web", "", b"", wa2md.scan_files(staging))
             wa2md.write_chat(title, msgs, export, out_dir, anonim=anonim, chat_no=chat_start + done, group=group,
-                             extra_names=extra_names, review_dir=review_dir, no_dict=no_dict)
+                             extra_names=extra_names, review_dir=review_dir, no_dict=no_dict, copy_docs=copy_docs)
             failed_note = _download_failed_rx()
             skipped = sum(1 for m in msgs for k, v in m["parts"] if k == "note" and failed_note.search(v))
             if skipped:
@@ -691,7 +699,8 @@ def cmd_snippet(args):
 def anon_kwargs(args):
     """wa2md.add_anonim_args seceneklerini import_bundles'a aktarir (wa2md.main ile ayni anlam)."""
     return {"extra_names": getattr(args, "extra_names", None), "review_dir": getattr(args, "review_dir", None),
-            "no_dict": bool(getattr(args, "no_dict", False))}
+            "no_dict": bool(getattr(args, "no_dict", False)),
+            "copy_docs": bool(getattr(args, "copy_docs", False))}
 
 
 def cmd_import(args):
@@ -927,6 +936,12 @@ def add_filter_args(p, with_media=True):
         p.add_argument("--checkpoint-minutes", type=float, default=10, metavar="N", help=wa2md.t("help_checkpoint_minutes"))
 
 
+def add_copy_docs_arg(p):
+    """Same option as wa2md.py: when anonymizing, documents are collected but copied only with this flag."""
+    p.add_argument("--copy-documents", "--belgeleri-kopyala", dest="copy_docs", action="store_true",
+                   help=wa2md.t("help_copy_documents"))
+
+
 def build_parser():
     ap = argparse.ArgumentParser(description=wa2md.t("help_web_description"))
     ap.add_argument("--user-data-dir", help=wa2md.t("help_user_data_dir"))
@@ -945,6 +960,7 @@ def build_parser():
     im.add_argument("--keep-bundles", "--paketleri-sakla", dest="keep_bundles", action="store_true",
                     help=wa2md.t("help_keep_bundles"))
     wa2md.add_anonim_args(im)
+    add_copy_docs_arg(im)
     wa2md.add_lang_arg(im)
     lc = sub.add_parser("list", help=wa2md.t("help_list"))
     wa2md.add_lang_arg(lc)
@@ -953,6 +969,7 @@ def build_parser():
     ex.add_argument("--out", required=True, help=wa2md.t("help_out"))
     add_filter_args(ex)
     wa2md.add_anonim_args(ex)
+    add_copy_docs_arg(ex)
     wa2md.add_lang_arg(ex)
     return ap
 

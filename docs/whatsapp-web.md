@@ -32,6 +32,8 @@ Python 3 is enough (no extra package for the console path). Only for the experim
 
 Options: `--from` / `--to` date range, `--max-messages N` newest N messages, `--no-media` do not download media, `--no-video` do not touch video, gif or audio messages (no click, no media viewer, nothing plays or downloads; they are written as `[video: not exported]` / `[audio: not exported]`; photos are taken only when already loaded in the chat or by their download button), `--checkpoint-minutes N` checkpoint interval (default 10, `0` = off), `--older-from-phone` click the "Click here to get older messages from your phone" button at the start of the chat (default: do not click; the phone must be on). `import` also accepts `--from/--to/--max-messages`; `import` and `export` also accept the same anonymization options as `wa2md.py` (`--extra-names`, `--review-dir`, `--no-dictionary`) with the same meaning.
 
+Documents (xlsx, pdf, docx, zip ...) are saved through WhatsApp Web's own **Download** item in the message menu (the collector opens the menu and clicks only an item whose text is exactly "Download"; no preview opens). In an anonymized run they are copied to the output only with `--copy-documents`, because a document can hold names. Video, gif and audio are never played: with `--no-video` they are skipped, without it they are saved only if WhatsApp already holds them as a blob, and otherwise skipped (saving them would need playback).
+
 ## Experimental: connecting directly to Chrome (`list` / `export`) — connection not verified
 
 ```

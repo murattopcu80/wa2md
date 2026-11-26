@@ -8,7 +8,7 @@ Every option has an English primary name. The old Turkish names are accepted as 
 |---|---|---|---|
 | `--no-media` | `--medya-yok` | leave media out of the output | `wa2md.py`; `wa_web.py snippet/import/export` |
 | `--no-video` | `--video-yok` | do not open, play or download video, gif or audio messages (no sound); written as `[video: not exported]`; photos kept | `wa_web.py snippet/export` |
-| `--copy-documents` | `--belgeleri-kopyala` | when anonymizing, also copy attachments other than image/video/audio | `wa2md.py` |
+| `--copy-documents` | `--belgeleri-kopyala` | when anonymizing, also copy attachments other than image/video/audio (the web collector saves documents either way; this decides whether they are copied into the output) | `wa2md.py`, `wa_web.py import/export` |
 | `--extra-names` | `--ek-adlar` | backup name list (`"First Last,Nickname"` or `@file`) | `wa2md.py`; `wa_web.py import/export` |
 | `--review-dir` | `--inceleme-dizini` | folder of the suspect-remaining words file | `wa2md.py`; `wa_web.py import/export` |
 | `--no-dictionary` | `--sozluksuz` | run even if the name dictionary / place list is missing | `wa2md.py`; `wa_web.py import/export` |
