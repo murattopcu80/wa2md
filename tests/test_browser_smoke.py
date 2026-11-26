@@ -102,7 +102,7 @@ class Smoke(unittest.TestCase):
         out = tempfile.mkdtemp()
         try:
             names = self.run_flow(wa_web.list_chats)
-            self.assertEqual(len(names), 37)  # 30 sıralı + 7 uydurma ek sohbet (emoji, çift boşluk, I/i, belirsiz çift, yavaş arama, video)
+            self.assertEqual(len(names), 38)  # 30 sıralı + 8 uydurma ek sohbet (emoji, çift boşluk, I/i, belirsiz çift, yavaş arama, video, belge)
             self.assertEqual(names[0], "Sohbet 01")
             status, res, typed = self.export("sohbet 03", out)
             self.assertEqual(status["state"], "done")
